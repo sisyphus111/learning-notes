@@ -118,7 +118,7 @@ CASES = {
 def main():
     if sys.version_info < (3,10):
         raise SystemExit('Behavior checks require Python 3.10+ for Counter comparisons.')
-    syntax = behavior = reference_examples = 0
+    syntax = behavior = reference_examples = contextual_examples = 0
     errors = []
     for path in sorted(ROOT.glob('*/*.md')):
         if path.parent.name == 'STL': continue
@@ -128,6 +128,11 @@ def main():
                 tree = ast.parse(code)
                 syntax += 1
                 if path.parent.name == 'Python':
+                    # Multi-file projects are syntax-checked here; they need their
+                    # documented files and build environment for execution.
+                    if code.startswith('# 文件：'):
+                        contextual_examples += 1
+                        continue
                     expected = re.findall(r'# 输出：(.*)', code)
                     output = io.StringIO()
                     with contextlib.redirect_stdout(output):
@@ -170,7 +175,7 @@ def main():
             except Exception as error:
                 errors.append(f'{path.relative_to(ROOT)} block {index}: {type(error).__name__}: {error}')
     for error in errors: print(error)
-    print(f'{syntax} Python examples parse; {behavior} documented variants pass behavior checks; {reference_examples} reference examples match their printed output; {len(errors)} errors.')
+    print(f'{syntax} Python examples parse; {behavior} documented variants pass behavior checks; {reference_examples} reference examples match their printed output; {contextual_examples} multi-file snippets checked for syntax only; {len(errors)} errors.')
     raise SystemExit(bool(errors))
 
 if __name__ == '__main__': main()

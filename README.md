@@ -1,12 +1,13 @@
 # 刷题笔记
 
-按题型整理的算法思路与 C++17 / Python 3.10+ 实现，配套 STL 参考与 Python 语法参考。
+按题型整理的算法思路与 C++17 / Python 3.10+ 实现，配套 STL 与 Python 参考。
 
 **阅读网站：[sisyphus111.github.io/code-notes](https://sisyphus111.github.io/code-notes/)**
 
 - 10 个题型，133 个题目条目；保留「焚诀」、思路推导、复杂度和原有参考链接。
 - 同一解法提供 C++ / Python 标签页，恢复 7 个记忆化搜索小节；运行时间伪造片段仍不收录。
 - Python 语法参考从基础数据结构开始，包含内置容器、deque、Counter、defaultdict、heapq 及复制/可哈希等易错点；另有生成器表达式与 `all`、`any`、`sum` 等常用函数的用法。
+- Python 项目入门包含模块与包、`import`、`python -m`、入口保护、pip / venv、`pyproject.toml`、editable 安装和 `__pycache__`；语言互操作页提供可构建的 pybind11 示例，并解释数据转换、所有权、GIL、ABI 与进程通信。
 - 5 个 STL 页面：速查、对象语义、序列容器、关联容器、适配器与算法。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、与个人主页相同的太阳/月亮主题图标及手机阅读。
 
@@ -50,7 +51,9 @@ git diff --check
 
 - `check_cpp.py`：分别编译 197 个完整 C++17 示例，提供标准库与题目节点类型的测试前置定义；明确排除非独立片段和 STL 参考片段。
 - `test_examples.py`：直接提取文档代码，运行 155 个实现版本的代表性与边界检查，启用 AddressSanitizer 和 UBSan。其中包含对子数组计数的穷举对照。
-- `check_python.py`：检查全部 Python 代码块的语法，运行 164 个题解实现版本的代表性用例，并逐段运行 Python 参考页示例、核对打印结果。需要 Python 3.10+，以支持 `Counter` 的比较语义。
+- `check_python.py`：检查全部 Python 代码块的语法，运行 164 个题解实现版本的代表性用例，并运行 Python 参考页的独立示例、核对打印结果。以 `# 文件：` 标注的多文件片段仅做语法检查，需要按正文组装项目后运行；该检查不构建 C++ 扩展。需要 Python 3.10+，以支持 `Counter` 的比较语义。
 - 验证覆盖编译和上述行为检查，不等于全部题目都经过 LeetCode 在线判题。
+
+模块/包与 pybind11 多文件示例另在 macOS ARM64、CPython 3.12.14、Apple Clang 21.0.0 下按文档组装验证：包与模块的 `-m` 入口、安装生成的命令、入口保护、相对导入失败、普通与 editable 安装的源码修改行为、`.pyc` 生成及 `-B`、扩展的 wheel 构建与安装、空输入/负数/错误类型调用均通过。Windows / Linux 尚未实测，也未进行扩展性能比较。
 
 旧的 `count.py`、`check.py` 已由网页的条目统计和搜索替代。

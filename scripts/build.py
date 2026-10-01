@@ -41,6 +41,10 @@ PYTHON_REFERENCES = [
      'list · tuple · dict · set · str · 常用标准库容器'),
     ('Python/iterables-and-functions.md', 'python-iterables-and-functions.html',
      '可迭代对象与常用函数', '生成器表达式 · all / any · sum · min / max · map / filter'),
+    ('Python/modules-and-packages.md', 'python-modules-and-packages.html',
+     '模块、包与运行方式', 'import · package · python -m · pip / venv · __pycache__'),
+    ('Python/native-interop.md', 'python-native-interop.html',
+     'Python 与其他语言互操作', 'pybind11 · C++ 扩展 · 类型转换 · GIL · ABI · 多语言边界'),
 ]
 PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}
@@ -180,7 +184,7 @@ def links(html, source):
 
 def sidebar(current):
     result = '<a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · 语法</small></span></a>'
-    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 语法参考', PYTHON_REFERENCES)]:
+    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
             active = ' aria-current="page"' if current == output else ''
@@ -192,8 +196,8 @@ def sidebar(current):
 
 def shell(title, current, content, toc='', subtitle='', reference_kind=''):
     kind = reference_kind or '刷题笔记'
-    if reference_kind == 'Python 语法参考':
-        source_note = 'Python 标准库用法与易错点，附官方文档链接。'
+    if reference_kind == 'Python 参考':
+        source_note = 'Python 语法、项目运行与语言互操作，附官方文档链接；多文件示例按正文说明使用。'
     elif reference_kind == 'STL 参考':
         source_note = 'STL 内容选自旧手册，现以 Markdown 维护。'
     else:
@@ -224,7 +228,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 index = []
 problem_count = 0
 for source, output, title, subtitle in PAGES:
-    reference_kind = 'Python 语法参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
+    reference_kind = 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
     body, tokens = RENDERED[source]
     # Each chapter starts with a page title; original headings remain available.
     body = links(body, source)
@@ -263,7 +267,7 @@ cards = lambda pages: '<div class="cards">' + ''.join(f'<a class="card" href="{o
 home = f'''<div class="home-lead"><p>从题面找到线索，从思路走到实现。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
-<section class="home-section"><h2>Python 语法参考</h2><p class="section-desc">先掌握基础数据结构，查常用 API、修改行为与容易踩的坑。</p>{cards(PYTHON_REFERENCES)}</section>
+<section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器与常用语法，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('刷题笔记', 'index.html', home, subtitle='算法思路与题解，配套 C++ STL 和 Python 语法参考。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
