@@ -12,7 +12,9 @@ import markdown
 from markdown.extensions import Extension
 from markdown.inlinepatterns import InlineProcessor
 from markdown.util import AtomicString
+from pygments import highlight
 from pygments.formatters import HtmlFormatter
+from pygments.lexers import CppLexer, PythonLexer, TextLexer
 
 ROOT = Path(__file__).resolve().parents[1]
 CHAPTERS = [
@@ -72,6 +74,33 @@ def headings(text):
 
 def render(source):
     text = (ROOT / source).read_text()
+    examples = []
+    formatter = HtmlFormatter(cssclass="codehilite")
+    def pair(match):
+        index = len(examples)
+        html = '<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言">'
+        for language, label in [('cpp', 'C++'), ('python', 'Python')]:
+            selected = language == 'cpp'
+            html += (f'<button type="button" role="tab" id="example-{index}-{language}-tab" '
+                     f'aria-controls="example-{index}-{language}" aria-selected="{str(selected).lower()}" '
+                     f'tabindex="{0 if selected else -1}">{label}</button>')
+        html += '</div>'
+        for language, code, lexer in [('cpp', match[1], CppLexer()), ('python', match[2], PythonLexer())]:
+            hidden = ' hidden' if language == 'python' else ''
+            html += (f'<div role="tabpanel" id="example-{index}-{language}" '
+                     f'aria-labelledby="example-{index}-{language}-tab" data-language="{language}" tabindex="0"{hidden}>'
+                     + highlight(code, lexer, formatter) + '</div>')
+        examples.append(html + '</div>')
+        return f'\n\n<div>CODEEXAMPLE{index}</div>\n\n'
+    text = re.sub(r'^```cpp\n((?:(?!^```)[\s\S])*)^```\s*^```python\n((?:(?!^```)[\s\S])*)^```', pair, text, flags=re.M | re.S)
+    def single(match):
+        index = len(examples)
+        language, code = match[1], match[2]
+        lexer = {'cpp': CppLexer, 'python': PythonLexer}.get(language, TextLexer)()
+        examples.append(highlight(code, lexer, formatter))
+        return f'\n\n<div>CODEEXAMPLE{index}</div>\n\n'
+    # Protect all code from prose transformations, including == and dollar signs.
+    text = re.sub(r'^```(\w*)\n(.*?)^```', single, text, flags=re.M | re.S)
     # Typora's highlight markers are presentation syntax, not part of headings.
     text = re.sub(r'==([^=\n]+)==', r'\1', text)
     displays = []
@@ -84,6 +113,8 @@ def render(source):
                            extension_configs={'toc': {'slugify': slug}, 'codehilite': {'guess_lang': False}},
                            tab_length=2)
     html = md.convert(text)
+    for i, example in enumerate(examples):
+        html = html.replace(f'<div>CODEEXAMPLE{i}</div>', example)
     for i, formula in enumerate(displays):
         html = html.replace(f'<div>MATHDISPLAY{i}</div>', formula)
     tokens = []
@@ -142,7 +173,7 @@ def links(html, source):
 
 
 def sidebar(current):
-    result = '<a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a>'
+    result = '<a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a>'
     for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
@@ -155,10 +186,10 @@ def sidebar(current):
 
 def shell(title, current, content, toc='', subtitle='', is_reference=False):
     kind = 'STL 参考' if is_reference else '刷题笔记'
-    source_note = 'STL 内容选自旧手册，现以 Markdown 维护。' if is_reference else '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；实现统一为 C++17。'
+    source_note = 'STL 内容选自旧手册，现以 Markdown 维护。' if is_reference else '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。'
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(title)} · C++ 刷题笔记</title><meta name="description" content="{escape(subtitle)}">
+<title>{escape(title)} · 算法刷题笔记</title><meta name="description" content="{escape(subtitle)}">
 <link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
 <script>try{{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}}catch(e){{}}</script>
 <script defer src="assets/site.js"></script>
@@ -168,7 +199,7 @@ def shell(title, current, content, toc='', subtitle='', is_reference=False):
 <a class="skip-link" href="#main">跳到正文</a>
 <aside class="sidebar" id="sidebar">{sidebar(current)}</aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<a href="index.html" class="crumb">算法刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">{kind}</p><h1>{escape(title)}</h1><p class="subtitle">{escape(subtitle)}</p></div>
 <article>{content}</article><footer>{source_note}</footer></main>{toc}</div>
 </div>
@@ -188,7 +219,7 @@ for source, output, title, subtitle in PAGES:
         # Avoid repeating the reference's h1 below the page title.
         body = re.sub(r'^<h1[^>]*>.*?</h1>\s*', '', body, count=1, flags=re.S)
     else:
-        body = references + '<details class="code-conventions"><summary>C++ 示例约定</summary><p>示例采用 C++17，省略标准库头文件与 <code>using namespace std;</code>。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。标为“文本”的块是输入、输出或示意；其余 C++ 片段按所在小节的上下文使用。</p></details>' + body
+        body = references + '<details class="code-conventions"><summary>代码示例约定</summary><p>使用 C++ / Python 标签切换同一解法。C++ 采用 C++17，省略标准库头文件与 <code>using namespace std;</code>；Python 采用 3.10+，包含所需标准库导入。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。输入、输出、框架及局部片段按所在小节的上下文使用。</p></details>' + body
     top = [item for item in tokens if item['level'] <= 2]
     if source.startswith('STL/') and top and top[0]['level'] == 1:
         top = top[1:]
@@ -215,11 +246,11 @@ for source, output, title, subtitle in PAGES:
             problem_count += 1
 
 cards = lambda pages: '<div class="cards">' + ''.join(f'<a class="card" href="{output}"><h3>{title}<span>↗</span></h3><p>{desc}</p></a>' for _, output, title, desc in pages) + '</div>'
-home = f'''<div class="home-lead"><p>从题面找到线索，从思路走到实现。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17</span></div></div>
+home = f'''<div class="home-lead"><p>从题面找到线索，从思路走到实现。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
-(ROOT / 'index.html').write_text(shell('C++ 刷题笔记', 'index.html', home, subtitle='算法思路与题解，配套常用 STL 写法。'))
+(ROOT / 'index.html').write_text(shell('算法刷题笔记', 'index.html', home, subtitle='C++ / Python 算法思路与题解，配套常用 STL 写法。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
 (ROOT / 'assets/code.css').write_text(HtmlFormatter(style='friendly').get_style_defs('.codehilite'))
 print(f'Built {len(PAGES)+1} pages; {problem_count} problem entries; {len(index)} searchable sections.')

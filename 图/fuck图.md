@@ -65,6 +65,30 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def numIslands(self, grid: List[List[str]]) -> int:
+        res = 0
+        m = len(grid)
+        n = len(grid[0])
+        dir = [[0, 1], [0, -1], [1, 0], [-1, 0]]
+        def dfs(x, y):
+            grid[x][y] = '0'
+            for dx, dy in dir:
+                next_x, next_y = x + dx, y + dy
+                if 0 <= next_x < m and 0 <= next_y < n and grid[next_x][next_y] == '1':
+                    dfs(next_x, next_y)
+
+        for i in range(m):
+            for j in range(n):
+                if grid[i][j] == '1':
+                    dfs(i, j)
+                    res += 1
+        return res
+```
+
 + 时间复杂度：$O(MN)$
 + 空间复杂度：$O(MN)$，最坏情况所有节点都是陆地，递归栈开销就是$O(MN)$
 
@@ -125,6 +149,43 @@ class Solution {
         return fresh ? -1 : res;
     }
 };
+```
+
+```python
+from typing import List
+import collections
+
+class Solution:
+    def orangesRotting(self, grid: List[List[int]]) -> int:
+        fresh = 0
+        que = collections.deque()
+        res = -1
+        m = len(grid)
+        n = len(grid[0])
+        dir = [[0,1], [0,-1], [1,0], [-1,0]]
+
+        for i, row in enumerate(grid):
+            for j, val in enumerate(row):
+                if val == 1:
+                    fresh += 1
+                elif val == 2:
+                    que.append((i,j))
+
+        while que:
+            res += 1
+            for _ in range(len(que)):
+                x, y = que.popleft()
+                for dx, dy in dir:
+                    next_x, next_y = x + dx, y + dy
+                    if 0 <= next_x < m and 0 <= next_y < n and grid[next_x][next_y] == 1:
+                        fresh -= 1
+                        grid[next_x][next_y] = 2
+                        que.append((next_x, next_y))
+
+        if not fresh and res == -1:
+            return 0
+
+        return -1 if fresh else res
 ```
 
 + 时间复杂度：$O(MN)$
@@ -191,6 +252,36 @@ class Solution {
         return -1;
     }
 };
+```
+
+```python
+from collections import deque
+from typing import List
+
+class Solution:
+    def minMutation(self, startGene: str, endGene: str, bank: List[str]) -> int:
+        if startGene == endGene:
+            return 0
+        bank = set(bank)
+        if endGene not in bank:
+            return -1
+        queue = deque()
+        queue.append(startGene)
+        step = 0
+        while queue:
+            for _ in range(len(queue)):
+                gene = queue.popleft()
+                if gene == endGene:
+                    return step
+                for i, x in enumerate(gene):
+                    for y in "ACGT":
+                        if x != y:
+                            nxt = gene[:i] + y + gene[i + 1:]
+                            if nxt in bank:
+                                bank.remove(nxt) # 从某条路径可以直接到达bank中的一个中间状态，显然会比有环更短
+                                queue.append(nxt)
+            step += 1
+        return -1
 ```
 
 + 时间复杂度：$O(C\times n\times m)$，其中$n$是基因序列长度，$m$是数组`bank`的长度。对于队列中的每个合法的基因序列每次都需要计算 $C\times n$ 种变化，在这里 $C=4$；队列中最多有 $m$ 个元素，因此时间复杂度为 $O(C\times n\times m)$。
@@ -281,6 +372,53 @@ class Solution {
 };
 ```
 
+```python
+from collections import defaultdict
+from collections import deque
+from math import inf
+
+class Solution:
+    def ladderLength(self, beginWord: str, endWord: str, wordList: list[str]) -> int:
+        if endWord not in wordList:
+            return 0
+
+        L = len(beginWord)
+        all_combo_dict = defaultdict(list)
+        for word in wordList + [beginWord]:
+            for i in range(L):
+                # 预处理：构建通用 pattern 映射，比如 "h*t" -> ["hot", "hit"]
+                pattern = word[:i] + '*' + word[i+1:]
+                all_combo_dict[pattern].append(word)
+
+        begin_queue = deque([(beginWord, 1)])
+        end_queue = deque([(endWord, 1)])
+        begin_visited = {beginWord: 1}
+        end_visited = {endWord: 1}
+
+        while begin_queue and end_queue:
+            # 总是扩展队列短的那一边
+            if len(begin_queue) <= len(end_queue):
+                queue, visited, other_visited = begin_queue, begin_visited, end_visited
+            else:
+                queue, visited, other_visited = end_queue, end_visited, begin_visited
+
+            ans = inf
+            # 按层处理
+            for _ in range(len(queue)):
+                word, level = queue.popleft()
+                for i in range(L):
+                    pattern = word[:i] + '*' + word[i+1:]
+                    for next_word in all_combo_dict.get(pattern, []):
+                        if next_word in other_visited:
+                            ans = min(ans, level + other_visited[next_word])
+                        if next_word not in visited:
+                            visited[next_word] = level + 1
+                            queue.append((next_word, level + 1))
+            if ans != inf:
+                return ans
+        return 0
+```
+
 + 时间复杂度：$O(N\times L^2)$，其中$N$是`wordList`的长度，$L$是单词的长度。双向BFS最坏时间复杂度是$O(N\times L)$，一个单词可以扩展出$O(L)$个`next_word`。
 + 空间复杂度：$O(N\times L^2)$，哈希表总共有$O(N\times L)$个节点，每个节点占用$O(L)$空间。
 
@@ -365,6 +503,34 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def canFinish(self, numCourses: int, prerequisites: List[List[int]]) -> bool:
+        graph = [[] for _ in range(numCourses)] # 邻接表
+        for to_, from_ in prerequisites:
+            graph[from_].append(to_)
+
+        visited = [0] * numCourses
+        def dfs(i):
+            visited[i] = 1
+            for j in graph[i]:
+                if visited[j] == 1:
+                    return False # 有环
+                elif visited[j] == 0:
+                    if not dfs(j):
+                        return False
+            visited[i] = 2
+            return True
+
+        for i in range(numCourses):
+            if not visited[i]:
+                if not dfs(i): # dfs为False表示有环
+                    return False
+        return True
+```
+
 ### 解法2：BFS
 
 ```cpp
@@ -393,6 +559,32 @@ class Solution {
         return visited == numCourses;
     }
 };
+```
+
+```python
+from typing import List
+import collections
+
+class Solution:
+    def canFinish(self, numCourses: int, prerequisites: List[List[int]]) -> bool:
+        graph = [[] for _ in range(numCourses)]
+        indegree = [0] * numCourses
+        for to_, from_ in prerequisites:
+            graph[from_].append(to_)
+            indegree[to_] += 1
+
+        que = collections.deque([i for i in range(numCourses) if indegree[i] == 0])
+
+        visited = 0
+        while que:
+            visited += 1
+            i = que.popleft()
+            for j in graph[i]:
+                indegree[j] -= 1
+                if indegree[j] == 0:
+                    que.append(i)
+
+        return visited == numCourses
 ```
 
 ## 210.课程表 II[中等]
@@ -442,6 +634,35 @@ class Solution {
         return order;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def findOrder(self, numCourses: int, prerequisites: List[List[int]]) -> List[int]:
+        graph = [[] for _ in range(numCourses)]
+        for u, v in prerequisites:
+            graph[v].append(u)
+        visited = [0] * numCourses
+        stack = []
+        def dfs(u):
+            visited[u] = 1
+            for v in graph[u]:
+                if visited[v] == 1:
+                    return False
+                elif visited[v] == 0:
+                    if not dfs(v):
+                        return False
+            stack.append(u)
+            visited[u] = 2
+            return True
+
+        for i in range(numCourses):
+            if visited[i] == 0:
+                if not dfs(i):
+                    return []
+        return list(reversed(stack))
 ```
 
 # 最小生成树
@@ -540,6 +761,35 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def minCostConnectPoints(self, points):
+        n = len(points)
+        parent, size = list(range(n)), [1] * n
+        def find(x):
+            if parent[x] != x: parent[x] = find(parent[x])
+            return parent[x]
+        def union(x, y):
+            x, y = find(x), find(y)
+            if x == y: return False
+            if size[x] < size[y]: x, y = y, x
+            parent[y] = x
+            size[x] += size[y]
+            return True
+        edges = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                distance = abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])
+                edges.append((distance, i, j))
+        cost = count = 0
+        for distance, i, j in sorted(edges):
+            if union(i, j):
+                cost += distance
+                count += 1
+                if count == n - 1: break
+        return cost
+```
+
 ### 解法2：Prim算法
 
 ```cpp
@@ -577,6 +827,24 @@ public:
         return cost;
     }
 };
+```
+
+```python
+class Solution:
+    def minCostConnectPoints(self, points):
+        n = len(points)
+        visited, min_dist = [False] * n, [float('inf')] * n
+        min_dist[0] = 0
+        cost = 0
+        for _ in range(n):
+            x = min((i for i in range(n) if not visited[i]), key=lambda i: min_dist[i])
+            cost += min_dist[x]
+            visited[x] = True
+            for y in range(n):
+                if not visited[y]:
+                    distance = abs(points[x][0] - points[y][0]) + abs(points[x][1] - points[y][1])
+                    min_dist[y] = min(min_dist[y], distance)
+        return cost
 ```
 
 这个算法的复杂度是$O(V^2)$，但是可以发现它和Dijkstra算法非常像，所以也能用堆优化成$O((V+E)\log V)$，唯一的区别在于更新`min_dist`的时候，Prim算法是`dist[v]=min(dist[v], w)`，Dijkstra是`dist[v]=min(dist[v], dist[u]+w)`（w是u-v的权重）。
@@ -653,6 +921,24 @@ public:
 };
 ```
 
+```python
+from math import inf
+
+class Solution:
+    def networkDelayTime(self, times, n, k):
+        inf = float('inf')
+        g = [[inf] * n for _ in range(n)]
+        for x, y, weight in times: g[x - 1][y - 1] = weight
+        dist, used = [inf] * n, [False] * n
+        dist[k - 1] = 0
+        for _ in range(n):
+            x = min((i for i in range(n) if not used[i]), key=lambda i: dist[i])
+            used[x] = True
+            for y in range(n): dist[y] = min(dist[y], dist[x] + g[x][y])
+        ans = max(dist)
+        return -1 if ans == inf else ans
+```
+
 ### 解法2：堆优化Dijkstra（适用于稀疏图）
 
 注意，我们用堆来维护所有节点到起点的最短路径长度，堆中可能存在一些旧的节点的距离信息，我们不会主动去删除它，而是通过加入一个新的路径更短的节点来解决，这个新路径一定会先于旧路径处理，当旧路径再次弹出时，由于`time > dist[x]`就会被跳过。
@@ -689,6 +975,29 @@ public:
         return ans == inf ? -1 : ans;
     }
 };
+```
+
+```python
+from heapq import heappop
+from heapq import heappush
+
+class Solution:
+    def networkDelayTime(self, times, n, k):
+        g = [[] for _ in range(n)]
+        for x, y, weight in times: g[x - 1].append((y - 1, weight))
+        dist = [float('inf')] * n
+        dist[k - 1] = 0
+        pq = [(0, k - 1)]
+        while pq:
+            time, x = heappop(pq)
+            if time > dist[x]: continue
+            for y, weight in g[x]:
+                distance = time + weight
+                if distance < dist[y]:
+                    dist[y] = distance
+                    heappush(pq, (distance, y))
+        ans = max(dist)
+        return -1 if ans == float('inf') else ans
 ```
 
 

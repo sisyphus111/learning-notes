@@ -45,6 +45,13 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def maxDepth(self, root):
+        if root is None: return 0
+        return max(self.maxDepth(root.left), self.maxDepth(root.right)) + 1
+```
+
 ## 100.相同的树[简单]*
 
 ### 链接
@@ -74,6 +81,13 @@ public:
         return p->val == q->val && isSameTree(p->left, q->left) && isSameTree(p->right, q->right);
     }
 };
+```
+
+```python
+class Solution:
+    def isSameTree(self, p, q):
+        if p is None or q is None: return p is q
+        return p.val == q.val and self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)
 ```
 
 ## 101.对称二叉树[简单]*
@@ -107,6 +121,15 @@ public:
         return isSameTree(root->left, root->right);
     }
 };
+```
+
+```python
+class Solution:
+    def isSymmetric(self, root):
+        def mirror(p, q):
+            if p is None or q is None: return p is q
+            return p.val == q.val and mirror(p.left, q.right) and mirror(p.right, q.left)
+        return root is None or mirror(root.left, root.right)
 ```
 
 ## 110.平衡二叉树[简单]*
@@ -152,6 +175,19 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def isBalanced(self, root):
+        def height(node):
+            if node is None: return 0
+            left = height(node.left)
+            if left == -1: return -1
+            right = height(node.right)
+            if right == -1 or abs(left - right) > 1: return -1
+            return max(left, right) + 1
+        return height(root) != -1
+```
+
 ## 199.二叉树的右视图[中等]*
 
 ### 链接
@@ -186,6 +222,19 @@ public:
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def rightSideView(self, root):
+        res = []
+        def dfs(node, depth):
+            if node is None: return
+            if depth == len(res): res.append(node.val)
+            dfs(node.right, depth + 1)
+            dfs(node.left, depth + 1)
+        dfs(root, 0)
+        return res
 ```
 
 ## 236.二叉树的最近公共祖先[中等]*
@@ -238,6 +287,16 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def lowestCommonAncestor(self, root, p, q):
+        if root is None or root is p or root is q: return root
+        left = self.lowestCommonAncestor(root.left, p, q)
+        right = self.lowestCommonAncestor(root.right, p, q)
+        if left and right: return root
+        return left if left else right
+```
+
 ## 114.二叉树展开为链表[中等]
 
 ### 链接
@@ -278,6 +337,25 @@ class Solution {
 };
 ```
 
+```python
+from typing import Optional
+
+class Solution:
+    def flatten(self, root: Optional[TreeNode]) -> None:
+        if root is None:
+            return
+        tmp = root.right
+        self.flatten(root.left)
+        if root.left is not None:
+            root.right = root.left
+            root.left = None
+            node = root.right
+            while node.right: # 找到右边这条链的最右下角的节点
+                node = node.right
+            node.right = tmp
+        self.flatten(tmp)
+```
+
 ## 437.路径总和 III[中等]
 
 ### 链接
@@ -314,6 +392,27 @@ class Solution {
 };
 ```
 
+```python
+from typing import Optional
+
+class Solution:
+    def pathSum(self, root: Optional[TreeNode], targetSum: int) -> int:
+        if not root:
+            return 0
+
+        # 以当前节点为起点的路径数量
+        def dfs(node, tsum):
+            if not node:
+                return 0
+            count = 1 if node.val == tsum else 0
+            count += dfs(node.left, tsum - node.val)
+            count += dfs(node.right, tsum - node.val)
+            return count
+
+        # 当前节点为起点 + 左子树起点 + 右子树起点
+        return dfs(root, targetSum) + self.pathSum(root.left, targetSum) + self.pathSum(root.right, targetSum)
+```
+
 + 时间复杂度：$O(N^2)$，每个节点都要做一次DFS，每次DFS都是$O(N)$
 + 空间复杂度：$O(N)$，栈开销
 
@@ -339,6 +438,31 @@ class Solution {
         return dfs(dfs, root, 0);
     }
 };
+```
+
+```python
+import collections
+
+class Solution:
+    def pathSum(self, root: TreeNode, targetSum: int) -> int:
+        prefix = collections.defaultdict(int)
+        prefix[0] = 1
+
+        def dfs(root, curr):
+            if not root:
+                return 0
+
+            ret = 0
+            curr += root.val
+            ret += prefix[curr - targetSum] # 后 - 前 = targetSum
+            prefix[curr] += 1
+            ret += dfs(root.left, curr)
+            ret += dfs(root.right, curr)
+            prefix[curr] -= 1 # 回溯
+
+            return ret
+
+        return dfs(root, 0)
 ```
 
 + 时间复杂度：$O(N)$
@@ -403,6 +527,15 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def isValidBST(self, root):
+        def dfs(node, left, right):
+            if node is None: return True
+            return left < node.val < right and dfs(node.left, left, node.val) and dfs(node.right, node.val, right)
+        return dfs(root, float('-inf'), float('inf'))
+```
+
 ### 解法2：中序遍历
 
 如果使用中序遍历，一个naive的思路就是根据BST的性质，在中序遍历时把所有节点的值记录到一个数组中，然后判断这个数组是否是升序的，缺点是空间复杂度为$O(N)$，且需要遍历两次。想要改进的话，不难想到，我们可不可以在遍历的同时就判断是否升序呢？进一步就是比较当前节点是否大于上一个节点。
@@ -424,6 +557,20 @@ public:
         return isValidBST(root->right);
     }
 };
+```
+
+```python
+class Solution:
+    def isValidBST(self, root):
+        pre = None
+        def dfs(node):
+            nonlocal pre
+            if node is None: return True
+            if not dfs(node.left): return False
+            if pre is not None and pre.val >= node.val: return False
+            pre = node
+            return dfs(node.right)
+        return dfs(root)
 ```
 
 ### 解法3：后序遍历
@@ -451,6 +598,18 @@ public:
         return dfs(root).second != LLONG_MAX;
     }
 };
+```
+
+```python
+class Solution:
+    def isValidBST(self, root):
+        def dfs(node):
+            if node is None: return float('inf'), float('-inf')
+            l_min, l_max = dfs(node.left)
+            r_min, r_max = dfs(node.right)
+            if node.val <= l_max or node.val >= r_min: return float('-inf'), float('inf')
+            return min(l_min, node.val), max(r_max, node.val)
+        return dfs(root)[1] != float('inf')
 ```
 
 ## 235.二叉搜索树的最近公共祖先[中等]*
@@ -496,6 +655,14 @@ public:
         return root;
     }
 };
+```
+
+```python
+class Solution:
+    def lowestCommonAncestor(self, root, p, q):
+        if p.val < root.val and q.val < root.val: return self.lowestCommonAncestor(root.left, p, q)
+        if p.val > root.val and q.val > root.val: return self.lowestCommonAncestor(root.right, p, q)
+        return root
 ```
 
 
@@ -589,6 +756,46 @@ int main() {
 }
 ```
 
+```python
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val, left=None, right=None):
+        self.val, self.left, self.right = val, left, right
+
+def buildTree(arr):
+    if not arr or arr[0] is None: return None
+    root = TreeNode(arr[0])
+    queue = deque([root])
+    i = 1
+    while queue and i < len(arr):
+        node = queue.popleft()
+        if arr[i] is not None:
+            node.left = TreeNode(arr[i])
+            queue.append(node.left)
+        i += 1
+        if i < len(arr) and arr[i] is not None:
+            node.right = TreeNode(arr[i])
+            queue.append(node.right)
+        i += 1
+    return root
+
+def printTree(root):
+    if root is None: return
+    queue = deque([root])
+    while queue:
+        values = []
+        for _ in range(len(queue)):
+            node = queue.popleft()
+            if node is None: values.append('null')
+            else:
+                values.append(str(node.val))
+                queue.extend([node.left, node.right])
+        print(' '.join(values))
+
+printTree(buildTree([1, 3, None]))
+```
+
 
 
 ## 102.二叉树的层序遍历[中等]*
@@ -626,6 +833,24 @@ public:
         return res;
     }
 };
+```
+
+```python
+from collections import deque
+
+class Solution:
+    def levelOrder(self, root):
+        if root is None: return []
+        res, queue = [], deque([root])
+        while queue:
+            row = []
+            for _ in range(len(queue)):
+                node = queue.popleft()
+                row.append(node.val)
+                if node.left: queue.append(node.left)
+                if node.right: queue.append(node.right)
+            res.append(row)
+        return res
 ```
 
 ## 103.二叉树的锯齿形层序遍历[中等]*
@@ -672,6 +897,25 @@ public:
 };
 ```
 
+```python
+from collections import deque
+
+class Solution:
+    def zigzagLevelOrder(self, root):
+        if root is None: return []
+        res, queue = [], deque([root])
+        while queue:
+            row = []
+            for _ in range(len(queue)):
+                node = queue.popleft()
+                row.append(node.val)
+                if node.left: queue.append(node.left)
+                if node.right: queue.append(node.right)
+            if len(res) % 2: row.reverse()
+            res.append(row)
+        return res
+```
+
 ## 513.找树左下角的值[中等]*
 
 ### 链接
@@ -706,6 +950,19 @@ public:
         return node->val;
     }
 };
+```
+
+```python
+from collections import deque
+
+class Solution:
+    def findBottomLeftValue(self, root):
+        queue = deque([root])
+        while queue:
+            node = queue.popleft()
+            if node.right: queue.append(node.right)
+            if node.left: queue.append(node.left)
+        return node.val
 ```
 
 ## 662.二叉树最大宽度[中等]
@@ -754,6 +1011,25 @@ class Solution {
         return (int)res;
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def widthOfBinaryTree(self, root: Optional[TreeNode]) -> int:
+        res = 1
+        arr = [[root, 1]]
+        while arr:
+            tmp = []
+            for node, index in arr:
+                if node.left:
+                    tmp.append([node.left, index * 2])
+                if node.right:
+                    tmp.append([node.right, index * 2 + 1])
+            res = max(res, arr[-1][1] - arr[0][1] + 1)
+            arr = tmp
+        return res
 ```
 
 

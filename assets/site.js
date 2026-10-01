@@ -1,6 +1,10 @@
 const themeButton = document.querySelector('.theme-toggle');
 function updateThemeLabel() {
-    themeButton.textContent = document.documentElement.dataset.theme === 'dark' ? '浅色' : '深色';
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const label = dark ? '切换到浅色模式' : '切换到深色模式';
+    themeButton.setAttribute('aria-pressed', String(dark));
+    themeButton.setAttribute('aria-label', label);
+    themeButton.title = label;
 }
 updateThemeLabel();
 themeButton.addEventListener('click', () => {
@@ -9,6 +13,30 @@ themeButton.addEventListener('click', () => {
     try { localStorage.setItem('notes-theme', theme); } catch (error) { /* Storage may be disabled. */ }
     updateThemeLabel();
 });
+for (const example of document.querySelectorAll('.code-example')) {
+    const tabs = [...example.querySelectorAll('[role="tab"]')];
+    function selectTab(selected) {
+        for (const tab of tabs) {
+            const active = tab === selected;
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+            document.getElementById(tab.getAttribute('aria-controls')).hidden = !active;
+        }
+    }
+    for (const tab of tabs) {
+        tab.addEventListener('click', () => selectTab(tab));
+        tab.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            let index = tabs.indexOf(tab);
+            if (event.key === 'Home') index = 0;
+            else if (event.key === 'End') index = tabs.length - 1;
+            else index = (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            selectTab(tabs[index]);
+            tabs[index].focus();
+        });
+    }
+}
 const menuButton = document.querySelector('.menu-toggle');
 menuButton.addEventListener('click', () => {
     const open = document.body.classList.toggle('nav-open');

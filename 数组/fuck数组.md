@@ -51,6 +51,20 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        hashtable = {}
+        for i, num in enumerate(nums):
+            complement = target - num
+            if complement in hashtable:
+                return [hashtable[complement], i]
+            hashtable[num] = i
+        return []
+```
+
 时间复杂度：$O(N)$
 
 空间复杂度：$O(N)$
@@ -89,6 +103,14 @@ class Solution {
 };
 ```
 
+```python
+from collections import Counter
+
+class Solution:
+    def isAnagram(self, s: str, t: str) -> bool:
+        return Counter(s) == Counter(t)
+```
+
 纯手搓其实也不复杂，下面的写法用减法省略了一个哈希表。
 
 ```cpp
@@ -111,6 +133,19 @@ public:
         return true;
     }
 };
+```
+
+```python
+class Solution:
+    def isAnagram(self, s, t):
+        if len(s) != len(t): return False
+        table = [0] * 26
+        for c in s: table[ord(c) - ord('a')] += 1
+        for c in t:
+            i = ord(c) - ord('a')
+            table[i] -= 1
+            if table[i] < 0: return False
+        return True
 ```
 
 + 时间复杂度：$O(N)$
@@ -148,6 +183,20 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def groupAnagrams(self, strs: List[str]) -> List[List[str]]:
+        res = []
+        cnt = defaultdict(list)
+        for word in strs:
+            key = tuple(sorted(word))
+            cnt[key].append(word)
+        return list(cnt.values())
 ```
 
 ## 128.最长连续序列[中等]
@@ -190,6 +239,22 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def longestConsecutive(self, nums: List[int]) -> int:
+        st = set(nums)
+        res = 0
+        for num in st:
+            if num - 1 not in st: # 只有当 num - 1 不在集合中时，才考虑以 num 开头的序列
+                k = 1
+                while (num + k) in st:
+                    k += 1
+                res = max(res, k)
+        return res
 ```
 
 + 时间复杂度：$O(N)$
@@ -237,6 +302,25 @@ class Solution {
         return n + 1;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def firstMissingPositive(self, nums: List[int]) -> int:
+        N = len(nums)
+        for i, num in enumerate(nums):
+            if num <= 0:
+                nums[i] = N + 1
+        for i in range(N):
+            num = abs(nums[i])
+            if num <= N:
+                nums[num - 1] = -abs(nums[num - 1])
+        for i, num in enumerate(nums):
+            if num > 0:
+                return i + 1
+        return N + 1
 ```
 
 
@@ -311,6 +395,25 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def twoSum(self, numbers: List[int], target: int) -> List[int]:
+        left, right = 0, len(numbers) - 1
+
+        while left < right:
+            total = numbers[left] + numbers[right]
+            if total > target:
+                right -= 1
+            elif total < target:
+                left += 1
+            else:
+                return [left + 1, right + 1]
+
+        return []
+```
+
 时间复杂度：$O(N)$
 
 空间复杂度：$O(1)$
@@ -369,6 +472,37 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def threeSum(self, nums: list[int]) -> list[list[int]]:
+        nums.sort()
+        n = len(nums)
+        res = []
+
+        for left in range(n - 2):
+            num = nums[left]
+            if left > 0 and num == nums[left - 1]:
+                continue
+
+            mid, right = left + 1, n - 1
+            while mid < right:
+                total = num + nums[mid] + nums[right]
+                if total < 0:
+                    mid += 1
+                elif total > 0:
+                    right -= 1
+                else:
+                    res.append([num, nums[mid], nums[right]])
+                    mid += 1
+                    while mid < right and nums[mid] == nums[mid - 1]:
+                        mid += 1
+                    right -= 1
+                    while mid < right and nums[right] == nums[right + 1]:
+                        right -= 1
+
+        return res
+```
+
 + 时间复杂度：$O(N^2)$
 + 空间复杂度：$O(\log N)$ <- 排序用的栈
 
@@ -412,6 +546,40 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def threeSum(self, nums: list[int]) -> list[list[int]]:
+        nums.sort()
+        n = len(nums)
+        res = []
+
+        for left in range(n - 2):
+            num = nums[left]
+            if left > 0 and num == nums[left - 1]:
+                continue
+            if num + nums[left + 1] + nums[left + 2] > 0:
+                break # 下一个num只会更大,已经没有其他结果了
+            if num + nums[n - 2] + nums[n - 1] < 0:
+                continue # 现在的num太小了,但是下一个可能够大,所以是continue而不是break
+            mid, right = left + 1, n - 1
+            while mid < right:
+                total = num + nums[mid] + nums[right]
+                if total < 0:
+                    mid += 1
+                elif total > 0:
+                    right -= 1
+                else:
+                    res.append([num, nums[mid], nums[right]])
+                    mid += 1
+                    while mid < right and nums[mid] == nums[mid - 1]:
+                        mid += 1
+                    right -= 1
+                    while mid < right and nums[right] == nums[right + 1]:
+                        right -= 1
+
+        return res
 ```
 
 ## 11.盛最多水的容器[中等]*
@@ -462,6 +630,25 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def maxArea(self, height: List[int]) -> int:
+        left, right = 0, len(height) - 1
+        res = 0
+
+        while left < right:
+            tmp = (right - left) * min(height[left], height[right])
+            res = max(res, tmp)
+            if height[left] < height[right]:
+                left += 1
+            else:
+                right -= 1
+
+        return res
 ```
 
 ## 42.接雨水[困难]*
@@ -515,6 +702,32 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        n = len(height)
+        if n <= 2:
+            return 0
+
+        prefix_max = [0] * n
+        prefix_max[0] = height[0]
+        for i in range(1, n):
+            prefix_max[i] = max(height[i], prefix_max[i - 1])
+
+        suffix_max = [0] * n
+        suffix_max[n - 1] = height[n - 1]
+        for i in range(n - 2, -1, -1):
+            suffix_max[i] = max(height[i], suffix_max[i + 1])
+
+        res = 0
+        for i in range(n):
+            res += min(prefix_max[i], suffix_max[i]) - height[i]
+
+        return res
+```
+
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(N)$
 
@@ -538,6 +751,29 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        left, right = 0, len(height) - 1
+        prefix_max, suffix_max = 0, 0
+        res = 0
+
+        while left < right:
+            prefix_max = max(prefix_max, height[left])
+            suffix_max = max(suffix_max, height[right])
+
+            if prefix_max < suffix_max:
+                res += prefix_max - height[left]
+                left += 1
+            else:
+                res += suffix_max - height[right]
+                right -= 1
+
+        return res
 ```
 
 + 时间复杂度：$O(N)$
@@ -579,6 +815,24 @@ class Solution {
         }
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def sortColors(self, nums: List[int]) -> None:
+        n = len(nums)
+        left, right = 0, n - 1
+        i = 0
+        while i <= right:
+            while i <= right and nums[i] == 2:
+                nums[i], nums[right] = nums[right], nums[i]
+                right -= 1
+            if nums[i] == 0:
+                nums[i], nums[left] = nums[left], nums[i]
+                left += 1
+            i += 1
 ```
 
 + 时间复杂度：$O(N)$
@@ -628,6 +882,30 @@ class Solution {
         reverse(nums.begin() + i + 1, nums.end());
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def nextPermutation(self, nums: List[int]) -> None:
+        n = len(nums)
+        i = n - 2
+        # 步骤1：从后往前找升序对
+        while i >= 0 and nums[i] >= nums[i+1]:
+            i -= 1
+        if i >= 0:
+            # 步骤2：找右边比 nums[i] 大的最小数字
+            j = n - 1
+            while nums[j] <= nums[i]:
+                j -= 1
+            nums[i], nums[j] = nums[j], nums[i]
+        # 步骤3：反转 i+1 之后的子数组
+        left, right = i + 1, n - 1
+        while left < right:
+            nums[left], nums[right] = nums[right], nums[left]
+            left += 1
+            right -= 1
 ```
 
 
@@ -685,12 +963,30 @@ int erase(vector<int> &nums, int x) {
 }
 ```
 
+```python
+from typing import List
+
+def erase(nums: List[int], x: int) -> None:
+    slow = 0
+    n = len(nums)
+    for fast in range(n):
+        if nums[fast] != x:
+            nums[slow] = nums[fast]
+            slow += 1
+```
+
 假设待删除的元素一共有k个，那么最后数组的前n-k的元素就是删除后数组的样子了，后k个元素保持不变，STL的vector.remove用的就是这种方法，最后缩容一下即可。例如
 
 ```cpp
 vector<int> nums = {0, 1, 0, 3, 12};
 // 覆盖非零元素后的状态（尾部仍有旧值）：
 nums = {1, 3, 12, 3, 12};
+```
+
+```python
+nums = [0,1,0,3,12]
+# 删除0之后
+nums = [1,3,12,3,12]
 ```
 
 这个题要求把0放到数组末尾，那么我们只要把上面的覆盖操作改成交换就行了，因为每一次处理时，慢指针指向的就是待删除元素，快指针指向的是下一个有效的元素。
@@ -707,6 +1003,19 @@ class Solution {
                 swap(nums[slow++], nums[fast]);
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def moveZeroes(self, nums: List[int]) -> None:
+        slow = 0
+        n = len(nums)
+        for fast in range(n):
+            if nums[fast] != 0:
+                nums[slow], nums[fast] = nums[fast], nums[slow]
+                slow += 1
 ```
 
 + 时间复杂度：$O(N)$
@@ -753,6 +1062,24 @@ class Solution {
         return slow;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def findDuplicate(self, nums: List[int]) -> int:
+        slow, fast = 0, 0
+        while True:
+            slow = nums[slow]
+            fast = nums[nums[fast]]
+            if slow == fast:
+                break
+        slow = 0 # 从0开始走,再次碰面就在环入口
+        while slow != fast:
+            slow = nums[slow]
+            fast = nums[fast]
+        return slow
 ```
 
 + 时间复杂度：$O(N)$
@@ -821,6 +1148,27 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def minSubArrayLen(self, target: int, nums: List[int]) -> int:
+        n = len(nums)
+        left = 0
+        res = inf
+        sum = 0
+
+        for right in range(n):
+            sum += nums[right]
+            while sum >= target:
+                res = min(res, right - left + 1)
+                sum -= nums[left]
+                left += 1
+
+        return res if res != inf else 0
+```
+
 + 时间复杂度：$O(N)$，虽然有两重循环，但是内层的循环的总次数是$O(N)$次
 + 空间复杂度：$O(1)$
 
@@ -858,6 +1206,28 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def numSubarrayProductLessThanK(self, nums: List[int], k: int) -> int:
+        if k <= 1:
+            return 0
+
+        left = 0
+        res = 0
+        prod = 1
+
+        for right, num in enumerate(nums):
+            prod *= num
+            while prod >= k:
+                prod //= nums[left]
+                left += 1
+            res += right - left + 1
+
+        return res
 ```
 
 + 时间复杂度：$O(N)$
@@ -898,6 +1268,23 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        hashtable = [0] * 128  # Since the string contains only ASCII characters
+        left = 0
+        res = 0
+
+        for right, c in enumerate(s):
+            hashtable[ord(c)] += 1
+            while hashtable[ord(c)] > 1:
+                hashtable[ord(s[left])] -= 1
+                left += 1
+            res = max(res, right - left + 1)
+
+        return res
 ```
 
 + 时间复杂度：$O(N)$
@@ -946,6 +1333,29 @@ class Solution {
 };
 ```
 
+```python
+from collections import Counter
+from typing import List
+
+class Solution:
+    def findAnagrams(self, s: str, p: str) -> List[int]:
+        n = len(s)
+        res = []
+        k = len(p) # 确定滑动窗口大小
+        cnt_p = Counter(p)
+        cnt_s = Counter(s[:k])
+        if cnt_p == cnt_s:
+            res.append(0)
+        left = 0 # left是冗余的,但是我觉得这样更清楚一点,也可以通过right减去滑窗大小计算出来
+        for right in range(k, n):
+            cnt_s[s[left]] -= 1
+            cnt_s[s[right]] += 1
+            left += 1 # left指向新窗口第一个字符
+            if cnt_s == cnt_p:
+                res.append(left)
+        return res
+```
+
 ### 优化：不定长滑窗
 
 上面的定长滑窗写法，在判断滑窗是否相等时需要每个元素都比一遍，时间复杂度是$O(|p|)$，注意到，如果我们只移动一步，那么下一个滑窗和上一个滑窗其实最多就两个元素是不同的，那中间那些元素又得重比一遍，并不是一个特别优秀的算法。
@@ -972,6 +1382,25 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from collections import Counter
+from typing import List
+
+class Solution:
+    def findAnagrams(self, s: str, p: str) -> List[int]:
+        res = []
+        cnt = Counter(p)  # 统计 p 的每种字母的出现次数
+        left = 0
+        for right, c in enumerate(s):
+            cnt[c] -= 1  # 右端点字母进入窗口
+            while cnt[c] < 0:  # 字母 c 太多了
+                cnt[s[left]] += 1  # 左端点字母离开窗口
+                left += 1
+            if right - left + 1 == len(p):  # s' 和 p 的每种字母的出现次数都相同（证明见上）
+                res.append(left)  # s' 左端点下标加入答案
+        return res
 ```
 
 ## 76.最小覆盖子串[困难]
@@ -1022,6 +1451,26 @@ class Solution {
         return res_left < 0 ? "" : s.substr(res_left, res_length);
     }
 };
+```
+
+```python
+from collections import Counter
+
+class Solution:
+    def minWindow(self, s: str, t: str) -> str:
+        cnt_s = Counter()
+        cnt_t = Counter(t)
+        res_left = -1
+        res_right = len(s)
+        left = 0
+        for right, c in enumerate(s):
+            cnt_s[c] += 1
+            while cnt_s >= cnt_t:
+                if right - left < res_right - res_left:
+                    res_left, res_right = left, right
+                cnt_s[s[left]] -= 1
+                left += 1
+        return "" if res_left < 0 else s[res_left : res_right + 1]
 ```
 
 + 时间复杂度：$O(C|s|+|t|)$，$C$为字符集大小，这里是52。注意窗口左端点 left 只会增加不会减少，left 每增加一次，我们就花费 $O(C)$ 的时间。因为 left 至多增加 $|s|$ 次，所以二重循环的时间复杂度为 $O(C|s|+|t|)$，再算上统计 t 字母出现次数的时间 $O(|t|)$，总的时间复杂度为 $O(C|s|+|t|)$。
@@ -1121,6 +1570,38 @@ class Solution {
 };
 ```
 
+```python
+from collections import defaultdict
+
+class Solution:
+    def countSubarrays(self, nums: list[int], k: int, m: int) -> int:
+        def calc(distinct_limit: int) -> int:
+            cnt = defaultdict(int)
+            ge_m = 0  # 窗口中的出现次数 >= m 的元素个数
+            ans = left = 0
+            for x in nums:
+                # 1. 入
+                cnt[x] += 1
+                if cnt[x] == m:
+                    ge_m += 1
+
+                # 2. 出
+                while len(cnt) >= distinct_limit and ge_m >= k:
+                    out = nums[left]
+                    if cnt[out] == m:
+                        ge_m -= 1
+                    cnt[out] -= 1
+                    if cnt[out] == 0:
+                        del cnt[out]
+                    left += 1
+
+                # 3. 更新答案
+                ans += left
+            return ans
+
+        return calc(k) - calc(k + 1)
+```
+
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(N)$
 
@@ -1178,6 +1659,40 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from collections import Counter
+from typing import List
+
+class Solution:
+    def findSubstring(self, s: str, words: List[str]) -> List[int]:
+        n = len(s)
+        l_w = len(words[0])
+        n_w = len(words)
+        w = n_w * l_w
+        cnt_words = Counter(words)
+        res = []
+        for i in range(l_w):
+            if i + w > n:
+                continue
+            cnt_s = Counter()
+            # 定长滑窗
+            for j in range(n_w):
+                cnt_s[s[i + j * l_w : i + (j + 1) * l_w]] += 1
+            if cnt_s == cnt_words:
+                res.append(i)
+            left = i
+            for right in range(i + w, n, l_w):
+                left_word = s[left: left + l_w]
+                right_word = s[right : right + l_w]
+                cnt_s[right_word] += 1
+                cnt_s[left_word] -= 1
+                left += l_w
+                if cnt_s == cnt_words:
+                    res.append(left)
+
+        return res
 ```
 
 + 时间复杂度：$O(N \times l_w)$，$N$是`s`的长度，$l_w$是单个word的长度
@@ -1249,6 +1764,26 @@ class Solution {
 };
 ```
 
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def subarraySum(self, nums: List[int], k: int) -> int:
+        n = len(nums)
+        prefix_sum = [0] * (n + 1)
+        for i in range(n):
+            prefix_sum[i + 1] = prefix_sum[i] + nums[i]
+
+        cnt = defaultdict(int)
+        res = 0
+        for x in prefix_sum:
+            # x - y = k => y = x - k
+            res += cnt[x - k]
+            cnt[x] += 1
+        return res
+```
+
 ### 优化：一次遍历
 
 注意到，我们在遍历前缀和数组的某个元素时，是不会使用这个元素后面的元素的，所以把两个遍历合并也不会影响结果。
@@ -1267,6 +1802,23 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def subarraySum(self, nums: List[int], k: int) -> int:
+        cnt = defaultdict(int)
+        cnt[0] = 1 # 前缀和为0的元素出现一次
+        current_sum = 0
+        res = 0
+        for num in nums:
+            current_sum += num
+            res += cnt[current_sum - k]
+            cnt[current_sum] += 1
+        return res
 ```
 
 
@@ -1308,6 +1860,23 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def productExceptSelf(self, nums: List[int]) -> List[int]:
+        n = len(nums)
+        pre = [1] * n
+        for i in range(1, n):
+            pre[i] = pre[i - 1] * nums[i - 1]
+
+        suf = [1] * n
+        for i in range(n - 2, -1, -1):
+            suf[i] = suf[i + 1] * nums[i + 1]
+
+        return [p * s for p, s in zip(pre, suf)]
+```
+
 唯一要注意的就是前后缀数组的大小以及遍历的下标了。一般`pre[i]`代表的都是前`i`个元素的累积操作，如果把长度定为`n`，是没法知道整个数组的累积的，如果把长度设为`n+1`，那么`pre[n]`就是整个数组的累积。这个题不需要整个数组的乘积，所以长度就定为`n`了。
 
 如果正序遍历中下标有`i-1`，那么`range`就要从1开始；倒序遍历中下标有`i+1`，那么`range`就要从`n-2`开始。还有就是前缀和，正序累加时用的是前一个的`nums[i-1]`；后缀和同理。
@@ -1329,6 +1898,23 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def productExceptSelf(self, nums: List[int]) -> List[int]:
+        n = len(nums)
+        pre = [1] * n
+        for i in range(n - 1):
+            pre[i + 1] = pre[i] * nums[i]
+
+        suf = [1] * n
+        for i in range(n - 1, 0, -1):
+            suf[i - 1] = suf[i] * nums[i]
+
+        return [p * s for p, s in zip(pre, suf)]
 ```
 
 
@@ -1393,6 +1979,27 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def search(self, nums: List[int], target: int) -> int:
+        left = 0
+        right = len(nums) - 1  # 定义target在左闭右闭的区间里，即: [left, right]
+
+        while left <= right:  # 当left == right，区间[left, right]依然有效，所以用 <=
+            middle = left + ((right - left) // 2)  # 防止溢出 等同于 (left + right) // 2
+            if nums[middle] > target:
+                right = middle - 1  # target 在左区间，所以 [left, middle - 1]
+            elif nums[middle] < target:
+                left = middle + 1  # target 在右区间，所以 [middle + 1, right]
+            else:  # nums[middle] == target
+                return middle  # 数组中找到目标值，直接返回下标
+
+        # 未找到目标值
+        return -1
+```
+
 ### 解法2：左闭右开
 
 ```cpp
@@ -1412,6 +2019,27 @@ class Solution {
         return -1;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+     def search(self, nums: List[int], target: int) -> int:
+        left = 0
+        right = len(nums)  # 定义target在左闭右开的区间里，即：[left, right)
+
+        while left < right:  # 因为left == right的时候，在[left, right)是无效的空间，所以使用 <
+            middle = left + ((right - left) >> 1)  # 使用右移操作代替除法
+            if nums[middle] > target:
+                right = middle  # target 在左区间，在 [left, middle) 中
+            elif nums[middle] < target:
+                left = middle + 1  # target 在右区间，在 [middle + 1, right) 中
+            else:  # nums[middle] == target
+                return middle  # 数组中找到目标值，直接返回下标
+
+        # 未找到目标值
+        return -1
 ```
 
 ## 34.在排序数组中查找元素的第一个和最后一个位置[中等]*
@@ -1470,6 +2098,33 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def lower_bound(self, nums: List[int], target: int) -> int:
+        # 在nums中找到第一个>=target的位置
+        left, right = 0, len(nums) - 1
+
+        while left <= right:
+            mid = left + (right - left) // 2
+            if nums[mid] >= target: # 更新前[mid, right]为蓝色,检查左边
+                right = mid - 1
+            else:
+                left = mid + 1
+
+        return left
+
+    def searchRange(self, nums: List[int], target: int) -> List[int]:
+        start = self.lower_bound(nums, target)
+
+        if start == len(nums) or nums[start] != target:
+            return [-1, -1]
+
+        end = self.lower_bound(nums, target + 1) - 1
+        return [start, end]
+```
+
 + 时间复杂度：$O(\log N)$
 + 空间复杂度：$O(1)$
 
@@ -1513,6 +2168,23 @@ class Solution {
         return left;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def findPeakElement(self, nums: List[int]) -> int:
+        left, right = 0, len(nums) - 2 # 最后一个元素一定是蓝色
+
+        while left <= right:
+            mid = left + (right - left) // 2
+            if nums[mid] > nums[mid + 1]:
+                right = mid - 1
+            else:
+                left = mid + 1
+
+        return left
 ```
 
 + 时间复杂度：$O(\log N)$
@@ -1559,6 +2231,23 @@ class Solution {
         return nums[left];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def findMin(self, nums: List[int]) -> int:
+        left, right = 0, len(nums) - 2
+
+        while left <= right:
+            mid = left + (right - left) // 2
+            if nums[mid] < nums[-1]:
+                right = mid - 1
+            else:
+                left = mid + 1
+
+        return nums[left]
 ```
 
 + 时间复杂度：$O(\log N)$
@@ -1610,6 +2299,34 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def search(self, nums: List[int], target: int) -> int:
+        n = len(nums)
+
+        def is_blue(i):
+            end = nums[-1]
+            if nums[i] > end:
+                return target > end and nums[i] >= target
+            else:
+                return target > end or nums[i] >= target
+
+        left, right = 0, n - 1
+
+        while left <= right:
+            mid = left + (right - left) // 2
+            if is_blue(mid):
+                right = mid - 1
+            else:
+                left = mid + 1
+
+        if left == n or nums[left] != target:
+            return -1
+        return left
+```
+
 + 时间复杂度：$O(\log N)$
 + 空间复杂度：$O(1)$
 
@@ -1651,6 +2368,19 @@ class Solution {
         return lower_bound(nums.begin(), nums.end(), nums[n - k]) - nums.begin();
     }
 };
+```
+
+```python
+from bisect import bisect_left
+from typing import List
+
+class Solution:
+    def countElements(self, nums: List[int], k: int) -> int:
+        n = len(nums)
+        if k == 0:
+            return n
+        nums.sort()
+        return bisect_left(nums, nums[-k])
 ```
 
 + 时间复杂度：$O(N\log N)$
@@ -1715,6 +2445,37 @@ class Solution {
         throw logic_error("输入数组必须有序且不能同时为空");
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def findMedianSortedArrays(self, nums1: List[int], nums2: List[int]) -> float:
+        if len(nums1) > len(nums2):
+            nums1, nums2 = nums2, nums1
+
+        m, n = len(nums1), len(nums2)
+        left, right = 0, m
+
+        while left <= right:
+            i = (left + right) // 2
+            j = (m + n + 1) // 2 - i
+
+            # 临界点: nums1_left <= nums2_right and nums2_left <= nums1_right
+            nums1_left = float('-inf') if i == 0 else nums1[i - 1]
+            nums1_right = float('inf') if i == m else nums1[i]
+            nums2_left = float('-inf') if j == 0 else nums2[j - 1]
+            nums2_right = float('inf') if j == n else nums2[j]
+
+            if nums1_left > nums2_right:  # i 偏右，需要左移
+                right = i - 1
+            elif nums2_left > nums1_right:  # i 偏左，需要右移
+                left = i + 1
+            else:  # 找到正确分割
+                max_left = max(nums1_left, nums2_left)
+                min_right = min(nums1_right, nums2_right)
+                return max_left if (m + n) % 2 == 1 else (max_left + min_right) / 2
 ```
 
 + 时间复杂度：$O(\log(\min(M, N)))$，在**短的数组上二分**

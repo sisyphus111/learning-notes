@@ -40,6 +40,21 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def canJump(self, nums: List[int]) -> bool:
+        n = len(nums)
+        dp = [False] * n
+        dp[0] = True
+        for i in range(n):
+            if dp[i]:
+                for j in range(i + 1, min(i + nums[i] + 1, n)):
+                    dp[j] = True
+        return dp[-1]
+```
+
 + 时间复杂度：$O(N^2)$
 
 + 空间复杂度：$O(N)$
@@ -63,6 +78,22 @@ class Solution {
         return false;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def canJump(self, nums: List[int]) -> bool:
+        n = len(nums)
+        farthest = 0
+        for i in range(n):
+            if i > farthest:
+                return False
+            farthest = max(farthest, i + nums[i])
+            if farthest >= n - 1:
+                return True
+        return False
 ```
 
 + 时间复杂度：$O(N)$
@@ -104,6 +135,21 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def jump(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [inf] * n
+        dp[0] = 0
+        for i in range(n):
+            for j in range(i + 1, min(i + nums[i] + 1, n)):
+                dp[j] = min(dp[j], dp[i] + 1)
+        return dp[-1]
+```
+
 + 时间复杂度：$O(N^2)$
 
 + 空间复杂度：$O(N)$
@@ -127,6 +173,21 @@ class Solution {
         return step;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def jump(self, nums: List[int]) -> int:
+        n = len(nums)
+        farthest, step, end = 0, 0, 0
+        for i in range(n - 1):
+            farthest = max(farthest, i + nums[i])
+            if i == end:
+                step += 1
+                end = farthest
+        return step
 ```
 
 + 时间复杂度：$O(N)$
@@ -176,6 +237,24 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def partitionLabels(self, s: str) -> List[int]:
+        last = [0] * 26
+        for i, c in enumerate(s):
+            last[ord(c) - ord('a')] = i
+        res = []
+        start = end = 0
+        for i, c in enumerate(s):
+            end = max(end, last[ord(c) - ord('a')])
+            if i == end:
+                res.append(end - start + 1)
+                start = i + 1
+        return res
 ```
 
 

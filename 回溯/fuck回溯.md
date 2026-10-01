@@ -30,6 +30,18 @@ void backtracking(参数) {
 }
 ```
 
+```python
+# 通用框架；终止条件、选择集合、处理与撤销由具体题目定义。
+def backtracking(path, choices):
+    if finished(path):
+        save_result(path)
+        return
+    for choice in choices:
+        apply_choice(path, choice)
+        backtracking(path, next_choices(choices, choice))
+        undo_choice(path, choice)
+```
+
 > 上面的分类和模板来自代码随想录
 
 一般的回溯，都会有**一个集合存储最终的结果**，**一个变量存储中间的路径**。
@@ -91,6 +103,25 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def letterCombinations(self, digits):
+        if not digits: return []
+        letters = ["", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"]
+        res = []
+        path = []
+        def dfs(index):
+            if index == len(digits):
+                res.append(''.join(path))
+                return
+            for c in letters[int(digits[index])]:
+                path.append(c)
+                dfs(index + 1)
+                path.pop()
+        dfs(0)
+        return res
+```
+
 上面的写法很规整，很符合回溯算法模板。或者我们可以直接把`s`改成局部变量，通过作用域自动实现`pop_back`。关键是理解回溯的思想，**先处理，后递归，再撤销。**
 
 ```cpp
@@ -110,6 +141,21 @@ public:
         dfs(0, "");
         return res;
     }
+```
+
+```python
+class Solution:
+    def letterCombinations(self, digits):
+        if not digits: return []
+        letters = ["", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"]
+        res = []
+        def dfs(index, path):
+            if index == len(digits):
+                res.append(path)
+                return
+            for c in letters[int(digits[index])]: dfs(index + 1, path + c)
+        dfs(0, '')
+        return res
 ```
 
 这么写性能其实不会太好，考虑到`s`的长度就是`digits`的长度，我们可以一开始就固定好`s`的内存大小，处理过程也只需要修改里面字符即可。
@@ -134,6 +180,24 @@ public:
         dfs(0);
         return res;
     }
+```
+
+```python
+class Solution:
+    def letterCombinations(self, digits):
+        if not digits: return []
+        letters = ["", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"]
+        res = []
+        path = [''] * len(digits)
+        def dfs(index):
+            if index == len(digits):
+                res.append(''.join(path))
+                return
+            for c in letters[int(digits[index])]:
+                path[index] = c
+                dfs(index + 1)
+        dfs(0)
+        return res
 ```
 
 ## 77.组合[中等]*
@@ -193,6 +257,23 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def combine(self, n, k):
+        res, path = [], []
+        def dfs(start):
+            if len(path) == k:
+                res.append(path.copy())
+                return
+            end = n
+            for x in range(start, end + 1):
+                path.append(x)
+                dfs(x + 1)
+                path.pop()
+        dfs(1)
+        return res
+```
+
 ### 优化
 
 如果for循环选择的起始位置之后的元素个数**已经不足**我们需要的元素个数了，那么就没有必要搜索了
@@ -224,6 +305,23 @@ public:
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def combine(self, n, k):
+        res, path = [], []
+        def dfs(start):
+            if len(path) == k:
+                res.append(path.copy())
+                return
+            end = n - (k - len(path)) + 1
+            for x in range(start, end + 1):
+                path.append(x)
+                dfs(x + 1)
+                path.pop()
+        dfs(1)
+        return res
 ```
 
 ## 216.组合总和 III[中等]*
@@ -267,6 +365,23 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def combinationSum3(self, k, n):
+        res, path = [], []
+        def dfs(start, total):
+            if len(path) == k:
+                if total == n: res.append(path.copy())
+                return
+            end = 9
+            for x in range(start, end + 1):
+                path.append(x)
+                dfs(x + 1, total + x)
+                path.pop()
+        dfs(1, 0)
+        return res
+```
+
 ### 优化
 
 假设还需要选`d=k-path.size()`个数字，
@@ -303,6 +418,25 @@ public:
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def combinationSum3(self, k, n):
+        res, path = [], []
+        def dfs(start, total):
+            d = k - len(path)
+            if total > n or n > total + (19 - d) * d // 2 or n < total + (2 * start + d - 1) * d // 2: return
+            if len(path) == k:
+                if total == n: res.append(path.copy())
+                return
+            end = 9 - (k - len(path)) + 1
+            for x in range(start, end + 1):
+                path.append(x)
+                dfs(x + 1, total + x)
+                path.pop()
+        dfs(1, 0)
+        return res
 ```
 
 ## 22.括号生成[中等]*
@@ -358,6 +492,26 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def generateParenthesis(self, n):
+        res, path = [], []
+        def dfs(left, right):
+            if left + right == 2 * n:
+                res.append(''.join(path))
+                return
+            if left < n:
+                path.append('(')
+                dfs(left + 1, right)
+                path.pop()
+            if right < left:
+                path.append(')')
+                dfs(left, right + 1)
+                path.pop()
+        dfs(0, 0)
+        return res
+```
+
 ## 39.组合总和[中等]
 
 ### 链接
@@ -402,6 +556,30 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def combinationSum(self, candidates: List[int], target: int) -> List[List[int]]:
+        res = []
+        path = []
+        n = len(candidates)
+        def dfs(i, s):
+            if s > target:
+                return
+            elif s == target:
+                res.append(path.copy())
+                return
+
+            for j in range(i, n):
+                path.append(candidates[j])
+                dfs(j, s + candidates[j])
+                path.pop()
+
+        dfs(0, 0)
+        return res
 ```
 
 
@@ -464,6 +642,20 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def subsets(self, nums):
+        res, path = [], []
+        def dfs(start):
+            res.append(path.copy())
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                dfs(i + 1)
+                path.pop()
+        dfs(0)
+        return res
+```
+
 + 时间复杂度：$O(N \times 2^N)$
 
 + 空间复杂度：$O(N)$
@@ -493,6 +685,22 @@ public:
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def subsets(self, nums):
+        res, path = [], []
+        def dfs(i):
+            if i == len(nums):
+                res.append(path.copy())
+                return
+            dfs(i + 1)
+            path.append(nums[i])
+            dfs(i + 1)
+            path.pop()
+        dfs(0)
+        return res
 ```
 
 + 时间复杂度：$O(N \times 2^N)$。把path拷贝到res是$O(N)$
@@ -558,6 +766,24 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def partition(self, s):
+        res, path = [], []
+        def dfs(start):
+            if start == len(s):
+                res.append(path.copy())
+                return
+            for end in range(start, len(s)):
+                word = s[start:end + 1]
+                if word == word[::-1]:
+                    path.append(word)
+                    dfs(end + 1)
+                    path.pop()
+        dfs(0)
+        return res
+```
+
 
 
 # 排列
@@ -614,6 +840,25 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def permute(self, nums: List[int]) -> List[List[int]]:
+        n = len(nums)
+        res = []
+        path = [0] * n
+        def dfs(i, s):
+            if i == n:
+                res.append(path.copy())
+                return
+            for x in s:
+                path[i] = x
+                dfs(i + 1, s - {x})
+        dfs(0, set(nums))
+        return res
+```
+
 ### 解法2
 
 ```cpp
@@ -643,6 +888,29 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def permute(self, nums: List[int]) -> List[List[int]]:
+        n = len(nums)
+        res = []
+        path = [0] * n
+        used = [False] * n
+        def dfs(i):
+            if i == n:
+                res.append(path.copy())
+                return
+            for j in range(n):
+                if not used[j]:
+                    path[i] = nums[j]
+                    used[j] = True
+                    dfs(i + 1)
+                    used[j] = False
+        dfs(0)
+        return res
+```
+
 ### 优化
 
 上面两种解法都需要$O(N)$的额外空间，实际上我们可以原地修改`nums`数组，来实现$O(1)$的空间复杂度。排列的本质就是把所有数放到不同的位置上，如果当前递归负责位置`i`，我们可以用`swap`把剩余集合中所有数字放到第`i`位去。
@@ -668,6 +936,25 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def permute(self, nums: List[int]) -> List[List[int]]:
+        n = len(nums)
+        res = []
+        def dfs(i):
+            if i == n:
+                res.append(nums.copy())
+                return
+            for j in range(i, n):
+                nums[i], nums[j] = nums[j], nums[i]
+                dfs(i + 1)
+                nums[i], nums[j] = nums[j], nums[i]
+        dfs(0)
+        return res
 ```
 
 # 棋盘
@@ -746,6 +1033,31 @@ public:
         return res;
     }
 };
+```
+
+```python
+class Solution:
+    def solveNQueens(self, n):
+        res, board = [], [['.'] * n for _ in range(n)]
+        def valid(row, col):
+            for i in range(row):
+                if board[i][col] == 'Q': return False
+            for i, j in zip(range(row - 1, -1, -1), range(col - 1, -1, -1)):
+                if board[i][j] == 'Q': return False
+            for i, j in zip(range(row - 1, -1, -1), range(col + 1, n)):
+                if board[i][j] == 'Q': return False
+            return True
+        def dfs(row):
+            if row == n:
+                res.append([''.join(line) for line in board])
+                return
+            for col in range(n):
+                if valid(row, col):
+                    board[row][col] = 'Q'
+                    dfs(row + 1)
+                    board[row][col] = '.'
+        dfs(0)
+        return res
 ```
 
 

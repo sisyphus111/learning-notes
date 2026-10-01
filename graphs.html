@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>图 · C++ 刷题笔记</title><meta name="description" content="搜索 · 拓扑排序 · 最小生成树 · 最短路">
+<title>图 · 算法刷题笔记</title><meta name="description" content="搜索 · 拓扑排序 · 最小生成树 · 最短路">
 <link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
 <script defer src="assets/site.js"></script>
@@ -8,11 +8,11 @@
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
 <a class="skip-link" href="#main">跳到正文</a>
-<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html" aria-current="page">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html" aria-current="page">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<a href="index.html" class="crumb">算法刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">刷题笔记</p><h1>图</h1><p class="subtitle">搜索 · 拓扑排序 · 最小生成树 · 最短路</p></div>
-<article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a></p><details class="code-conventions"><summary>C++ 示例约定</summary><p>示例采用 C++17，省略标准库头文件与 <code>using namespace std;</code>。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。标为“文本”的块是输入、输出或示意；其余 C++ 片段按所在小节的上下文使用。</p></details><h1 id="基础搜索算法">基础搜索算法</h1>
+<article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a></p><details class="code-conventions"><summary>代码示例约定</summary><p>使用 C++ / Python 标签切换同一解法。C++ 采用 C++17，省略标准库头文件与 <code>using namespace std;</code>；Python 采用 3.10+，包含所需标准库导入。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。输入、输出、框架及局部片段按所在小节的上下文使用。</p></details><h1 id="基础搜索算法">基础搜索算法</h1>
 <h2 id="焚诀">焚诀</h2>
 <p>大部分图论题目，DFS和BFS都是可以互相转换的，但各自有使用场景</p>
 <ul>
@@ -42,7 +42,7 @@
 <p>另外<strong>DFS（包括二叉树里的DFS）写法</strong>一般分为两种，一种是在<strong>DFS开头处理当前节点</strong>（如下面这种），一种是在<em>准备递归到下一层时提前处理下一个节点</em>，并且这种写法需要在主函数里调用DFS时也在DFS外面提前处理第一个节点。第一种写法更简洁，我喜欢第一种。</p>
 <p>对于边界条件判断，也有两种写法，一种是<strong>写在DFS开头</strong>，一种是<strong>在准备递归前</strong>。在图的题目中一般用第二种，因为对于一些无效情况可以减少递归次数。在二叉树的题目中，经常会有多个递归，第一种写法把边界条件判断统一写在开头，代码更简洁点。（混着写也不是不行就是了）</p>
 <h3 id="解法-dfs">解法：DFS</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-0-cpp-tab" aria-controls="example-0-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-0-python-tab" aria-controls="example-0-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-0-cpp" aria-labelledby="example-0-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">numIslands</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">grid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">();</span>
@@ -65,7 +65,30 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">res</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-0-python" aria-labelledby="example-0-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">numIslands</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="nb">dir</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">dfs</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+            <span class="n">grid</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'0'</span>
+            <span class="k">for</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">:</span>
+                <span class="n">next_x</span><span class="p">,</span> <span class="n">next_y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">dx</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">dy</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">next_x</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">next_y</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="ow">and</span> <span class="n">grid</span><span class="p">[</span><span class="n">next_x</span><span class="p">][</span><span class="n">next_y</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'1'</span><span class="p">:</span>
+                    <span class="n">dfs</span><span class="p">(</span><span class="n">next_x</span><span class="p">,</span> <span class="n">next_y</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">grid</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="s1">'1'</span><span class="p">:</span>
+                    <span class="n">dfs</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+                    <span class="n">res</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">res</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(MN)\)</span></li>
@@ -88,7 +111,7 @@
 <h3 id="思路_1">思路</h3>
 <p>由于腐烂是逐层扩展，所以用BFS。由于可能有多个起始源，所以是多源广度优先搜索，由于上一轮腐烂的橘子到下一轮它的邻居都腐烂了，那么这个橘子在下一轮是不需要再遍历了的，所以可以用BFS。</p>
 <h3 id="解法-bfs">解法：BFS</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-1-cpp-tab" aria-controls="example-1-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-1-python-tab" aria-controls="example-1-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-1-cpp" aria-labelledby="example-1-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">orangesRotting</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">grid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="n">fresh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
@@ -120,7 +143,43 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">fresh</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">-1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">res</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-1-python" aria-labelledby="example-1-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">collections</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">orangesRotting</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">fresh</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">que</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">deque</span><span class="p">()</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="nb">dir</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">grid</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">fresh</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">val</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">que</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="n">que</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">que</span><span class="p">)):</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">que</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">:</span>
+                    <span class="n">next_x</span><span class="p">,</span> <span class="n">next_y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">dx</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">dy</span>
+                    <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">next_x</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">next_y</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="ow">and</span> <span class="n">grid</span><span class="p">[</span><span class="n">next_x</span><span class="p">][</span><span class="n">next_y</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">fresh</span> <span class="o">-=</span> <span class="mi">1</span>
+                        <span class="n">grid</span><span class="p">[</span><span class="n">next_x</span><span class="p">][</span><span class="n">next_y</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+                        <span class="n">que</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">next_x</span><span class="p">,</span> <span class="n">next_y</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">fresh</span> <span class="ow">and</span> <span class="n">res</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">fresh</span> <span class="k">else</span> <span class="n">res</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(MN)\)</span></li>
@@ -143,7 +202,7 @@
 <h3 id="思路_2">思路</h3>
 <p>求最少变化次数，优先考虑使用BFS。当然可以预处理一下来剪枝。</p>
 <h3 id="解法">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-2-cpp-tab" aria-controls="example-2-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-2-python-tab" aria-controls="example-2-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-2-cpp" aria-labelledby="example-2-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">minMutation</span><span class="p">(</span><span class="n">string</span><span class="w"> </span><span class="n">startGene</span><span class="p">,</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">endGene</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">bank</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">startGene</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">endGene</span><span class="p">)</span>
@@ -177,7 +236,36 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-2-python" aria-labelledby="example-2-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">minMutation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">startGene</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">endGene</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bank</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">startGene</span> <span class="o">==</span> <span class="n">endGene</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="n">bank</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">bank</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">endGene</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">bank</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+        <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">startGene</span><span class="p">)</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">queue</span><span class="p">)):</span>
+                <span class="n">gene</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">gene</span> <span class="o">==</span> <span class="n">endGene</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">step</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gene</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="s2">"ACGT"</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="n">y</span><span class="p">:</span>
+                            <span class="n">nxt</span> <span class="o">=</span> <span class="n">gene</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">y</span> <span class="o">+</span> <span class="n">gene</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span>
+                            <span class="k">if</span> <span class="n">nxt</span> <span class="ow">in</span> <span class="n">bank</span><span class="p">:</span>
+                                <span class="n">bank</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">nxt</span><span class="p">)</span> <span class="c1"># 从某条路径可以直接到达bank中的一个中间状态，显然会比有环更短</span>
+                                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nxt</span><span class="p">)</span>
+            <span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(C\times n\times m)\)</span>，其中<span class="math">\(n\)</span>是基因序列长度，<span class="math">\(m\)</span>是数组<code>bank</code>的长度。对于队列中的每个合法的基因序列每次都需要计算 <span class="math">\(C\times n\)</span> 种变化，在这里 <span class="math">\(C=4\)</span>；队列中最多有 <span class="math">\(m\)</span> 个元素，因此时间复杂度为 <span class="math">\(O(C\times n\times m)\)</span>。</li>
@@ -202,7 +290,7 @@
 <p>如果使用两个同时进行的广搜可以有效地减少搜索空间。一边从 beginWord 开始，另一边从 endWord 开始。我们每次从两边各扩展一层节点，当发现某一时刻两边都访问过同一顶点时就停止搜索。这就是双向广度优先搜索，它可以可观地减少搜索空间大小，从而提高代码运行效率。</p>
 <p><img src="%E5%9B%BE/figures/127-analysis.png" loading="lazy" width="40%"></p>
 <h3 id="解法-双向bfs">解法：双向BFS</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-3-cpp-tab" aria-controls="example-3-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-3-python-tab" aria-controls="example-3-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-3-cpp" aria-labelledby="example-3-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">ladderLength</span><span class="p">(</span><span class="n">string</span><span class="w"> </span><span class="n">beginWord</span><span class="p">,</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">endWord</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">wordList</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">unordered_set</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">words</span><span class="p">(</span><span class="n">wordList</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">wordList</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
@@ -256,7 +344,53 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-3-python" aria-labelledby="example-3-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">inf</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ladderLength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">beginWord</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">endWord</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">wordList</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">endWord</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">wordList</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">L</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">beginWord</span><span class="p">)</span>
+        <span class="n">all_combo_dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">wordList</span> <span class="o">+</span> <span class="p">[</span><span class="n">beginWord</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+                <span class="c1"># 预处理：构建通用 pattern 映射，比如 "h*t" -&gt; ["hot", "hit"]</span>
+                <span class="n">pattern</span> <span class="o">=</span> <span class="n">word</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">'*'</span> <span class="o">+</span> <span class="n">word</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+                <span class="n">all_combo_dict</span><span class="p">[</span><span class="n">pattern</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+
+        <span class="n">begin_queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([(</span><span class="n">beginWord</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+        <span class="n">end_queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([(</span><span class="n">endWord</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+        <span class="n">begin_visited</span> <span class="o">=</span> <span class="p">{</span><span class="n">beginWord</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+        <span class="n">end_visited</span> <span class="o">=</span> <span class="p">{</span><span class="n">endWord</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+
+        <span class="k">while</span> <span class="n">begin_queue</span> <span class="ow">and</span> <span class="n">end_queue</span><span class="p">:</span>
+            <span class="c1"># 总是扩展队列短的那一边</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">begin_queue</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">end_queue</span><span class="p">):</span>
+                <span class="n">queue</span><span class="p">,</span> <span class="n">visited</span><span class="p">,</span> <span class="n">other_visited</span> <span class="o">=</span> <span class="n">begin_queue</span><span class="p">,</span> <span class="n">begin_visited</span><span class="p">,</span> <span class="n">end_visited</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">queue</span><span class="p">,</span> <span class="n">visited</span><span class="p">,</span> <span class="n">other_visited</span> <span class="o">=</span> <span class="n">end_queue</span><span class="p">,</span> <span class="n">end_visited</span><span class="p">,</span> <span class="n">begin_visited</span>
+
+            <span class="n">ans</span> <span class="o">=</span> <span class="n">inf</span>
+            <span class="c1"># 按层处理</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">queue</span><span class="p">)):</span>
+                <span class="n">word</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+                    <span class="n">pattern</span> <span class="o">=</span> <span class="n">word</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">'*'</span> <span class="o">+</span> <span class="n">word</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+                    <span class="k">for</span> <span class="n">next_word</span> <span class="ow">in</span> <span class="n">all_combo_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="p">[]):</span>
+                        <span class="k">if</span> <span class="n">next_word</span> <span class="ow">in</span> <span class="n">other_visited</span><span class="p">:</span>
+                            <span class="n">ans</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">ans</span><span class="p">,</span> <span class="n">level</span> <span class="o">+</span> <span class="n">other_visited</span><span class="p">[</span><span class="n">next_word</span><span class="p">])</span>
+                        <span class="k">if</span> <span class="n">next_word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                            <span class="n">visited</span><span class="p">[</span><span class="n">next_word</span><span class="p">]</span> <span class="o">=</span> <span class="n">level</span> <span class="o">+</span> <span class="mi">1</span>
+                            <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">next_word</span><span class="p">,</span> <span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">ans</span> <span class="o">!=</span> <span class="n">inf</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ans</span>
+        <span class="k">return</span> <span class="mi">0</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N\times L^2)\)</span>，其中<span class="math">\(N\)</span>是<code>wordList</code>的长度，<span class="math">\(L\)</span>是单词的长度。双向BFS最坏时间复杂度是<span class="math">\(O(N\times L)\)</span>，一个单词可以扩展出<span class="math">\(O(L)\)</span>个<code>next_word</code>。</li>
@@ -305,7 +439,7 @@
 <li>指向 <code>0</code> → 树边 → 继续 DFS</li>
 <li>指向 <code>2</code> → 前向边/横向边 → 不影响环检测（相当于有一个节点已经访问过了，现在有一条新边指向旧的这个节点，显然这不算环，因为当前节点的父结点不可能是这个节点）</li>
 </ul>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-4-cpp-tab" aria-controls="example-4-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-4-python-tab" aria-controls="example-4-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-4-cpp" aria-labelledby="example-4-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">canFinish</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">numCourses</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">prerequisites</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">graph</span><span class="p">(</span><span class="n">numCourses</span><span class="p">);</span>
@@ -329,10 +463,37 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-4-python" aria-labelledby="example-4-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canFinish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numCourses</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">prerequisites</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numCourses</span><span class="p">)]</span> <span class="c1"># 邻接表</span>
+        <span class="k">for</span> <span class="n">to_</span><span class="p">,</span> <span class="n">from_</span> <span class="ow">in</span> <span class="n">prerequisites</span><span class="p">:</span>
+            <span class="n">graph</span><span class="p">[</span><span class="n">from_</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_</span><span class="p">)</span>
+
+        <span class="n">visited</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">numCourses</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">dfs</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+            <span class="n">visited</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">visited</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span> <span class="c1"># 有环</span>
+                <span class="k">elif</span> <span class="n">visited</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">dfs</span><span class="p">(</span><span class="n">j</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">visited</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numCourses</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">visited</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">dfs</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="c1"># dfs为False表示有环</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span>
+</pre></div>
+</div></div>
 
 <h3 id="解法2-bfs">解法2：BFS</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-5-cpp-tab" aria-controls="example-5-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-5-python-tab" aria-controls="example-5-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-5-cpp" aria-labelledby="example-5-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">canFinish</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">numCourses</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">prerequisites</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">graph</span><span class="p">(</span><span class="n">numCourses</span><span class="p">);</span>
@@ -357,7 +518,32 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">visited</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">numCourses</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-5-python" aria-labelledby="example-5-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">collections</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canFinish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numCourses</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">prerequisites</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numCourses</span><span class="p">)]</span>
+        <span class="n">indegree</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">numCourses</span>
+        <span class="k">for</span> <span class="n">to_</span><span class="p">,</span> <span class="n">from_</span> <span class="ow">in</span> <span class="n">prerequisites</span><span class="p">:</span>
+            <span class="n">graph</span><span class="p">[</span><span class="n">from_</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_</span><span class="p">)</span>
+            <span class="n">indegree</span><span class="p">[</span><span class="n">to_</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">que</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">deque</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numCourses</span><span class="p">)</span> <span class="k">if</span> <span class="n">indegree</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">visited</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">que</span><span class="p">:</span>
+            <span class="n">visited</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="n">que</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="n">indegree</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">indegree</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">que</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">visited</span> <span class="o">==</span> <span class="n">numCourses</span>
+</pre></div>
+</div></div>
 
 <h2 id="210-课程表-ii-中等">210.课程表 II[中等]</h2>
 <h3 id="链接_5">链接</h3>
@@ -373,7 +559,7 @@
 <h3 id="思路_5">思路</h3>
 <p>与上题一样的思路，不过要用栈收集后序遍历的根节点，最后对栈倒序输出。</p>
 <h3 id="解法-dfs_1">解法：DFS</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-6-cpp-tab" aria-controls="example-6-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-6-python-tab" aria-controls="example-6-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-6-cpp" aria-labelledby="example-6-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">findOrder</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">numCourses</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">prerequisites</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">graph</span><span class="p">(</span><span class="n">numCourses</span><span class="p">);</span>
@@ -399,7 +585,35 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">order</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-6-python" aria-labelledby="example-6-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">findOrder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numCourses</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">prerequisites</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numCourses</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">prerequisites</span><span class="p">:</span>
+            <span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+        <span class="n">visited</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">numCourses</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">dfs</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+            <span class="n">visited</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">[</span><span class="n">u</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">visited</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+                <span class="k">elif</span> <span class="n">visited</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">dfs</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+            <span class="n">visited</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">numCourses</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">visited</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">dfs</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">stack</span><span class="p">))</span>
+</pre></div>
+</div></div>
 
 <h1 id="最小生成树">最小生成树</h1>
 <h2 id="焚诀_2">焚诀</h2>
@@ -426,7 +640,7 @@
 <h3 id="思路_6">思路</h3>
 <p>这道题非常直白的MST问题，思路没啥好讲的，主要讲讲代码实现。一般用<strong>Kruskal算法+并查集</strong>的组合，一个是下面的并查集模板要背下来，一个是要会自定义<code>sort</code>函数的比较器，默认是<code>less&lt;T&gt;</code>升序，即<code>a &lt; b</code>。</p>
 <h3 id="解法1-kruskal算法">解法1：Kruskal算法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DSU</span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-7-cpp-tab" aria-controls="example-7-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-7-python-tab" aria-controls="example-7-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-7-cpp" aria-labelledby="example-7-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DSU</span><span class="p">{</span>
 <span class="k">private</span><span class="o">:</span>
 <span class="w">    </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">parent</span><span class="p">,</span><span class="w"> </span><span class="n">rank</span><span class="p">;</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">;</span>
@@ -488,10 +702,38 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">cost</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-7-python" aria-labelledby="example-7-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">minCostConnectPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+        <span class="n">parent</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">find</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">parent</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">!=</span> <span class="n">x</span><span class="p">:</span> <span class="n">parent</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">find</span><span class="p">(</span><span class="n">parent</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">parent</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">union</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">find</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">find</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span><span class="p">:</span> <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">size</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">[</span><span class="n">y</span><span class="p">]:</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span>
+            <span class="n">parent</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+            <span class="n">size</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">+=</span> <span class="n">size</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">edges</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">distance</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">))</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">distance</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">edges</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">union</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+                <span class="n">cost</span> <span class="o">+=</span> <span class="n">distance</span>
+                <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span> <span class="k">break</span>
+        <span class="k">return</span> <span class="n">cost</span>
+</pre></div>
+</div></div>
 
 <h3 id="解法2-prim算法">解法2：Prim算法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-8-cpp-tab" aria-controls="example-8-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-8-python-tab" aria-controls="example-8-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-8-cpp" aria-labelledby="example-8-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">minCostConnectPoints</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;&amp;</span><span class="w"> </span><span class="n">points</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">dist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="p">){</span>
@@ -525,7 +767,24 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">cost</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-8-python" aria-labelledby="example-8-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">minCostConnectPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+        <span class="n">visited</span><span class="p">,</span> <span class="n">min_dist</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="s1">'inf'</span><span class="p">)]</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="n">min_dist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">cost</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">min</span><span class="p">((</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">visited</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="n">min_dist</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">cost</span> <span class="o">+=</span> <span class="n">min_dist</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+            <span class="n">visited</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">visited</span><span class="p">[</span><span class="n">y</span><span class="p">]:</span>
+                    <span class="n">distance</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="n">y</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="n">y</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">min_dist</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">min_dist</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">distance</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cost</span>
+</pre></div>
+</div></div>
 
 <p>这个算法的复杂度是<span class="math">\(O(V^2)\)</span>，但是可以发现它和Dijkstra算法非常像，所以也能用堆优化成<span class="math">\(O((V+E)\log V)\)</span>，唯一的区别在于更新<code>min_dist</code>的时候，Prim算法是<code>dist[v]=min(dist[v], w)</code>，Dijkstra是<code>dist[v]=min(dist[v], dist[u]+w)</code>（w是u-v的权重）。</p>
 <h1 id="最短路径">最短路径</h1>
@@ -626,7 +885,7 @@
 <p>现在，从某个节点 <code>K</code> 发出一个信号。需要多久才能使所有节点都收到信号？如果不能使所有节点收到信号，返回 <code>-1</code> 。</p>
 <h3 id="思路_7">思路</h3>
 <h3 id="解法1-朴素dijkstra-适用于稠密图">解法1：朴素Dijkstra（适用于稠密图）</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-9-cpp-tab" aria-controls="example-9-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-9-python-tab" aria-controls="example-9-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-9-cpp" aria-labelledby="example-9-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">networkDelayTime</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">times</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">k</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">inf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">INT_MAX</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
@@ -656,11 +915,28 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ans</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">inf</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">-1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">ans</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-9-python" aria-labelledby="example-9-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">inf</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">networkDelayTime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="n">inf</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">'inf'</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="p">[[</span><span class="n">inf</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">times</span><span class="p">:</span> <span class="n">g</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">y</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">weight</span>
+        <span class="n">dist</span><span class="p">,</span> <span class="n">used</span> <span class="o">=</span> <span class="p">[</span><span class="n">inf</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="n">dist</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="nb">min</span><span class="p">((</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">used</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="n">dist</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">used</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span> <span class="n">dist</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dist</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">dist</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">+</span> <span class="n">g</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">y</span><span class="p">])</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">ans</span> <span class="o">==</span> <span class="n">inf</span> <span class="k">else</span> <span class="n">ans</span>
+</pre></div>
+</div></div>
 
 <h3 id="解法2-堆优化dijkstra-适用于稀疏图">解法2：堆优化Dijkstra（适用于稀疏图）</h3>
 <p>注意，我们用堆来维护所有节点到起点的最短路径长度，堆中可能存在一些旧的节点的距离信息，我们不会主动去删除它，而是通过加入一个新的路径更短的节点来解决，这个新路径一定会先于旧路径处理，当旧路径再次弹出时，由于<code>time &gt; dist[x]</code>就会被跳过。</p>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-10-cpp-tab" aria-controls="example-10-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-10-python-tab" aria-controls="example-10-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-10-cpp" aria-labelledby="example-10-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">networkDelayTime</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;&amp;</span><span class="w"> </span><span class="n">times</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">k</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">inf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">INT_MAX</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
@@ -691,7 +967,29 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ans</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">inf</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">-1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">ans</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；实现统一为 C++17。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-1" href="#基础搜索算法">基础搜索算法</a><a class="level-2" href="#焚诀">焚诀</a><a class="level-2" href="#200-岛屿数量-中等">200.岛屿数量[中等]</a><a class="level-2" href="#994-腐烂的橘子-中等">994.腐烂的橘子[中等]</a><a class="level-2" href="#433-最小基因变化-中等">433.最小基因变化[中等]</a><a class="level-2" href="#127-单词接龙-困难">127.单词接龙[困难]</a><a class="level-1" href="#拓扑排序">拓扑排序</a><a class="level-2" href="#焚诀_1">焚诀</a><a class="level-2" href="#207-课程表-中等">207.课程表[中等]</a><a class="level-2" href="#210-课程表-ii-中等">210.课程表 II[中等]</a><a class="level-1" href="#最小生成树">最小生成树</a><a class="level-2" href="#焚诀_2">焚诀</a><a class="level-2" href="#1584-连接所有点的最小费用-中等">1584.连接所有点的最小费用[中等]</a><a class="level-1" href="#最短路径">最短路径</a><a class="level-2" href="#焚诀_3">焚诀</a><a class="level-2" href="#743-网络延迟时间-中等">743.网络延迟时间[中等]</a></nav></aside></div>
+</pre></div>
+</div><div role="tabpanel" id="example-10-python" aria-labelledby="example-10-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">heapq</span><span class="w"> </span><span class="kn">import</span> <span class="n">heappop</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">heapq</span><span class="w"> </span><span class="kn">import</span> <span class="n">heappush</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">networkDelayTime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">times</span><span class="p">:</span> <span class="n">g</span><span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">y</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">weight</span><span class="p">))</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="s1">'inf'</span><span class="p">)]</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="n">dist</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">pq</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="k">while</span> <span class="n">pq</span><span class="p">:</span>
+            <span class="n">time</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">heappop</span><span class="p">(</span><span class="n">pq</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">time</span> <span class="o">&gt;</span> <span class="n">dist</span><span class="p">[</span><span class="n">x</span><span class="p">]:</span> <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">y</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">g</span><span class="p">[</span><span class="n">x</span><span class="p">]:</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="n">time</span> <span class="o">+</span> <span class="n">weight</span>
+                <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="n">dist</span><span class="p">[</span><span class="n">y</span><span class="p">]:</span>
+                    <span class="n">dist</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">distance</span>
+                    <span class="n">heappush</span><span class="p">(</span><span class="n">pq</span><span class="p">,</span> <span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">ans</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="s1">'inf'</span><span class="p">)</span> <span class="k">else</span> <span class="n">ans</span>
+</pre></div>
+</div></div></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-1" href="#基础搜索算法">基础搜索算法</a><a class="level-2" href="#焚诀">焚诀</a><a class="level-2" href="#200-岛屿数量-中等">200.岛屿数量[中等]</a><a class="level-2" href="#994-腐烂的橘子-中等">994.腐烂的橘子[中等]</a><a class="level-2" href="#433-最小基因变化-中等">433.最小基因变化[中等]</a><a class="level-2" href="#127-单词接龙-困难">127.单词接龙[困难]</a><a class="level-1" href="#拓扑排序">拓扑排序</a><a class="level-2" href="#焚诀_1">焚诀</a><a class="level-2" href="#207-课程表-中等">207.课程表[中等]</a><a class="level-2" href="#210-课程表-ii-中等">210.课程表 II[中等]</a><a class="level-1" href="#最小生成树">最小生成树</a><a class="level-2" href="#焚诀_2">焚诀</a><a class="level-2" href="#1584-连接所有点的最小费用-中等">1584.连接所有点的最小费用[中等]</a><a class="level-1" href="#最短路径">最短路径</a><a class="level-2" href="#焚诀_3">焚诀</a><a class="level-2" href="#743-网络延迟时间-中等">743.网络延迟时间[中等]</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与 STL</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、priority_queue" autocomplete="off"><p id="search-status" role="status">输入题号、题目或 STL 用法</p><div id="search-results"></div></dialog>

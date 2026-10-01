@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>序列容器 · C++ 刷题笔记</title><meta name="description" content="vector · string · deque · list">
+<title>序列容器 · 算法刷题笔记</title><meta name="description" content="vector · string · deque · list">
 <link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
 <script defer src="assets/site.js"></script>
@@ -8,9 +8,9 @@
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
 <a class="skip-link" href="#main">跳到正文</a>
-<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html" aria-current="page">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html" aria-current="page">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<a href="index.html" class="crumb">算法刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">STL 参考</p><h1>序列容器</h1><p class="subtitle">vector · string · deque · list</p></div>
 <article><p>序列容器都表示“按位置排列的一组元素”，但存储结构不同：连续数组、分段数组和链表会给访问、插入、缓存局部性与引用稳定性带来完全不同的行为。</p>
 <h2 id="1-先看底层结构">1. 先看底层结构</h2>
@@ -51,27 +51,30 @@
 </tbody>
 </table>
 <h2 id="2-vector-的三个状态量">2. <code>vector</code> 的三个状态量</h2>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="p">;</span>
 <span class="n">values</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w">     </span><span class="c1">// 已构造的元素数量</span>
 <span class="n">values</span><span class="p">.</span><span class="n">capacity</span><span class="p">();</span><span class="w"> </span><span class="c1">// 当前内存最多容纳多少元素</span>
 <span class="n">values</span><span class="p">.</span><span class="n">data</span><span class="p">();</span><span class="w">     </span><span class="c1">// 连续存储区首地址</span>
-</code></pre></div>
+</pre></div>
+
 
 <p><code>size</code> 以内是已经存在、可以访问的对象；<code>[size, capacity)</code> 只是预留原始空间，不能用下标访问。</p>
-<div class="codehilite"><pre><span></span><code><span class="n">values</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span><span class="w"> </span><span class="c1">// capacity 至少 100，size 不变</span>
+<div class="codehilite"><pre><span></span><span class="n">values</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span><span class="w"> </span><span class="c1">// capacity 至少 100，size 不变</span>
 <span class="n">values</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span><span class="w">  </span><span class="c1">// size 变为 100，新元素被构造</span>
-</code></pre></div>
+</pre></div>
+
 
 <p><strong><code>reserve</code> 不是 <code>resize</code>。</strong>执行 <code>reserve(100)</code> 后写 <code>values[50]</code> 仍是越界。</p>
 <h2 id="3-为什么-push_back-有时让引用失效">3. 为什么 <code>push_back</code> 有时让引用失效</h2>
 <p>容量足够时，vector 在原内存尾部构造新元素；容量不足时，它会申请更大的连续区域，把所有旧元素移动/复制过去，再释放旧区域。</p>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
 <span class="n">v</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
 <span class="kt">int</span><span class="o">*</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
 <span class="n">v</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span><span class="w"> </span><span class="c1">// 未超过 capacity，p 仍有效</span>
 
 <span class="n">v</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span><span class="w"> </span><span class="c1">// 如果发生重新分配，p、引用和全部迭代器失效</span>
-</code></pre></div>
+</pre></div>
+
 
 <p><code>push_back</code> 的单次最坏成本是 O(n)，但连续多次追加的均摊成本是 O(1)。增长倍数由实现决定，不能依赖具体数值。</p>
 <h2 id="4-vector-插入删除的失效规则">4. vector 插入删除的失效规则</h2>
@@ -106,45 +109,50 @@
 </tr>
 </tbody>
 </table>
-<div class="codehilite"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">();</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<div class="codehilite"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">();</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">should_remove</span><span class="p">(</span><span class="o">*</span><span class="n">it</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">it</span><span class="p">);</span><span class="w"> </span><span class="c1">// 必须使用返回的下一个有效迭代器</span>
 <span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="o">++</span><span class="n">it</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
-</code></pre></div>
+</pre></div>
+
 
 <h2 id="5-emplace_back-不等于永远更快">5. <code>emplace_back</code> 不等于永远更快</h2>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">words</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">words</span><span class="p">;</span>
 <span class="n">words</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="s">"hello"</span><span class="p">));</span>
 <span class="n">words</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
-</code></pre></div>
+</pre></div>
+
 
 <p><code>emplace_back(args...)</code> 在容器目标位置直接用参数构造元素，适合“手里只有构造参数”的场景；如果已经有一个对象，<code>push_back(object)</code> 或 <code>push_back(std::move(object))</code> 更清楚。两者都可能触发扩容。</p>
 <h2 id="6-operator-与-at">6. <code>operator[]</code> 与 <code>at</code></h2>
-<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span><span class="w">    </span><span class="c1">// 不检查边界；越界是未定义行为</span>
+<div class="codehilite"><pre><span></span><span class="kt">int</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span><span class="w">    </span><span class="c1">// 不检查边界；越界是未定义行为</span>
 <span class="kt">int</span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span><span class="w"> </span><span class="c1">// 越界抛 std::out_of_range</span>
-</code></pre></div>
+</pre></div>
+
 
 <p>两者都返回引用，正常访问都是 O(1)。机试热路径通常用 <code>[]</code> 并保证不变量；外部输入形成的索引应先校验，或使用 <code>at</code> 建立明确错误边界。</p>
 <h2 id="7-string-是拥有字符的值类型">7. <code>string</code> 是拥有字符的值类型</h2>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello"</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello"</span><span class="p">;</span>
 <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">;</span><span class="w">          </span><span class="c1">// 独立复制</span>
 <span class="n">std</span><span class="o">::</span><span class="n">string_view</span><span class="w"> </span><span class="n">view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">;</span><span class="w">  </span><span class="c1">// 不拥有字符，只观察 a</span>
-</code></pre></div>
+</pre></div>
+
 
 <p>标准保证现代 <code>string</code> 字符连续存储。许多实现对短字符串使用 SSO，把字符直接放在 string 对象内部，但 SSO 大小属于实现细节，不能据此写逻辑。</p>
 <p><code>string_view</code> 不复制字符，因此更轻量；但原 string 被销毁、重新分配或修改后，view 可能悬空或内容变化。</p>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string_view</span><span class="w"> </span><span class="nf">broken</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span><span class="w"> </span><span class="nf">broken</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">local</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"temporary"</span><span class="p">;</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">local</span><span class="p">;</span><span class="w"> </span><span class="c1">// 错误：返回后 view 悬空</span>
 <span class="p">}</span>
-</code></pre></div>
+</pre></div>
+
 
 <h2 id="7-1-字符串查找与统计">7.1 字符串查找与统计</h2>
 <h3 id="查找字符和子串">查找字符和子串</h3>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
 
 <span class="c1">// find：从前往后找第一个</span>
 <span class="kt">size_t</span><span class="w"> </span><span class="n">pos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="sc">'o'</span><span class="p">);</span><span class="w">           </span><span class="c1">// 4（第一个 'o' 的位置）</span>
@@ -161,10 +169,11 @@
 <span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="sc">'o'</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// 找到了</span>
 <span class="p">}</span>
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="查找任意字符">查找任意字符</h3>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
 
 <span class="c1">// 查找第一个元音字母</span>
 <span class="kt">size_t</span><span class="w"> </span><span class="n">vowel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">find_first_of</span><span class="p">(</span><span class="s">"aeiou"</span><span class="p">);</span><span class="w">  </span><span class="c1">// 1（'e' 的位置）</span>
@@ -175,10 +184,11 @@
 
 <span class="c1">// 查找第一个不是元音的字符</span>
 <span class="kt">size_t</span><span class="w"> </span><span class="n">consonant</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">find_first_not_of</span><span class="p">(</span><span class="s">"aeiou"</span><span class="p">);</span><span class="w">  </span><span class="c1">// 0（'h'）</span>
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="统计字符个数">统计字符个数</h3>
-<div class="codehilite"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
 
 <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
 
@@ -198,7 +208,8 @@
 <span class="w">    </span><span class="n">cnt3</span><span class="o">++</span><span class="p">;</span>
 <span class="w">    </span><span class="n">pos</span><span class="o">++</span><span class="p">;</span>
 <span class="p">}</span>
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="find-函数族">find 函数族</h3>
 <table>
@@ -233,7 +244,7 @@
 </table>
 <p><strong>重要：</strong>所有 find 函数找不到时返回 <code>std::string::npos</code>，必须检查返回值！</p>
 <h2 id="7-2-子串操作-substr">7.2 子串操作（substr）</h2>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
 
 <span class="c1">// substr(pos) - 从 pos 到末尾</span>
 <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">sub1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="mi">6</span><span class="p">);</span><span class="w">      </span><span class="c1">// "world"</span>
@@ -247,7 +258,8 @@
 
 <span class="c1">// 错误示范：</span>
 <span class="c1">// std::string sub5 = s.substr(s.begin() + 1);  // 编译错误！</span>
-</code></pre></div>
+</pre></div>
+
 
 <table>
 <thead>
@@ -281,7 +293,7 @@
 </table>
 <p><strong>常见错误：</strong><code>substr</code> 的参数是<strong>整数下标</strong>，不是迭代器！</p>
 <h2 id="7-3-字符串修改">7.3 字符串修改</h2>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello"</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello"</span><span class="p">;</span>
 
 <span class="c1">// 追加</span>
 <span class="n">s</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">" world"</span><span class="p">;</span><span class="w">                 </span><span class="c1">// "hello world"</span>
@@ -300,11 +312,12 @@
 
 <span class="c1">// 清空</span>
 <span class="n">s</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span><span class="w">                     </span><span class="c1">// s = ""</span>
-</code></pre></div>
+</pre></div>
+
 
 <h2 id="7-4-字符串转换">7.4 字符串转换</h2>
 <h3 id="大小写转换">大小写转换</h3>
-<div class="codehilite"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cctype&gt;</span>
 
 <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello World"</span><span class="p">;</span>
@@ -314,10 +327,11 @@
 
 <span class="c1">// 转小写</span>
 <span class="n">std</span><span class="o">::</span><span class="n">transform</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="o">::</span><span class="n">tolower</span><span class="p">);</span><span class="w">  </span><span class="c1">// "hello world"</span>
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="去除空白-trim">去除空白（trim）</h3>
-<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"  hello world  "</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"  hello world  "</span><span class="p">;</span>
 
 <span class="c1">// 去除前导空白</span>
 <span class="kt">size_t</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">find_first_not_of</span><span class="p">(</span><span class="s">" </span><span class="se">\t\n\r</span><span class="s">"</span><span class="p">);</span>
@@ -330,10 +344,11 @@
 <span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">end</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">end</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
 <span class="p">}</span>
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="字符串与数字互转">字符串与数字互转</h3>
-<div class="codehilite"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
 
 <span class="c1">// 数字 -&gt; 字符串</span>
 <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
@@ -342,10 +357,11 @@
 <span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">stoi</span><span class="p">(</span><span class="s">"123"</span><span class="p">);</span>
 <span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ll</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">stoll</span><span class="p">(</span><span class="s">"1234567890"</span><span class="p">);</span>
 <span class="kt">double</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">stod</span><span class="p">(</span><span class="s">"3.14"</span><span class="p">);</span>
-</code></pre></div>
+</pre></div>
+
 
 <h2 id="7-5-字符串分割">7.5 字符串分割</h2>
-<div class="codehilite"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;sstream&gt;</span>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;sstream&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
 
 <span class="c1">// 按空白分割</span>
@@ -365,7 +381,8 @@
 <span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">getline</span><span class="p">(</span><span class="n">iss2</span><span class="p">,</span><span class="w"> </span><span class="n">part</span><span class="p">,</span><span class="w"> </span><span class="sc">','</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">parts</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">part</span><span class="p">);</span>
 <span class="p">}</span>
-</code></pre></div>
+</pre></div>
+
 
 <h2 id="8-deque-为什么能高效操作两端">8. <code>deque</code> 为什么能高效操作两端</h2>
 <p>deque 通常用一组分段缓冲区，而不是一块连续内存。它支持 O(1) 随机访问和两端均摊 O(1) 插入删除，但：</p>
@@ -377,10 +394,11 @@
 <p>queue 默认以 deque 为底层，就是因为队列需要尾部插入和头部删除。</p>
 <h2 id="9-list-的节点稳定性与代价">9. <code>list</code> 的节点稳定性与代价</h2>
 <p>list 每个元素位于独立节点，通过前后指针连接。插入和删除不会移动其他节点，因此指向其他元素的引用和迭代器保持有效；只有被删除元素的观察者失效。</p>
-<div class="codehilite"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+<div class="codehilite"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
 <span class="n">items</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">it</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">);</span><span class="w"> </span><span class="c1">// 已知位置时 O(1)</span>
 <span class="n">items</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">it</span><span class="p">);</span><span class="w">         </span><span class="c1">// it 失效，其他节点迭代器仍有效</span>
-</code></pre></div>
+</pre></div>
+
 
 <p>代价是每个节点有额外指针、频繁分配、缓存局部性差，而且寻找第 k 个元素仍是 O(n)。“中间插入 O(1)”只在已经拿到目标迭代器时成立；先遍历到位置仍需 O(n)。</p>
 <h2 id="10-容器选择不是只看大-o">10. 容器选择不是只看大 O</h2>

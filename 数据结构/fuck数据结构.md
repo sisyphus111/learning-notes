@@ -53,6 +53,13 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def findKthLargest(self, nums, k):
+        nums.sort()
+        return nums[-k]
+```
+
 + 时间复杂度：$O(N\log N)$
 + 空间复杂度：$O(\log N)$，栈开销
 
@@ -71,6 +78,18 @@ public:
         return maxHeap.top();
     }
 };
+```
+
+```python
+from heapq import heapify
+from heapq import heappop
+
+class Solution:
+    def findKthLargest(self, nums, k):
+        heap = [-x for x in nums]
+        heapify(heap)
+        for _ in range(k - 1): heappop(heap)
+        return -heap[0]
 ```
 
 + 时间复杂度：$O(N+k\log N)=O(N\log N)$
@@ -94,6 +113,19 @@ public:
 };
 ```
 
+```python
+from heapq import heappop
+from heapq import heappush
+
+class Solution:
+    def findKthLargest(self, nums, k):
+        heap = []
+        for num in nums:
+            heappush(heap, num)
+            if len(heap) > k: heappop(heap)
+        return heap[0]
+```
+
 或者这样写，可能逻辑更加清楚一点。
 
 ```cpp
@@ -112,6 +144,19 @@ public:
         return minHeap.top();
     }
 };
+```
+
+```python
+from heapq import heappush
+from heapq import heapreplace
+
+class Solution:
+    def findKthLargest(self, nums, k):
+        heap = []
+        for num in nums:
+            if len(heap) < k: heappush(heap, num)
+            elif num > heap[0]: heapreplace(heap, num)
+        return heap[0]
 ```
 
 + 时间复杂度：$O(N\log k)$
@@ -150,6 +195,24 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def findKthLargest(self, nums, k):
+        def quickselect(left, right, target):
+            if left == right: return nums[target]
+            pivot, i, j = nums[left], left - 1, right + 1
+            while True:
+                i += 1
+                while nums[i] < pivot: i += 1
+                j -= 1
+                while nums[j] > pivot: j -= 1
+                if i >= j: break
+                nums[i], nums[j] = nums[j], nums[i]
+            if target <= j: return quickselect(left, j, target)
+            return quickselect(j + 1, right, target)
+        return quickselect(0, len(nums) - 1, len(nums) - k)
+```
+
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(\log N)$，栈开销
 
@@ -160,6 +223,14 @@ while(i < j && nums[j] >= pivot) --j;
 nums[i] = nums[j];
 while(i < j && nums[i] <= pivot) ++i;
 nums[j] = nums[i]; 
+```
+
+```python
+# 与 C++ 一样，这个划分片段在重复值很多时可能导致每轮缩小范围过少。
+while i < j and nums[j] >= pivot: j -= 1
+nums[i] = nums[j]
+while i < j and nums[i] <= pivot: i += 1
+nums[j] = nums[i]
 ```
 
 或者牺牲一点空间，使用三个 `vector` 分别保存比 pivot 大、相等、比 pivot 小的元素，写法更直观。
@@ -189,6 +260,36 @@ class Solution {
         return quick_select(quick_select, nums, k);
     }
 };
+```
+
+```python
+from typing import List
+import random
+
+class Solution:
+    def findKthLargest(self, nums: List[int], k: int) -> int:
+        def quick_select(nums, k):
+            # 随机选择基准数
+            pivot = random.choice(nums)
+            big, equal, small = [], [], []
+            # 将大于、小于、等于 pivot 的元素划分至 big, small, equal 中
+            for num in nums:
+                if num > pivot:
+                    big.append(num)
+                elif num < pivot:
+                    small.append(num)
+                else:
+                    equal.append(num)
+            if k <= len(big):
+                # 第 k 大元素在 big 中，递归划分
+                return quick_select(big, k)
+            if len(nums) - len(small) < k:
+                # 第 k 大元素在 small 中，递归划分
+                return quick_select(small, k - len(nums) + len(small))
+            # 第 k 大元素在 equal 中，直接返回 pivot
+            return pivot
+
+        return quick_select(nums, k)
 ```
 
 ## 23.合并 K 个升序链表[困难]
@@ -255,6 +356,25 @@ public:
 };
 ```
 
+```python
+from heapq import heappop
+from heapq import heappush
+
+class Solution:
+    def mergeKLists(self, lists):
+        pq = []
+        for index, node in enumerate(lists):
+            if node: heappush(pq, (node.val, index, node))
+        dummy = ListNode()
+        tail = dummy
+        while pq:
+            _, index, node = heappop(pq)
+            tail.next = node
+            tail = node
+            if node.next: heappush(pq, (node.next.val, index, node.next))
+        return dummy.next
+```
+
 + 时间复杂度：$O(kn \log k)$
 
 + 空间复杂度：$O(k)$
@@ -302,6 +422,20 @@ public:
         return res;
     }
 };
+```
+
+```python
+from collections import Counter
+from heapq import heappop
+from heapq import heappush
+
+class Solution:
+    def topKFrequent(self, nums, k):
+        heap = []
+        for num, count in Counter(nums).items():
+            heappush(heap, (count, num))
+            if len(heap) > k: heappop(heap)
+        return [heappop(heap)[1] for _ in range(len(heap))]
 ```
 
 + 时间复杂度：$O(N\log k)$
@@ -365,6 +499,29 @@ public:
 };
 ```
 
+```python
+from heapq import heappop
+from heapq import heappush
+
+class MedianFinder:
+    def __init__(self):
+        self.max_heap, self.min_heap = [], []
+
+    def addNum(self, num):
+        if not self.max_heap or num <= -self.max_heap[0]:
+            heappush(self.max_heap, -num)
+            if len(self.max_heap) > len(self.min_heap) + 1:
+                heappush(self.min_heap, -heappop(self.max_heap))
+        else:
+            heappush(self.min_heap, num)
+            if len(self.min_heap) > len(self.max_heap):
+                heappush(self.max_heap, -heappop(self.min_heap))
+
+    def findMedian(self):
+        if len(self.max_heap) > len(self.min_heap): return -self.max_heap[0]
+        return (self.min_heap[0] - self.max_heap[0]) / 2
+```
+
 + 时间复杂度：
   + `addNum`：$O(\log N)$
   + `findMedian`：$O(1)$
@@ -410,6 +567,22 @@ public:
         return (*left + *right) / 2.0;
     }
 };
+```
+
+```python
+from bisect import insort
+
+class MedianFinder:
+    def __init__(self):
+        self.nums = []
+
+    def addNum(self, num):
+        # 标准库有序列表版本：插入 O(N)，C++ multiset 版本插入 O(log N)。
+        insort(self.nums, num)
+
+    def findMedian(self):
+        n = len(self.nums)
+        return (self.nums[(n - 1) // 2] + self.nums[n // 2]) / 2
 ```
 
 + 时间复杂度：
@@ -459,6 +632,26 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+import heapq
+
+class Solution:
+    def kSmallestPairs(self, nums1: List[int], nums2: List[int], k: int) -> List[List[int]]:
+        pq = []
+        m, n = len(nums1), len(nums2)
+        for i in range(min(k, m)):
+            heapq.heappush(pq, (nums1[i] + nums2[0], i, 0))
+        res = []
+        while k and pq:
+            _, i, j = heapq.heappop(pq)
+            res.append([nums1[i], nums2[j]])
+            if j + 1 < n:
+                heapq.heappush(pq, (nums1[i] + nums2[j + 1], i, j + 1))
+            k -= 1
+        return res
 ```
 
 + 时间复杂度：$(O(k\log k))$，堆中最多有k个元素
@@ -523,6 +716,26 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        n = len(temperatures)
+        res = [0] * n
+        st = []
+        for i in range(n - 1, -1, -1):
+            t = temperatures[i]
+            # 当栈不为空且当前温度比栈顶温度高时，弹出栈顶元素
+            while st and t >= temperatures[st[-1]]:
+                st.pop()
+            if st:
+                # 计算从栈顶元素到当前元素之间的天数
+                res[i] = st[-1] - i # 遍历是倒序的
+            st.append(i)
+        return res
+```
+
 ### 解法2：从左到右
 
 栈中记录**还没算出下一个更大元素的那些数的下标**。假设栈中已经有一些元素了，根据单调栈的特性，说明这些天的温度都是在单调下降的，如果下一天温度比栈顶低，说明依旧满足递减特性，直接入栈，无法确定栈中任何元素的下一个更高温度；如果下一天温度比栈顶高，那么栈中某些元素的下一个更高温度可能就是下一天这个温度，所以要一直pop，同时把这些比下一天温度低的元素的结果确定下来，最后把下一天入栈，继续维持单调性（初始时栈中有一些天温度比下一天高，有一些比下一天低，经过处理后，比下一天低的都会确定结果，大于等于下一天的继续留在栈中待处理，如果遍历完数组还没有处理，那么就会保留默认值0）
@@ -544,6 +757,22 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        n = len(temperatures)
+        ans = [0] * n
+        st = []  # todolist
+        for i, t in enumerate(temperatures):
+            while st and t > temperatures[st[-1]]:
+                j = st.pop()
+                ans[j] = i - j
+            st.append(i)
+        return ans
 ```
 
 ## 42.接雨水[困难]*
@@ -585,6 +814,25 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        res = 0
+        st = []
+        for i, h in enumerate(height):
+            while st and height[st[-1]] <= h:
+                bottom_h = height[st.pop()]
+                if not st:  # 栈是空的
+                    break
+                left = st[-1]
+                dh = min(height[left], h) - bottom_h  # 面积的高
+                res += dh * (i - left - 1)
+            st.append(i)
+        return res
 ```
 
 ## 84.柱状图中最大的矩形[困难]
@@ -648,6 +896,33 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        n = len(heights)
+        # left[i]表示从i往左找第一个比heights[i]小的元素的下标
+        left, right = [-1] * n, [n] * n
+        mono_stack = [] # 单调递增队列
+        for i in range(n):
+            while mono_stack and heights[i] < heights[mono_stack[-1]]:
+                prev = mono_stack.pop()
+                right[prev] = i
+            mono_stack.append(i)
+        mono_stack.clear()
+        for i in range(n - 1, -1, -1):
+            while mono_stack and heights[i] < heights[mono_stack[-1]]:
+                prev = mono_stack.pop()
+                left[prev] = i
+            mono_stack.append(i)
+
+        res = 0
+        for i, height in enumerate(heights):
+            res = max(res, (right[i] - left[i] - 1) * height)
+        return res
 ```
 
 + 时间复杂度：$O(N)$
@@ -722,6 +997,46 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from collections import deque
+from typing import List
+
+class Solution:
+    class MyQueue:  # 单调递减队列
+        def __init__(self):
+            self.que = deque()
+
+        def pop(self, value: int) -> None:
+            if self.que and value == self.que[0]:
+                self.que.popleft()
+
+        def push(self, value: int) -> None:
+            # 从队尾移除所有比当前值小的元素
+            while self.que and value > self.que[-1]:
+                self.que.pop()
+            # 把当前值放入队尾
+            self.que.append(value)
+
+        def front(self) -> int:
+            return self.que[0]
+
+    def maxSlidingWindow(self, nums: List[int], k: int) -> List[int]:
+        que = self.MyQueue()
+        res = []
+
+        # 初始化队列，将前 k 个元素加入队列
+        for i in range(k):
+            que.push(nums[i])
+        res.append(que.front())  # 记录第一个窗口的最大值
+
+        for i in range(k, len(nums)):
+            que.pop(nums[i - k])  # 移除窗口最前面元素(如果是区间最大元素,那么就被pop掉了,队列的单调性保证了下一个元素是第二大的;如果不是区间最大元素,那么无事发生)
+            que.push(nums[i])  # 加入当前元素
+            res.append(que.front())  # 记录当前窗口的最大值
+
+        return res
 ```
 
 
@@ -805,6 +1120,43 @@ class Trie {
 };
 ```
 
+```python
+class TrieNode:
+    def __init__(self):
+        self.children = [None] * 26
+        self.isEnd = False
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def searchPrefix(self, prefix: str) -> TrieNode:
+        node = self.root
+        for c in prefix:
+            ch = ord(c) - ord('a')
+            if not node.children[ch]:
+                return None
+            node = node.children[ch]
+        return node
+
+    def insert(self, word: str) -> None:
+        node = self.root
+        for c in word:
+            ch = ord(c) - ord('a')
+            if not node.children[ch]:
+                node.children[ch] = TrieNode()
+            node = node.children[ch]
+        node.isEnd = True
+
+    def search(self, word: str) -> bool:
+        node = self.searchPrefix(word)
+        return node is not None and node.isEnd
+
+    def startsWith(self, prefix: str) -> bool:
+        node = self.searchPrefix(prefix)
+        return True if node else False
+```
+
 ## 212.单词搜索 II[困难]
 
 ### 链接
@@ -872,6 +1224,70 @@ class Solution {
         return result;
     }
 };
+```
+
+```python
+from typing import List
+
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_end_of_word = False
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word):
+        cur = self.root
+        for ch in word:
+            if ch not in cur.children:
+                cur.children[ch] = TrieNode()
+            cur = cur.children[ch]
+
+        cur.is_end_of_word = True
+
+    def search(self, word):
+        cur = self.root
+        for ch in word:
+            if ch in cur.children:
+                cur = cur.children[ch]
+            else:
+                return False
+        found = cur.is_end_of_word
+        return found
+
+class Solution:
+    def findWords(self, board: List[List[str]], words: List[str]) -> List[str]:
+        def dfs(x, y, node, path):
+            if board[x][y] not in node.children:
+                return
+            ch = board[x][y]
+            path.append(ch)
+            if node.children[ch].is_end_of_word:
+                result.add(''.join(path))
+            board[x][y] = '#' # 特殊标记,表示节点已访问
+            for dx, dy in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
+                next_x = x + dx
+                next_y = y + dy
+                if 0 <= next_x < m and 0 <= next_y < n:
+                    dfs(next_x, next_y, node.children[ch], path)
+            board[x][y] = ch
+            path.pop()
+
+        trie = Trie()
+        for word in words:
+            trie.insert(word)
+
+        result = set()
+
+        m = len(board)
+        n = len(board[0])
+        for i in range(m):
+            for j in range(n):
+                dfs(i, j, trie.root, [])
+
+        return list(result)
 ```
 
 
@@ -974,6 +1390,37 @@ class NumArray {
 };
 ```
 
+```python
+from typing import List
+
+class NumArray:
+
+    def __init__(self, nums: List[int]):
+        n = len(nums)
+        self.nums = [0] * n  # 使 update 中算出的 delta = nums[i]
+        self.tree = [0] * (n + 1) # tree就代表关键区间数组(0号索引无用)
+        for i, x in enumerate(nums):
+            self.update(i, x)
+
+    def update(self, index: int, val: int) -> None:
+        delta = val - self.nums[index]
+        self.nums[index] = val
+        i = index + 1 # 把i的索引对齐到从1开始
+        while i < len(self.tree):
+            self.tree[i] += delta # 包含这个元素的所有关键区间都更新
+            i += i & -i # lowbit
+
+    def prefixSum(self, i: int) -> int:
+        s = 0
+        while i:
+            s += self.tree[i]
+            i &= i - 1  # Brian Kernighan 算法,抹去lowbit,等价于 i -= i & -i
+        return s
+
+    def sumRange(self, left: int, right: int) -> int:
+        return self.prefixSum(right + 1) - self.prefixSum(left)
+```
+
 + 时间复杂度：
   + 构造：$O(N\log N)$
   + `update`：$O(\log N)$
@@ -993,6 +1440,19 @@ NumArray(vector<int> &input) : nums(input), tree(input.size() + 1) {
             tree[next] += tree[i];
     }
 }
+```
+
+```python
+# 用这份构造函数替换上面 NumArray 的构造函数。
+def __init__(self, nums):
+    n = len(nums)
+    tree = [0] * (n + 1)
+    for i, x in enumerate(nums, 1):
+        tree[i] += x
+        nxt = i + (i & -i)
+        if nxt <= n: tree[nxt] += tree[i]
+    self.nums = nums.copy()
+    self.tree = tree
 ```
 
 这样构造的时间就为$O(N)$了。
@@ -1101,5 +1561,66 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from typing import List
+
+class SegmentTree:
+    def __init__(self, a: List[int]):
+        n = len(a)
+        self.max = [0] * (2 << (n - 1).bit_length())
+        self.build(a, 1, 0, n - 1)
+
+    def maintain(self, o: int):
+        self.max[o] = max(self.max[o * 2], self.max[o * 2 + 1])
+
+    # 初始化线段树
+    def build(self, a: List[int], o: int, l: int, r: int):
+        if l == r:
+            self.max[o] = a[l]
+            return
+        m = (l + r) // 2
+        self.build(a, o * 2, l, m) # 左孩子
+        self.build(a, o * 2 + 1, m + 1, r) # 右孩子
+        self.maintain(o)
+
+    # 单点更新
+    def update(self, o: int, l: int, r: int, i: int, x: int) -> int:
+        if l == r:
+            self.max[o] = x
+            return
+        m = (l + r) // 2
+        if i <= m:
+            self.update(o * 2, l, m, i, x)
+        else:
+            self.update(o * 2 + 1, m + 1, r, i, x)
+        self.maintain(o)
+        return i
+
+    def find_first(self, o: int, l: int, r: int, x: int) -> int:
+        if self.max[o] < x: # 区间没有 >= x 的数
+            return -1
+        if l == r:
+            return l
+        m = (l + r) // 2
+        i = self.find_first(o * 2, l, m, x) # 先递归左子树
+        if i < 0:
+            i = self.find_first(o * 2 + 1, m + 1, r, x) # 再递归右子树
+        return i
+
+
+class Solution:
+    def numOfUnplacedFruits(self, fruits: List[int], baskets: List[int]) -> int:
+        t = SegmentTree(baskets)
+        n = len(baskets)
+        res = 0
+        for x in fruits:
+            i = t.find_first(1, 0, n - 1, x)
+            if i < 0:
+                res += 1
+            else: # 可以放得下
+                t.update(1, 0, n - 1, i, -1) # 把容量改成-1
+        return res
 ```
 

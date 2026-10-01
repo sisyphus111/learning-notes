@@ -38,6 +38,21 @@ class Solution {
 };
 ```
 
+```python
+from typing import Optional
+
+class Solution:
+    def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        pre = None
+        cur = head
+        while cur:
+            nxt = cur.next
+            cur.next = pre
+            pre = cur
+            cur = nxt
+        return pre
+```
+
 ## 92.反转链表 II[中等]*
 
 ### 链接
@@ -86,6 +101,22 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def reverseBetween(self, head, left, right):
+        dummy = ListNode(-1, head)
+        pre = dummy
+        for _ in range(left - 1): pre = pre.next
+        left_pre, left_node = pre, pre.next
+        cur, pre = left_node.next, left_node
+        for _ in range(left, right):
+            nxt = cur.next
+            cur.next = pre
+            pre, cur = cur, nxt
+        left_pre.next, left_node.next = pre, cur
+        return dummy.next
+```
+
 ## 25.K个一组翻转链表[困难]*
 
 ### 链接
@@ -132,6 +163,38 @@ class Solution {
 };
 ```
 
+```python
+from typing import Optional
+
+class Solution:
+    def getLength(self, head):
+        res = 0
+        while head:
+            head = head.next
+            res += 1
+        return res
+
+    def reverseKGroup(self, head: Optional[ListNode], k: int) -> Optional[ListNode]:
+        n = self.getLength(head)
+        dummyHead = ListNode(0, head)
+        leftPre = dummyHead
+        while k <= n:
+            pre = None
+            cur = leftPre.next
+            for i in range(k):
+                nxt = cur.next
+                cur.next = pre
+                pre = cur
+                cur = nxt
+            # 此时rightNxt指向cur/nxt
+            leftNode = leftPre.next
+            leftNode.next = cur
+            leftPre.next = pre
+            leftPre = leftNode
+            n -= k
+        return dummyHead.next
+```
+
 ## 237.删除链表中的节点[中等]*
 
 ### 链接
@@ -172,6 +235,13 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def deleteNode(self, node):
+        node.val = node.next.val
+        node.next = node.next.next
+```
+
 ## 21.合并两个有序链表[简单]
 
 ### 链接
@@ -204,6 +274,25 @@ class Solution {
         return dummy.next;
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def mergeTwoLists(self, list1: Optional[ListNode], list2: Optional[ListNode]) -> Optional[ListNode]:
+        dummyHead = ListNode()
+        prev = dummyHead
+        while list1 and list2:
+            if list1.val <= list2.val:
+                prev.next = list1
+                list1 = list1.next
+            else:
+                prev.next = list2
+                list2 = list2.next
+            prev = prev.next
+        prev.next = list1 if list1 else list2
+        return dummyHead.next
 ```
 
 ## 160.相交链表[简单]
@@ -258,6 +347,33 @@ class Solution {
         return p;
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def getLength(self, head):
+        length = 0
+        while head:
+            head = head.next
+            length += 1
+        return length
+
+    def getIntersectionNode(self, headA: ListNode, headB: ListNode) -> Optional[ListNode]:
+        m = self.getLength(headA)
+        n = self.getLength(headB)
+        p, q = headA, headB
+        while m > n:
+            p = p.next
+            m -= 1
+        while m < n:
+            q = q.next
+            n -= 1
+        while p != q:
+            p = p.next
+            q = q.next
+        return p
 ```
 
 + 时间复杂度：$O(m+n)$
@@ -316,6 +432,14 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def middleNode(self, head):
+        slow = fast = head
+        while fast and fast.next: slow, fast = slow.next, fast.next.next
+        return slow
+```
+
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(1)$
 
@@ -336,6 +460,14 @@ class Solution {
         return slow; // 偶数长度时返回前一个中点，用于切分链表。
     }
 };
+```
+
+```python
+class Solution:
+    def middleNode(self, head):
+        slow = fast = head
+        while fast and fast.next and fast.next.next: slow, fast = slow.next, fast.next.next
+        return slow  # 偶数长度时返回前一个中点。
 ```
 
 ## 141.环形链表[简单]*
@@ -374,6 +506,16 @@ public:
         return false;
     }
 };
+```
+
+```python
+class Solution:
+    def hasCycle(self, head):
+        slow = fast = head
+        while fast and fast.next:
+            slow, fast = slow.next, fast.next.next
+            if slow is fast: return True
+        return False
 ```
 
 + 时间复杂度：$O(N)$
@@ -433,6 +575,23 @@ class Solution {
         return nullptr;
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def detectCycle(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        slow = fast = head
+        while fast and fast.next:
+            slow = slow.next
+            fast = fast.next.next
+            if slow == fast:
+                while slow != head:
+                    slow = slow.next
+                    head = head.next
+                return slow
+        return None
 ```
 
 + 时间复杂度：$O(N)$
@@ -506,6 +665,24 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def reorderList(self, head):
+        if head is None: return
+        slow = fast = head
+        while fast and fast.next: slow, fast = slow.next, fast.next.next
+        pre, cur = None, slow
+        while cur:
+            nxt = cur.next
+            cur.next = pre
+            pre, cur = cur, nxt
+        head2 = pre
+        while head2.next:
+            nxt, nxt2 = head.next, head2.next
+            head.next, head2.next = head2, nxt
+            head, head2 = nxt, nxt2
+```
+
 ## 19.删除链表的倒数第N个结点[中等]*
 
 ###链接
@@ -541,6 +718,24 @@ class Solution {
         return dummy.next;
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -> Optional[ListNode]:
+        dummyHead = ListNode(-1, head) # 去掉删除头节点的特殊情况
+        slow, fast = dummyHead, dummyHead
+        while n > 0:
+            fast = fast.next
+            n -= 1
+        while fast.next:
+            slow = slow.next
+            fast = fast.next
+        # 此时slow指向倒数第N+1个结点
+        slow.next = slow.next.next
+        return dummyHead.next
 ```
 
 
@@ -591,6 +786,25 @@ class Solution {
         return dfs(dfs, head);
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def isPalindrome(self, head: Optional[ListNode]) -> bool:
+        left = head
+        def dfs(node):
+            if node is not None:
+                if not dfs(node.next):
+                    return False
+                nonlocal left
+                if node.val != left.val:
+                    return False
+                # left和right匹配成功,left往后走一步,right在递归回去时相当于往前走一步
+                left = left.next
+            return True # 空节点返回True从而开始归
+        return dfs(head)
 ```
 
 + 时间复杂度：$O(N)$
@@ -650,6 +864,42 @@ class Solution {
         return merge(sortList(head), sortList(right));
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def merge(self, left, right):
+        dummyHead = ListNode()
+        prev = dummyHead
+        while left and right:
+            if left.val <= right.val:
+                prev.next = left
+                left = left.next
+            else:
+                prev.next = right
+                right = right.next
+            prev = prev.next
+        prev.next = left if left else right
+        return dummyHead.next
+
+    def middleNode(self, head):
+        slow = fast = head
+        while fast.next and fast.next.next:
+            slow = slow.next
+            fast = fast.next.next
+        return slow
+
+    def sortList(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        if not head or not head.next:
+            return head
+        mid = self.middleNode(head)
+        right = mid.next
+        mid.next = None
+        left = self.sortList(head)
+        right = self.sortList(right)
+        return self.merge(left, right)
 ```
 
 + 时间复杂度：$O(N\log N)$
@@ -730,6 +980,30 @@ class Solution {
         return dummy.next;
     }
 };
+```
+
+```python
+from collections import defaultdict
+
+class Solution:
+    def copyRandomList(self, head: 'Optional[Node]') -> 'Optional[Node]':
+        p = head
+        dummyHead = Node(-1)
+        q = dummyHead
+        dict = defaultdict(list) # old node -> new node
+        while p:
+            q.next = Node(p.val)
+            dict[p] = q.next
+            p = p.next
+            q = q.next
+        p = head
+        q = dummyHead.next
+        while p:
+            if p.random:
+                q.random = dict[p.random]
+            p = p.next
+            q = q.next
+        return dummyHead.next
 ```
 
 + 时间复杂度：$O(N)$

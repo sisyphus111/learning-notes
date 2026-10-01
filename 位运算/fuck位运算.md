@@ -17,12 +17,23 @@ void set_bit(unsigned * x, unsigned n, unsigned v) {
 }
 ```
 
+```python
+def set_bit(x, n, v):
+    mask = ~(1 << n)
+    return (x & mask) | (v << n)  # Python 整数不可变，返回更新后的值。
+```
+
 + 获取x的第n个bit
 
 ```cpp
 unsigned get_bit(unsigned x, unsigned n) {
     return x >> n & 1;
 }
+```
+
+```python
+def get_bit(x, n):
+    return (x >> n) & 1
 ```
 
 # 异或
@@ -75,6 +86,16 @@ class Solution {
 };
 ```
 
+```python
+from functools import reduce
+from operator import xor
+from typing import List
+
+class Solution:
+    def singleNumber(self, nums: List[int]) -> int:
+        return reduce(xor, nums)
+```
+
 ## 137.只出现一次的数字 II[中等]
 
 ### 链接
@@ -122,6 +143,16 @@ public:
 };
 ```
 
+```python
+class Solution:
+    def singleNumber(self, nums):
+        ans = 0
+        for i in range(32):
+            cnt = sum((x >> i) & 1 for x in nums)
+            ans |= (cnt % 3) << i
+        return ans if ans < (1 << 31) else ans - (1 << 32)
+```
+
 
 
 # 与
@@ -161,6 +192,17 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def rangeBitwiseAnd(self, left: int, right: int) -> int:
+        shift = 0
+        while left < right:
+            left = left >> 1
+            right = right >> 1
+            shift += 1
+        return left << shift
+```
+
 ### 解法2：Brian Kernighan 算法
 
 Brian Kernighan 算法的关键在于把`number`和`number - 1`按位与运算之后，`number`的二进制表示中**最右边的1(lowbit)会被抹去变成0**，利用这个，也可以快速计算公共前缀。
@@ -174,6 +216,14 @@ class Solution {
         return right;
     }
 };
+```
+
+```python
+class Solution:
+    def rangeBitwiseAnd(self, left: int, right: int) -> int:
+        while left < right:
+            right &= right - 1
+        return right
 ```
 
 

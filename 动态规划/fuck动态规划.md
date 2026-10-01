@@ -58,6 +58,34 @@ F(n) = F(n - 1) + F(n - 2)，其中 n > 1
 
 典中典的题目了，这里只给出从递归到递推(动态规划)的过程，不考虑使用矩阵快速幂等高阶技巧进一步优化（见leetcode官解）。
 
+### 记忆化搜索
+
+```cpp
+class Solution {
+public:
+  int fib(int n) {
+    vector<int> memo(n + 1, -1);
+    auto dfs = [&](auto &&self, int i) -> int {
+      if (i < 2)
+        return i;
+      if (memo[i] != -1)
+        return memo[i];
+      return memo[i] = self(self, i - 1) + self(self, i - 2);
+    };
+    return dfs(dfs, n);
+  }
+};
+```
+
+```python
+from functools import cache
+
+class Solution:
+    @cache
+    def fib(self, n: int) -> int:
+        return n if n < 2 else self.fib(n - 1) + self.fib(n - 2)
+```
+
 ### 解法：动态规划
 
 如果手写了记忆化搜索，不难发现，我们在求一个较大的`fib(n)`时需要先**自顶向下**去把`fib(1)`、`fib(2)`算了填到数组中后面才能求出`fib(n)`，如果换一个视角，考虑**自底向上**去计算，根据递推公式依次算出`fib(2)`、`fib(3)`......，这就是递推了。
@@ -75,6 +103,19 @@ class Solution {
         return dp[n];
     }
 };
+```
+
+```python
+class Solution:
+    def fib(self, n: int) -> int:
+        if n < 2:
+            return n
+        dp = [-1] * (n + 1)
+        dp[0] = 0
+        dp[1] = 1
+        for i in range(2, n + 1):
+            dp[i] = dp[i - 1] + dp[i - 2]
+        return dp[n]
 ```
 
 + 时间复杂度：$O(N)$
@@ -97,6 +138,19 @@ class Solution {
         return dp0;
     }
 };
+```
+
+```python
+class Solution:
+    def fib(self, n: int) -> int:
+        dp0 = 0
+        dp1 = 1
+        if n <= 1: return n
+        for i in range(2, n + 1):
+            sum = dp0 + dp1
+            dp0 = dp1
+            dp1 = sum
+        return dp1
 ```
 
 + 时间复杂度：$O(N)$
@@ -127,6 +181,40 @@ class Solution {
 
 递推式为`dfs(i) = max(dfs(i - 1), dfs(i - 2) + nums[i])`
 
+### 记忆化搜索
+
+```cpp
+class Solution {
+public:
+  int rob(vector<int> &nums) {
+    vector<int> memo(nums.size(), -1);
+    auto dfs = [&](auto &&self, int i) -> int {
+      if (i < 0)
+        return 0;
+      if (memo[i] != -1)
+        return memo[i];
+      return memo[i] = max(self(self, i - 1), self(self, i - 2) + nums[i]);
+    };
+    return dfs(dfs, (int)nums.size() - 1);
+  }
+};
+```
+
+```python
+from functools import cache
+from typing import List
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        n = len(nums)
+        @cache
+        def dfs(i):
+            if i < 0:
+                return 0
+            return max(dfs(i - 1), dfs(i - 2) + nums[i])
+        return dfs(n - 1)
+```
+
 ### 解法：动态规划
 
 将递归翻译成递推：
@@ -148,6 +236,22 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        n = len(nums)
+        if n == 1:
+            return nums[0]
+        dp = [0] * n
+        dp[0] = nums[0]
+        dp[1] = max(nums[0], nums[1])
+        for i in range(2, n):
+            dp[i] = max(dp[i-1], dp[i-2]+nums[i])
+        return dp[n-1]
+```
+
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(N)$
 
@@ -166,6 +270,21 @@ class Solution {
         return cur;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        # [dp0, dp1, new_dp]
+        dp0 = dp1 = 0
+        n = len(nums)
+        for i, x in enumerate(nums):
+            new_dp = max(dp1, dp0 + x)
+            dp0 = dp1
+            dp1 = new_dp
+        return dp1
 ```
 
 + 时间复杂度：$O(N)$
@@ -206,6 +325,27 @@ class Solution {
         return max(solve(0, n - 1), solve(1, n));
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        def robRange(left, right):
+            dp0 = 0
+            dp1 = 0
+            for i in range(left, right + 1):
+                new_dp = max(dp1, dp0 + nums[i])
+                dp0 = dp1
+                dp1 = new_dp
+            return dp1
+        n = len(nums)
+        if n == 1:
+            return nums[0]
+        elif n == 2:
+            return max(nums[0], nums[1])
+        return max(robRange(0, n - 2), robRange(1, n - 1))
 ```
 
 
@@ -266,6 +406,20 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [[0] * n for _ in range(m)]
+        for j in range(n):
+            dp[0][j] = 1
+        for i in range(m):
+            dp[i][0] = 1
+        for i in range(1, m):
+            for j in range(1, n):
+                dp[i][j] = dp[i-1][j] + dp[i][j-1]
+        return dp[m-1][n-1]
+```
+
 + 时间复杂度：$O(m n)$
 + 空间复杂度：$O(m n)$
 
@@ -285,6 +439,17 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        dp[0][1] = 1
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                dp[i][j] = dp[i-1][j] + dp[i][j-1]
+        return dp[m][n]
+```
+
 或者把递推式也全部右移一位，for循环条件左移一位。
 
 ```cpp
@@ -299,6 +464,17 @@ class Solution {
         return dp[m][n];
     }
 };
+```
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        dp[0][1] = 1
+        for i in range(m):
+            for j in range(n):
+                dp[i+1][j+1] = dp[i][j+1] + dp[i+1][j]
+        return dp[m][n]
 ```
 
 ### 优化
@@ -317,6 +493,17 @@ class Solution {
         return dp[n];
     }
 };
+```
+
+```python
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        dp = [0] * (n + 1)
+        dp[1] = 1
+        for _ in range(m):
+            for j in range(n):
+                dp[j+1] = dp[j+1] + dp[j]
+        return dp[n]
 ```
 
 + 时间复杂度：$O(m n)$
@@ -341,6 +528,14 @@ class Solution {
         return (int)res;
     }
 };
+```
+
+```python
+from math import comb
+
+class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        return comb(m + n - 2, m - 1)
 ```
 
 + 时间复杂度：$O(\min(m, n))$
@@ -382,6 +577,22 @@ class Solution {
         return dp[m][n];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def uniquePathsWithObstacles(self, obstacleGrid: List[List[int]]) -> int:
+        m = len(obstacleGrid)
+        n = len(obstacleGrid[0])
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        dp[0][1] = 1
+        for i in range(m):
+            for j in range(n):
+                if obstacleGrid[i][j] == 0:
+                    dp[i+1][j+1] = dp[i][j+1] + dp[i+1][j]
+        return dp[m][n]
 ```
 
 ## 64.最小路径和[中等]
@@ -427,6 +638,22 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def minPathSum(self, grid: List[List[int]]) -> int:
+        m = len(grid)
+        n = len(grid[0])
+        dp = [[inf] * (n + 1) for _ in range(m + 1)]
+        dp[0][1] = 0
+        for i in range(m):
+            for j in range(n):
+                dp[i+1][j+1] = min(dp[i][j+1], dp[i+1][j]) + grid[i][j]
+        return dp[m][n]
+```
+
 
 
 
@@ -438,6 +665,37 @@ class Solution {
 ### 题目
 
 有`n`件物品和一个最多能背重量为`c`的背包。第`i`件物品的重量是`w[i]`，得到的价值是`v[i]` 。**每件物品只能用一次**，求最大价值和。
+
+### 记忆化搜索
+
+```cpp
+int zero_one_knapsack(int c, const vector<int> &w, const vector<int> &v) {
+  vector<vector<int>> memo(w.size(), vector<int>(c + 1, -1));
+  auto dfs = [&](auto &&self, int i, int j) -> int {
+    if (i < 0)
+      return 0;
+    if (memo[i][j] != -1)
+      return memo[i][j];
+    if (j < w[i])
+      return memo[i][j] = self(self, i - 1, j);
+    return memo[i][j] =
+               max(self(self, i - 1, j), self(self, i - 1, j - w[i]) + v[i]);
+  };
+  return dfs(dfs, (int)w.size() - 1, c);
+}
+```
+
+```python
+from functools import cache
+
+def zero_one_knapsack(c, w, v):
+    @cache
+    def dfs(i, j):
+        if i < 0: return 0
+        if j < w[i]: return dfs(i - 1, j)
+        return max(dfs(i - 1, j), dfs(i - 1, j - w[i]) + v[i])
+    return dfs(len(w) - 1, c)
+```
 
 ### 解法：动态规划
 
@@ -459,6 +717,21 @@ int zero_one_knapsack(int c, const vector<int> &w, const vector<int> &v) {
         }
     return dp[n][c];
 }
+```
+
+```python
+from typing import List
+
+def zero_one_knapsack(c: int, w: List[int], v: List[int]) -> int:
+    n = len(w)
+    dp = [[0] * (c + 1) for _ in range(n + 1)] # int[n+1][c+1]
+    for i in range(1, n + 1): # 遍历物品
+        for j in range(1, c + 1): # 遍历背包容量
+            if j < w[i - 1]:
+                dp[i][j] = dp[i - 1][j]
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i - 1][j - w[i - 1]] + v[i - 1])
+    return dp[n][c]
 ```
 
 或者我们可以换一种写法，**dp数组的物品下标从0开始**。
@@ -485,6 +758,23 @@ int zero_one_knapsack(int c, const vector<int> &w, const vector<int> &v) {
 }
 ```
 
+```python
+from typing import List
+
+def zero_one_knapsack(c: int, w: List[int], v: List[int]) -> int:
+    n = len(w)
+    dp = [[0] * (c + 1) for _ in range(n)] # int[n][c+1]
+    for j in range(w[0], c + 1): # 初始化第一行
+        dp[0][j] = v[0]
+    for i in range(1, n): # 遍历物品
+        for j in range(1, c + 1): # 遍历背包容量
+            if j < w[i]:
+                dp[i][j] = dp[i - 1][j]
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i - 1][j - w[i]] + v[i])
+    return dp[n-1][c]
+```
+
 如果还想再优雅一点，我们可以整体移动递推式中数组的下标，保证数组的索引都是正数。**这种写法dp数组物品下标还是从1开始**。
 
 + `dp[i + 1][j] = max(dp[i][j], dp[i][j - w[i]] + v[i])`，注意for循环的终止条件要相应的往左挪一位来避免数组越界。
@@ -503,6 +793,21 @@ int zero_one_knapsack(int c, const vector<int> &w, const vector<int> &v) {
 }
 ```
 
+```python
+from typing import List
+
+def zero_one_knapsack(c: int, w: List[int], v: List[int]) -> int:
+    n = len(w)
+    dp = [[0] * (c + 1) for _ in range(n + 1)] # int[n+1][c+1]
+    for i in range(n): # 遍历物品
+        for j in range(c + 1): # 遍历背包容量
+            if j < w[i]:
+                dp[i + 1][j] = dp[i][j]
+            else:
+                dp[i + 1][j] = max(dp[i][j], dp[i][j - w[i]] + v[i])
+    return dp[n][c]
+```
+
 ### 优化：滚动数组
 
 注意到在算第`i`层的数据时，我们只会用到第`i-1`层的数据，再前面的数据实际不会再用了，那么自然也没必要用二维数组去维护所有的数据，优化成用一个一维滚动数组记录当前的状态。**这里唯一要注意的是，遍历背包容量时必须从后往前遍历，否则当前层还没有处理完，上一层的数据就被覆盖了，这会导致一个物品被重复添加多次**。
@@ -515,6 +820,18 @@ int zero_one_knapsack(int c, const vector<int> &w, const vector<int> &v) {
             dp[j] = max(dp[j], dp[j - w[i]] + v[i]);
     return dp[c];
 }
+```
+
+```python
+from typing import List
+
+def zero_one_knapsack(c: int, w: List[int], v: List[int]) -> int:
+    n = len(w)
+    dp = [0] * (c + 1) # int[c+1]
+    for i in range(n): # 遍历物品
+        for j in range(c, w[i] - 1, -1): # 遍历背包容量(倒序遍历!)
+            dp[j] = max(dp[j], dp[j - w[i]] + v[i])
+    return dp[c]
 ```
 
 因为不需要保证`i-1`的下标不为负数了，我们可以直接采用从0开始的物品索引方式了，递推公式中对`w`和`v`的访问也与dp数组一致了。
@@ -618,6 +935,15 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def findTargetSumWays(self, nums, target):
+        def dfs(i, total):
+            if i == len(nums): return int(total == target)
+            return dfs(i + 1, total + nums[i]) + dfs(i + 1, total - nums[i])
+        return dfs(0, 0)
+```
+
 + 时间复杂度：$O(2^N)$，这个回溯版本会枚举全部正负号组合，大输入应使用下面的动态规划版本
 + 空间复杂度：$O(N)$，栈空间
 
@@ -667,6 +993,29 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def findTargetSumWays(self, nums: List[int], target: int) -> int:
+        target += sum(nums)
+        if target < 0 or target % 2 != 0:
+            return 0
+        target //= 2
+        n = len(nums)
+        dp = [[0] * (target + 1) for _ in range(n + 1)]
+        dp[0][0] = 1
+        for i in range(1, n + 1):
+            for j in range(target + 1): # 背包容量为0时不能塞东西，但是元素和是可以为0的，因此从0开始遍历
+                num = nums[i - 1]
+                if j < num:
+                    dp[i][j] = dp[i - 1][j]
+                else:
+                    dp[i][j] = dp[i - 1][j] + dp[i - 1][j - num]
+
+        return dp[n][target]
+```
+
 ### 优化
 
 ```cpp
@@ -685,6 +1034,24 @@ class Solution {
         return dp[target];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def findTargetSumWays(self, nums: List[int], target: int) -> int:
+        target += sum(nums)
+        if target < 0 or target % 2 != 0:
+            return 0
+        target //= 2
+        n = len(nums)
+        dp = [0] * (target + 1)
+        dp[0] = 1
+        for i, num in enumerate(nums):
+            for j in range(target, num-1, -1): # 倒序遍历,每个元素只能选一次
+                dp[j] = dp[j] + dp[j - num]
+        return dp[target]
 ```
 
 ## 416.分割等和子集[中等]
@@ -721,6 +1088,23 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def canPartition(self, nums: List[int]) -> bool:
+        s = sum(nums)
+        if s % 2 == 1:
+            return False
+        s //= 2
+        dp = [False] * (s + 1)
+        dp[0] = True
+        for i, num in enumerate(nums):
+            for j in range(s, num - 1, -1): # 倒序遍历保证只取一次
+                dp[j] = dp[j] or dp[j - num]
+        return dp[s]
+```
+
 ### 优化
 
 上面是根据[问题变形及经验总结](#问题变形及经验总结)的标准做法，其实还可以做一些优化。我们在遍历物品的过程中，可以用前缀和`s2`记录前`i`个数的和，由于子序列和不可能超过`s2`，所以倒序遍历背包时可以从`s2`和`s`中较小的那个数开始。
@@ -748,6 +1132,27 @@ class Solution {
         return dp[s];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def canPartition(self, nums: List[int]) -> bool:
+        s = sum(nums)
+        if s % 2 == 1:
+            return False
+        s //= 2
+        dp = [False] * (s + 1)
+        dp[0] = True
+        s2 = 0
+        for i, num in enumerate(nums):
+            s2 = min(s2 + num, s)
+            for j in range(s2, num - 1, -1):
+                dp[j] = dp[j] or dp[j - num]
+            if dp[s]:
+                return True
+        return False
 ```
 
 ## 2915.和为目标值的最长子序列的长度[中等]
@@ -782,6 +1187,21 @@ class Solution {
         return dp[target] < 0 ? -1 : dp[target];
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def lengthOfLongestSubsequence(self, nums: List[int], target: int) -> int:
+        n = len(nums)
+        dp = [-inf] * (target + 1)
+        dp[0] = 0
+        for num in nums:
+            for j in range(target, num - 1, -1):
+                dp[j] = max(dp[j], dp[j - num] + 1)
+        return dp[target] if dp[target] > 0 else -1
 ```
 
 ## 474.一和零[中等]
@@ -826,6 +1246,21 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def findMaxForm(self, strs: List[str], m: int, n: int) -> int:
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for s in strs:
+            cnt0 = s.count('0')
+            cnt1 = len(s) - cnt0
+            for i in range(m, cnt0 - 1, -1):
+                for j in range(n, cnt1 - 1, -1):
+                    dp[i][j] = max(dp[i][j], dp[i-cnt0][j-cnt1] + 1)
+        return dp[m][n]
+```
+
 
 
 # 完全背包
@@ -864,6 +1299,21 @@ int unbounded_knapsack(int c, const vector<int> &w, const vector<int> &v) {
 }
 ```
 
+```python
+from typing import List
+
+def unbounded_knapsack(c: int, w: List[int], v: List[int]) -> int:
+    n = len(w)
+    dp = [[0] * (c + 1) for _ in range(n + 1)] # int[n+1][c+1]
+    for i in range(1, n + 1): # 遍历物品
+        for j in range(1, c + 1): # 遍历背包容量
+            if j < w[i - 1]:
+                dp[i][j] = dp[i - 1][j]
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - w[i - 1]] + v[i - 1])
+    return dp[n][c]
+```
+
 ### 优化：滚动数组
 
 正序遍历背包保证了某个元素可以重复选取。正序遍历的关键在于：**我们每次选择背包容量为 `j` 时，都会更新 `dp[j]`，这意味着物品 `i` 可以被多次选择**。在选择某个物品时，背包容量 `j` 会与前面的容量 `j - w[i]` 进行比较，表示选择当前物品后，剩余的容量还能继续选择同样的物品。
@@ -886,6 +1336,18 @@ int unbounded_knapsack(int c, const vector<int> &w, const vector<int> &v) {
             dp[j] = max(dp[j], dp[j - w[i]] + v[i]);
     return dp[c];
 }
+```
+
+```python
+from typing import List
+
+def unbounded_knapsack(c: int, w: List[int], v: List[int]) -> int:
+    n = len(w)
+    dp = [0] * (c + 1) # int[c+1]
+    for i in range(n): # 遍历物品
+        for j in range(w[i], c + 1): # 遍历背包容量(正序遍历!)
+            dp[j] = max(dp[j], dp[j - w[i]] + v[i])
+    return dp[c]
 ```
 
 ## 322.零钱兑换[中等]*
@@ -940,6 +1402,24 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def coinChange(self, coins: List[int], amount: int) -> int:
+        n = len(coins)
+        dp = [[inf] * (amount + 1) for _ in range(n + 1)]
+        dp[0][0] = 0
+        for i in range(1, n + 1):
+            for j in range(amount + 1):
+                if j < coins[i - 1]:
+                    dp[i][j] = dp[i - 1][j]
+                else:
+                    dp[i][j] = min(dp[i - 1][j], dp[i][j - coins[i - 1]] + 1)
+        return dp[n][amount] if dp[n][amount] != inf else -1
+```
+
 ### 优化
 
 ```cpp
@@ -954,6 +1434,21 @@ class Solution {
         return dp[amount] > amount ? -1 : dp[amount];
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def coinChange(self, coins: List[int], amount: int) -> int:
+        n = len(coins)
+        dp = [inf] * (amount + 1)
+        dp[0] = 0
+        for i in range(n):
+            for j in range(coins[i], amount + 1):
+                dp[j] = min(dp[j], dp[j - coins[i]] + 1)
+        return dp[amount] if dp[amount] != inf else -1
 ```
 
 ## 279.完全平方数[中等]
@@ -990,6 +1485,23 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from math import sqrt
+
+class Solution:
+    def numSquares(self, n: int) -> int:
+        perfect = []
+        for i in range(int(sqrt(n)) + 1):
+            perfect.append(i ** 2)
+        dp = [inf] * (n + 1)
+        dp[0] = 0
+        for i, num in enumerate(perfect):
+            for j in range(num, n + 1): # 正序遍历保证重复取
+                dp[j] = min(dp[j], dp[j - num] + 1)
+        return dp[n]
+```
+
 ## 518.零钱兑换 II[中等]
 
 ### 链接
@@ -1023,6 +1535,19 @@ class Solution {
         return (int)dp[amount];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def change(self, amount: int, coins: List[int]) -> int:
+        dp = [0] * (amount + 1)
+        dp[0] = 1
+        for coin in coins:
+            for j in range(coin, amount + 1):
+                dp[j] += dp[j - coin]
+        return dp[amount]
 ```
 
 
@@ -1108,6 +1633,46 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)+1&s[i]=t[j] \\
 \end{cases}
 $$
 
+### 记忆化搜索
+
+```cpp
+class Solution {
+public:
+  int longestCommonSubsequence(string text1, string text2) {
+    int n = text1.size(), m = text2.size();
+    vector<vector<int>> memo(n, vector<int>(m, -1));
+    auto dfs = [&](auto &&self, int i, int j) -> int {
+      if (i < 0 || j < 0)
+        return 0;
+      if (memo[i][j] != -1)
+        return memo[i][j];
+      if (text1[i] == text2[j])
+        return memo[i][j] = self(self, i - 1, j - 1) + 1;
+      return memo[i][j] = max(self(self, i - 1, j), self(self, i, j - 1));
+    };
+    return dfs(dfs, n - 1, m - 1);
+  }
+};
+```
+
+```python
+from functools import cache
+
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        # 递推版是从前往后遍历的,递归版从后往前遍历,可能好理解一点
+        n = len(text1)
+        m = len(text2)
+        @cache
+        def dfs(i, j):
+            if i < 0 or j < 0:
+                return 0
+            if text1[i] == text2[j]: # s和t的最后一个字符相同,删掉最后的字符
+                return dfs(i - 1, j - 1) + 1
+            return max(dfs(i - 1, j), dfs(i, j - 1)) # 如果不同,分别考虑删s和删t最后一个字符的情况
+        return dfs(n - 1, m - 1)
+```
+
 ### 解法：动态规划
 
 定义`dp[i][j]`为考虑`s`的前`i`个字母和`t`的前`j`个字母的LCS。
@@ -1127,6 +1692,18 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        n = len(text1)
+        m = len(text2)
+        dp = [[0] * (m + 1) for _ in range(n + 1)]
+        for i in range(1, n + 1):
+            for j in range(1, m + 1):
+                dp[i][j] = dp[i-1][j-1] + 1 if text1[i-1] == text2[j-1] else max(dp[i-1][j], dp[i][j-1])
+        return dp[n][m]
+```
+
 上面是需要记忆的通用的写法，相对来说直观一点，唯一需要注意的是，dp数组的索引和物品的索引错了一位，`dp[0][0]`可以理解为初始状态。下面的写法就把dp数组和物品数组的索引对齐了，熟练了再用。
 
 ```cpp
@@ -1142,6 +1719,18 @@ class Solution {
         return dp[n][m];
     }
 };
+```
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        n = len(text1)
+        m = len(text2)
+        dp = [[0] * (m + 1) for _ in range(n + 1)]
+        for i, x in enumerate(text1):
+            for j, y in enumerate(text2):
+                dp[i+1][j+1] = dp[i][j] + 1 if x == y else max(dp[i][j+1], dp[i+1][j])
+        return dp[n][m]
 ```
 
 ### 优化
@@ -1167,6 +1756,21 @@ class Solution {
         return dp[m];
     }
 };
+```
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+        n = len(text1)
+        m = len(text2)
+        dp = [0] * (m + 1)
+        for i,x in enumerate(text1):
+            pre = dp[0]
+            for j,y in enumerate(text2):
+                tmp = dp[j+1] # 记录dp[j+1]这样,dp[j+2]就能正常用到上一层的旧的dp[j+1]了
+                dp[j+1] = pre + 1 if x == y else max(dp[j+1], dp[j])
+                pre = tmp
+        return dp[m]
 ```
 
 ## 72.编辑距离[中等]*
@@ -1232,6 +1836,27 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        n = len(word1)
+        m = len(word2)
+        dp = [[0] * (m + 1) for _ in range(n + 1)]
+        for i in range(n + 1): # 从一个空字符串变成word2的子串的编辑距离自然就是子串的长度
+            dp[i][0] = i
+        for j in range(m + 1): # 从word1的子串变成空字符串的编辑距离自然也是子串的长度
+            dp[0][j] = j
+        for i in range(1, n + 1):
+            for j in range(1, m + 1):
+                if word1[i-1] == word2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]  # 字符相等，无需操作
+                else:
+                    dp[i][j] = 1 + min(dp[i-1][j],  # 删除
+                                       dp[i][j-1],  # 插入
+                                       dp[i-1][j-1])  # 替换
+        return dp[n][m]
+```
+
 或者
 
 ```cpp
@@ -1252,6 +1877,27 @@ class Solution {
         return dp[n][m];
     }
 };
+```
+
+```python
+class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        n = len(word1)
+        m = len(word2)
+        dp = [[0] * (m + 1) for _ in range(n + 1)]
+        for i in range(n + 1): # 从一个空字符串变成word2的子串的编辑距离自然就是子串的长度
+            dp[i][0] = i
+        for j in range(m + 1): # 从word1的子串变成空字符串的编辑距离自然也是子串的长度
+            dp[0][j] = j
+        for i,x in enumerate(word1):
+            for j,y in enumerate(word2):
+                if x == y:
+                    dp[i+1][j+1] = dp[i][j]  # 字符相等，无需操作
+                else:
+                    dp[i+1][j+1] = 1 + min(dp[i][j+1],  # 删除
+                                           dp[i+1][j],  # 插入
+                                           dp[i][j])  # 替换
+        return dp[n][m]
 ```
 
 ## 300.最长递增子序列[中等]*
@@ -1299,6 +1945,20 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def lengthOfLIS(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [1] * n # int[n]
+        for i in range(n):
+            for j in range(i):
+                if nums[j] < nums[i]:
+                    dp[i] = max(dp[i], dp[j] + 1)
+        return max(dp)
+```
+
 + 时间复杂度：$O(N^2)$
 + 空间复杂度：$O(N)$
 
@@ -1336,6 +1996,19 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [0] * n # 以nums[i]结尾的最大子数组和
+        dp[0] = nums[0]
+        for i in range(1, n):
+            dp[i] = max(nums[i], dp[i-1] + nums[i])
+        return max(dp)
+```
+
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(N)$，当然可以优化成$O(1)$了
 
@@ -1358,6 +2031,22 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        pre_sum = 0
+        min_pre_sum = 0
+        res = -inf
+        for num in nums:
+            pre_sum += num
+            res = max(pre_sum - min_pre_sum, res)
+            min_pre_sum = min(min_pre_sum, pre_sum)
+        return res
 ```
 
 + 时间复杂度：$O(N)$
@@ -1401,6 +2090,21 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def maxProduct(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp_max = [0] * n # 以nums[i]结尾的乘积最大子数组
+        dp_min = [0] * n # 以nums[i]结尾的乘积最小子数组
+        dp_max[0] = dp_min[0] = nums[0]
+        for i in range(1, n):
+            dp_max[i] = max(nums[i], dp_max[i-1] * nums[i], dp_min[i-1] * nums[i])
+            dp_min[i] = min(nums[i], dp_max[i-1] * nums[i], dp_min[i-1] * nums[i])
+        return max(dp_max)
+```
+
 ## 918.环形子数组的最大和[中等]
 
 ### 链接
@@ -1437,6 +2141,27 @@ class Solution {
         return max_sum < 0 ? max_sum : max(max_sum, total - min_sum);
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxSubarraySumCircular(self, nums: List[int]) -> int:
+        n = len(nums)
+        max_sum = -inf
+        max_dp = 0
+        min_sum = 0
+        min_dp = 0
+        for num in nums:
+            max_dp = max(max_dp, 0) + num # max_dp[i] = max(max_dp[i-1],0) + num
+            max_sum = max(max_sum, max_dp)
+            min_dp = min(min_dp, 0) + num
+            min_sum = min(min_sum, min_dp)
+        if max_sum < 0:
+            return max_sum
+        return max(max_sum, sum(nums) - min_sum)
 ```
 
 + 时间复杂度：$O(N)$
@@ -1486,6 +2211,28 @@ class Solution {
 };
 ```
 
+```python
+from collections import defaultdict
+from typing import List
+
+class Solution:
+    def wordBreak(self, s: str, wordDict: List[str]) -> bool:
+        n = len(s)
+        dp = [False] * (n + 1)
+        dp[0] = True
+        mp = defaultdict(list)
+        for word in wordDict:
+            mp[word[-1]].append(word)
+        for i in range(1, n + 1):
+            if s[i - 1] in mp:
+                for word in mp[s[i - 1]]:
+                    if i < len(word):
+                        continue
+                    if s[i - len(word):i] == word:
+                        dp[i] = dp[i] or dp[i - len(word)]
+        return dp[n]
+```
+
 ```cpp
 class Solution {
   public:
@@ -1506,6 +2253,24 @@ class Solution {
         return dp[n];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def wordBreak(self, s: str, wordDict: List[str]) -> bool:
+        max_len = max(map(len, wordDict))  # 用于限制下面 j 的循环次数
+        words = set(wordDict)  # 便于快速判断 s[j:i] in words
+
+        n = len(s)
+        dp = [True] + [False] * n
+        for i in range(1, n + 1):
+            for j in range(i - 1, max(i - max_len - 1, -1), -1):
+                if dp[j] and s[j:i] in words:
+                    dp[i] = True
+                    break
+        return dp[n]
 ```
 
 ## 32.最长有效括号[困难]
@@ -1554,6 +2319,23 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def longestValidParentheses(self, s: str) -> int:
+        n = len(s)
+        if n == 0:
+            return 0
+        dp = [0] * n
+        for i in range(1, n):
+            if s[i] == ')':
+                if s[i - 1] == '(':
+                    dp[i] = dp[i - 2] + 2 if i >= 2 else 2
+                elif i - dp[i - 1] >= 1 and s[i - dp[i - 1] - 1] == '(':
+                    dp[i] = dp[i - 1] + 2
+                    dp[i] += dp[i - dp[i - 1] - 2] if i - dp[i - 1] >= 2 else 0
+        return max(dp)
+```
+
 最后求`max(dp)`时间是$O(N)$，我们在循环中已经计算出来的`dp[i]`是不会再修改了的，所以可以在循环的同时不断地max算出结果，可以节省一次遍历。
 
 ## 97.交错字符串[中等]
@@ -1578,6 +2360,54 @@ class Solution {
 ### 思路
 
 **子串相关的能否构成问题**，要想到线性DP。不过一开始我没看出来递推式，所以写了个记忆化搜索版本。思路是这样的，在`s1`、`s2`、`s3`中都各有一个指针`p1`、`p2`、`p3`来遍历，假设`s1[p1]==s3[p3]`那么`p1`就可以继续后移，`s2[p2]==s3[p3]`那么`p2`也可以继续后移，而对于一个`s3[p3]`有可能和`s1[p1]`和`s2[p2]`都相等，所以分别递归去处理，然后回溯消除影响。
+
+### 记忆化搜索
+
+```cpp
+class Solution {
+public:
+  bool isInterleave(string s1, string s2, string s3) {
+    int n1 = s1.size(), n2 = s2.size();
+    if (n1 + n2 != (int)s3.size())
+      return false;
+    vector<vector<int>> memo(n1 + 1, vector<int>(n2 + 1, -1));
+    auto dfs = [&](auto &&self, int p1, int p2) -> bool {
+      if (p1 + p2 == n1 + n2)
+        return true;
+      if (memo[p1][p2] != -1)
+        return memo[p1][p2];
+      bool ok = (p1 < n1 && s1[p1] == s3[p1 + p2] && self(self, p1 + 1, p2)) ||
+                (p2 < n2 && s2[p2] == s3[p1 + p2] && self(self, p1, p2 + 1));
+      memo[p1][p2] = ok;
+      return ok;
+    };
+    return dfs(dfs, 0, 0);
+  }
+};
+```
+
+```python
+from functools import cache
+
+class Solution:
+    def isInterleave(self, s1: str, s2: str, s3: str) -> bool:
+        n1 = len(s1)
+        n2 = len(s2)
+        m = len(s3)
+        if n1 + n2 != m:
+            return False
+        @cache
+        def dfs(p1, p2):
+            p3 = p1 + p2
+            if p3 == m:
+                return p1 == n1 and p2 == n2
+            if p1 < n1 and s1[p1] == s3[p3] and dfs(p1 + 1, p2):
+                return True
+            if p2 < n2 and s2[p2] == s3[p3] and dfs(p1, p2 + 1):
+                return True
+            return False
+        return dfs(0, 0)
+```
 
 ### 解法：动态规划
 
@@ -1607,6 +2437,25 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def isInterleave(self, s1: str, s2: str, s3: str) -> bool:
+        n1 = len(s1)
+        n2 = len(s2)
+        if n1 + n2 != len(s3):
+            return False
+        dp = [[False] * (n2 + 1) for _ in range(n1 + 1)]
+        dp[0][0] = True
+        for i in range(n1 + 1):
+            for j in range(n2 + 1):
+                p = i + j - 1
+                if i > 0:
+                    dp[i][j] = dp[i][j] or (dp[i - 1][j] and s1[i - 1] == s3[p])
+                if j > 0:
+                    dp[i][j] = dp[i][j] or (dp[i][j - 1] and s2[j - 1] == s3[p])
+        return dp[n1][n2]
+```
+
 注意上面的`dp[i][j] ||`不能省略，否则假设`s1`可以往后移，而`s2`不可以往后移，那么后面的结果会覆盖掉前面的，除非改成下面这样
 
 ```cpp
@@ -1614,6 +2463,13 @@ if (i > 0 && dp[i - 1][j] && s1[i - 1] == s3[p])
     dp[i][j] = true;
 if (j > 0 && dp[i][j - 1] && s2[j - 1] == s3[p])
     dp[i][j] = true;
+```
+
+```python
+if i > 0 and dp[i-1][j] and s1[i-1] == s3[p]:
+    dp[i][j] = True
+if j > 0 and dp[i][j-1] and s2[j-1] == s3[p]:
+    dp[i][j] = True
 ```
 
 ## 3290.最高乘法得分[中等]
@@ -1661,6 +2517,22 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxScore(self, a: List[int], b: List[int]) -> int:
+        m, n = len(a), len(b)
+        dp = [[-inf] * (n + 1) for _ in range(m + 1)]
+        for j in range(n + 1):
+            dp[0][j] = 0
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                dp[i][j] = max(dp[i][j-1], dp[i-1][j-1] + b[j-1] * a[i-1])
+        return dp[m][n]
+```
+
 ```cpp
 class Solution {
   public:
@@ -1676,6 +2548,22 @@ class Solution {
         return dp[m][n];
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxScore(self, a: List[int], b: List[int]) -> int:
+        m, n = len(a), len(b)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            dp[i][0] = -inf
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                dp[i][j] = max(dp[i][j-1], dp[i-1][j-1] + b[j-1] * a[i-1])
+        return dp[m][n]
 ```
 
 ## 115.不同的子序列[困难]
@@ -1714,6 +2602,16 @@ vector<vector<int>> dp = {
 };
 ```
 
+```python
+[[1, 1, 1, 1, 1, 1, 1, 1],
+ [0, 1, 1, 1, 1, 1, 1, 1],  # r
+ [0, 0, 1, 1, 1, 1, 1, 1],  # ra
+ [0, 0, 0, 1, 2, 3, 3, 3],  # rab
+ [0, 0, 0, 0, 1, 3, 3, 3],  # rabb
+ [0, 0, 0, 0, 0, 0, 3, 3],  # rabbi
+ [0, 0, 0, 0, 0, 0, 0, 3]]  # rabbit
+```
+
 ### 解法
 
 ```cpp
@@ -1737,6 +2635,23 @@ class Solution {
         return (int)dp[n][m];
     }
 };
+```
+
+```python
+class Solution:
+    def numDistinct(self, s: str, t: str) -> int:
+        m, n = len(s), len(t)
+        if m < n:
+            return 0
+        dp = [[0] * (m + 1) for _ in range(n + 1)] # dp[i][j]表示使用s的前j个字符串构成t[:i]这个子序列的方案数
+        for j in range(m + 1):
+            dp[0][j] = 1
+        for i in range(1, n + 1):
+            for j in range(i, m + 1):
+                if t[i - 1] == s[j - 1]:
+                    dp[i][j] += dp[i - 1][j - 1]
+                dp[i][j] += dp[i][j - 1]
+        return dp[n][m]
 ```
 
 
@@ -1813,6 +2728,23 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        n = len(prices)
+        dp = [[0] * 2 for _ in range(n + 1)]
+        dp[0][1] = -inf
+        for i in range(1, n + 1):
+            # 今天没股票=max(前一天没股票, 前一天有股票今天卖)
+            dp[i][0] = max(dp[i - 1][0], dp[i - 1][1] + prices[i - 1])
+            # 今天有股票=max(前一天有股票, 前一天没股票今天买)
+            dp[i][1] = max(dp[i - 1][1], dp[i - 1][0] - prices[i - 1])
+        return dp[n][0]
+```
+
 ### 优化
 
 这里还可以使用从 `0` 到 `n - 1` 的循环：价格写成 `prices[i]`，当天状态写入 `dp[i + 1]`。先明确状态下标的含义，再统一调整价格与状态的下标。
@@ -1832,6 +2764,22 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        n = len(prices)
+        dp0 = 0
+        dp1 = -inf
+        for i in range(n):
+            new_dp0 = max(dp0, dp1 + prices[i])
+            dp1 = max(dp1, dp0 - prices[i])
+            dp0 = new_dp0
+        return dp0
+```
+
 此时此刻，有没有想起彼时彼刻呢？没座！我们发现上面的代码和[198.打家劫舍](#198.打家劫舍[中等])非常相似，其实打家劫舍也能看成是状态机DP的问题，每一天我们有偷和不偷两种状态。
 
 ### 打家劫舍另解
@@ -1849,6 +2797,20 @@ class Solution {
         return max(steal, skip);
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        steal = nums[0]
+        skip = 0
+        for x in nums[1:]:
+            new_steal = skip + x
+            new_skip = max(skip, steal)
+            steal, skip = new_steal, new_skip
+        return max(steal, skip)
 ```
 
 ## 309.最佳买卖股票时机含冷冻期[中等]*
@@ -1890,6 +2852,21 @@ class Solution {
         return dp[n][0];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        n = len(prices)
+        dp = [[0] * 2 for _ in range(n + 1)]
+        # 第1天未持有股票就是0,所以省略了
+        dp[1][1] = -prices[0] # 第1天持有股票
+        for i in range(2, n + 1):
+            dp[i][0] = max(dp[i - 1][0], dp[i - 1][1] + prices[i - 1])
+            dp[i][1] = max(dp[i - 1][1], dp[i - 2][0] - prices[i - 1]) # 把i-1改成i-2
+        return dp[n][0]
 ```
 
 ## 188.买卖股票的最佳时机 IV[困难]*
@@ -1939,6 +2916,23 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxProfit(self, k: int, prices: List[int]) -> int:
+        n = len(prices)
+        dp = [[[0] * 2 for _ in range(k + 1)] for _ in range(n + 1)]
+        for j in range(1, k + 1): # 第0天不可能持有股票
+            dp[0][j][1] = -inf
+        for i in range(1, n + 1):
+            for j in range(1, k + 1):
+                dp[i][j][0] = max(dp[i - 1][j][0], dp[i - 1][j][1] + prices[i - 1])
+                dp[i][j][1] = max(dp[i - 1][j][1], dp[i - 1][j - 1][0] - prices[i - 1])
+        return dp[n][k][0]
+```
+
 ### 思考题(TODO)
 
 如果改成「恰好」完成 *k* 笔交易要怎么做？
@@ -1970,6 +2964,22 @@ class Solution {
 };
 ```
 
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxProfit(self, k: int, prices: List[int]) -> int:
+        n = len(prices)
+        dp = [[[-inf] * 2 for _ in range(k + 2)] for _ in range(n + 1)]
+        dp[0][1][0] = 0  # 只需改这里
+        for i, p in enumerate(prices):
+            for j in range(1, k + 2):
+                dp[i + 1][j][0] = max(dp[i][j][0], dp[i][j][1] + p)
+                dp[i + 1][j][1] = max(dp[i][j][1], dp[i][j - 1][0] - p)
+        return dp[-1][-1][0]
+```
+
 > 注意，上面的代码如果把`j`往左挪一位给挪回来，代码逻辑就不对了，需要额外的判断，总之很绕，TODO：不知道有没有具体的题目来弄清楚
 
 如果改成「至少」完成 *k* 笔交易要怎么做？
@@ -1996,6 +3006,24 @@ class Solution {
         return dp[n][k][0]; // 不可达时保留负无穷哨兵。
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def maxProfit(self, k: int, prices: List[int]) -> int:
+        n = len(prices)
+        dp = [[[-inf] * 2 for _ in range(k + 1)] for _ in range(n + 1)]
+        dp[0][0][0] = 0
+        for i, p in enumerate(prices):
+            dp[i + 1][0][0] = max(dp[i][0][0], dp[i][0][1] + p)
+            dp[i + 1][0][1] = max(dp[i][0][1], dp[i][0][0] - p)  # 无限次
+            for j in range(1, k + 1):
+                dp[i + 1][j][0] = max(dp[i][j][0], dp[i][j][1] + p)
+                dp[i + 1][j][1] = max(dp[i][j][1], dp[i][j - 1][0] - p)
+        return dp[-1][-1][0]
 ```
 
 > TODO：这一块理解起来很费劲，暂时没弄懂，但我觉得初始化的逻辑确实是没毛病的
@@ -2066,6 +3094,51 @@ class Solution {
 
 第一个思路，是把现有的问题转换成已有的问题。注意到回文子序列正着读和反着读没区别，那么我们把原来的字符串反转，只有里面的最长回文子序列保持不变，那么我们直接求`s`和反转后`s`的LCS（[1143.最长公共子序列](#1143.最长公共子序列[中等])）就是最长回文子序列了。
 
+### 记忆化搜索
+
+```cpp
+class Solution {
+public:
+  int longestPalindromeSubseq(string s) {
+    int n = s.size();
+    vector<vector<int>> memo(n, vector<int>(n, -1));
+    auto dfs = [&](auto &&self, int i, int j) -> int {
+      if (i > j)
+        return 0;
+      if (i == j)
+        return 1;
+      if (memo[i][j] != -1)
+        return memo[i][j];
+      if (s[i] == s[j])
+        return memo[i][j] = self(self, i + 1, j - 1) + 2;
+      return memo[i][j] = max(self(self, i + 1, j), self(self, i, j - 1));
+    };
+    return dfs(dfs, 0, n - 1);
+  }
+};
+```
+
+```python
+from functools import cache
+
+class Solution:
+    def longestPalindromeSubseq(self, s: str) -> int:
+        # dfs从两边往中间递归
+        # 时间复杂度: O(n^2) 状态数(i和j配对的数量) 如果不使用记忆化搜索,就是O(2^n)
+        # 空间复杂度: O(n^2)
+        n = len(s)
+        @cache
+        def dfs(i, j):
+            if i == j:
+                return 1
+            if i > j:
+                return 0
+            if s[i] == s[j]:
+                return dfs(i + 1, j - 1) + 2
+            return max(dfs(i + 1, j), dfs(i, j - 1))
+        return dfs(0, n - 1)
+```
+
 ### 解法：动态规划
 
 翻译成递推：
@@ -2100,6 +3173,21 @@ class Solution {
 };
 ```
 
+```python
+class Solution:
+    def longestPalindromeSubseq(self, s: str) -> int:
+        n = len(s)
+        dp = [[0] * n for _ in range(n)]
+        for i in range(n-1, -1, -1):
+            dp[i][i] = 1 # i == j
+            for j in range(i + 1, n): # 相当于我们在翻译递归版的代码,j最多遍历到i+1,i==j时为1
+                if s[i] == s[j]:
+                    dp[i][j] = dp[i + 1][j - 1] + 2
+                else:
+                    dp[i][j] = max(dp[i + 1][j], dp[i][j - 1])
+        return dp[0][n-1]
+```
+
 ## 1039.多边形三角剖分的最低得分[中等]*
 
 ### 链接
@@ -2127,6 +3215,42 @@ $$
 
 递归入口：$dfs(0, n-1)$
 
+### 记忆化搜索
+
+```cpp
+class Solution {
+public:
+  int minScoreTriangulation(vector<int> &values) {
+    int n = values.size();
+    vector<vector<int>> memo(n, vector<int>(n, -1));
+    auto dfs = [&](auto &&self, int i, int j) -> int {
+      if (i + 1 >= j)
+        return 0;
+      if (memo[i][j] != -1)
+        return memo[i][j];
+      int res = INT_MAX;
+      for (int k = i + 1; k < j; ++k)
+        res = min(res, self(self, i, k) + self(self, k, j) +
+                           values[i] * values[j] * values[k]);
+      return memo[i][j] = res;
+    };
+    return dfs(dfs, 0, n - 1);
+  }
+};
+```
+
+```python
+from functools import cache
+
+class Solution:
+    def minScoreTriangulation(self, values):
+        @cache
+        def dfs(i, j):
+            if i + 1 >= j: return 0
+            return min(dfs(i, k) + dfs(k, j) + values[i] * values[j] * values[k] for k in range(i + 1, j))
+        return dfs(0, len(values) - 1)
+```
+
 ### 解法：动态规划
 
 $$
@@ -2152,6 +3276,23 @@ class Solution {
         return dp[0][n - 1];
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def minScoreTriangulation(self, values: List[int]) -> int:
+        n = len(values)
+        dp = [[0] * n for _ in range(n)]
+        for i in range(n - 3, -1, -1): # 因为j至少从i+2开始,所以i从n-3开始
+            for j in range(i + 2, n): # 跳过i + 1
+                res = inf
+                for k in range(i + 1, j):
+                    res = min(res, dp[i][k] + dp[k][j] + values[i] * values[j] * values[k])
+                dp[i][j] = res
+        return dp[0][n-1]
 ```
 
 ## 5.最长回文子串[中等]
@@ -2192,6 +3333,26 @@ class Solution {
         return s.substr(res_left, res_length);
     }
 };
+```
+
+```python
+class Solution:
+    def longestPalindrome(self, s: str) -> str:
+        n = len(s)
+        dp = [[False] * n for _ in range(n)] # dp[i][j]表示s[i,j]是否为回文串
+        res_left = 0
+        res_right = 0
+        for i in range(n-1, -1, -1):
+            dp[i][i] = True # i == j
+            for j in range(i + 1, n):
+                if s[i] == s[j]:
+                    if j - i == 1:
+                        dp[i][j] = True
+                    else:
+                        dp[i][j] = dp[i + 1][j - 1]
+                    if dp[i][j] and j - i > res_right - res_left:
+                        res_left, res_right = i, j
+        return s[res_left:res_right+1]
 ```
 
 + 时间复杂度：$O(N^2)$
@@ -2240,6 +3401,26 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def maxCoins(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [[0] * (n + 2) for _ in range(n + 2)]
+        nums = [1] + nums + [1]
+
+        for i in range(n - 1, -1, -1):
+            for j in range(i + 2, n + 2):
+                for k in range(i + 1, j):
+                    dp[i][j] = max(
+                        dp[i][j],
+                        dp[i][k] + nums[i] * nums[k] * nums[j] + dp[k][j]
+                    )
+
+        return dp[0][n + 1]
+```
+
 + 时间复杂度：$O(N^3)$
 + 空间复杂度：$O(N^2)$
 
@@ -2265,6 +3446,27 @@ class Solution {
         return dp[0][n + 1];
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def maxCoins(self, nums: List[int]) -> int:
+        n = len(nums)
+        dp = [[0] * (n + 2) for _ in range(n + 2)]
+        nums = [1] + nums + [1]
+
+        for length in range(1, n + 1): # 表示开区间内气球数
+            for i in range(0, n - length + 1):
+                j = i + length + 1
+                for k in range(i + 1, j):
+                    dp[i][j] = max(
+                        dp[i][j],
+                        dp[i][k] + nums[i] * nums[k] * nums[j] + dp[k][j]
+                    )
+
+        return dp[0][n + 1]
 ```
 
 ## 1000.合并石头的最低成本[困难]
@@ -2307,6 +3509,39 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def mergeStones(self, stones: List[int]) -> int:
+        n = len(stones)
+
+        prefix = [0] * (n + 1)
+        for i in range(n):
+            prefix[i + 1] = prefix[i] + stones[i]
+
+        def get_sum(i, j):
+            return prefix[j + 1] - prefix[i]
+
+        dp = [[float('inf')] * n for _ in range(n)]
+
+        # 单个石堆不用合并
+        for i in range(n):
+            dp[i][i] = 0
+
+        for length in range(2, n + 1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+
+                for p in range(i, j):
+                    dp[i][j] = min(
+                        dp[i][j],
+                        dp[i][p] + dp[p + 1][j] + get_sum(i, j)
+                    )
+
+        return dp[0][n - 1]
+```
+
 下一步就是从两两合并推广到任意`k`堆合并。回顾`k=2`时，`dp[i][j]`表示区间`[i,j]`合并成 **1堆** 的最小代价。最后合并时是两个一堆合并成另一堆，所以想法是我们增加一个维度来记录区间的堆数，`dp[i][j][k]` 表示区间`[i,j]`合并成 `k`堆 的最小代价。因为每次操作是把`k`堆合并成1堆，所以我们假设`[i, k]`是`1`堆，`[k + 1, j]`是剩余的`k-1`堆。（反过来也行
 
 ### 解法
@@ -2336,6 +3571,49 @@ class Solution {
         return dp[0][n - 1][1];
     }
 };
+```
+
+```python
+from math import inf
+from typing import List
+
+class Solution:
+    def mergeStones(self, stones: List[int], k: int) -> int:
+        n = len(stones)
+
+        if (n - 1) % (k - 1):
+            return -1
+
+        # 前缀和
+        prefix = [0] * (n + 1)
+        for i in range(n):
+            prefix[i + 1] = prefix[i] + stones[i]
+
+        def get_sum(i, j):
+            return prefix[j + 1] - prefix[i]
+
+        # dp[i][j][m]: 区间[i,j]合成m堆的最小代价
+        dp = [[[inf] * (k + 1) for _ in range(n)] for _ in range(n)]
+
+        for i in range(n):
+            dp[i][i][1] = 0
+
+        for length in range(2, n + 1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+
+                # 合成2~k堆
+                for m in range(2, k + 1):
+                    for p in range(i, j):
+                        dp[i][j][m] = min(
+                            dp[i][j][m],
+                            dp[i][p][1] + dp[p + 1][j][m - 1]
+                        )
+
+                # k堆 -> 1堆
+                dp[i][j][1] = dp[i][j][k] + get_sum(i, j)
+
+        return dp[0][n - 1][1]
 ```
 
 + 时间复杂度：$O(N^3K)$
@@ -2379,6 +3657,21 @@ class Solution {
         return dp[0][n - 1] > 0;
     }
 };
+```
+
+```python
+from typing import List
+
+class Solution:
+    def stoneGame(self, piles: List[int]) -> bool:
+        n = len(piles)
+        dp = [[0] * n for _ in range(n)]
+        for i, pile in enumerate(piles):
+            dp[i][i] = pile
+        for i in range(n - 2, -1, -1):
+            for j in range(i + 1, n):
+                dp[i][j] = max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1])
+        return dp[0][n - 1] > 0
 ```
 
 ### 解法2：博弈
@@ -2454,6 +3747,24 @@ class Solution {
 };
 ```
 
+```python
+from typing import Optional
+
+class Solution:
+    def diameterOfBinaryTree(self, root: Optional[TreeNode]) -> int:
+        res = 0
+        def dfs(root):
+            if root is None:
+                return -1
+            left_len = dfs(root.left)
+            right_len = dfs(root.right)
+            nonlocal res
+            res = max(res, left_len + right_len + 2)
+            return max(left_len, right_len) + 1
+        dfs(root)
+        return res
+```
+
 ## 124.二叉树中的最大路径和[困难]*
 
 ### 链接
@@ -2495,6 +3806,25 @@ class Solution {
         return res;
     }
 };
+```
+
+```python
+from math import inf
+from typing import Optional
+
+class Solution:
+    def maxPathSum(self, root: Optional[TreeNode]) -> int:
+        res = -inf # 节点中可能全是负的,所以要初始化成负无穷
+        def dfs(root):
+            if root is None:
+                return 0
+            left_val = dfs(root.left)
+            right_val = dfs(root.right)
+            nonlocal res
+            res = max(res, left_val + right_val + root.val)
+            return max(max(left_val, right_val) + root.val, 0)
+        dfs(root)
+        return res
 ```
 
 ## 2246.相邻字符不同的最长路径[困难]*
@@ -2550,6 +3880,30 @@ class Solution {
 };
 ```
 
+```python
+from typing import List
+
+class Solution:
+    def longestPath(self, parent: List[int], s: str) -> int:
+        n = len(parent)
+        g =[[] for _ in range(n)]
+        # 记录一下每个节点的子节点
+        for i in range(1, n):
+            g[parent[i]].append(i)
+        res = 0
+        def dfs(x):
+            nonlocal res
+            x_len = 0 # 当前节点到所有子节点的最大路径长度
+            for y in g[x]:
+                y_len = dfs(y) + 1 # 获取子节点 y 的最长路径长度并加 1 (表示从x到y的边)
+                if s[y] != s[x]: # 相邻字符不一样
+                    res = max(res, x_len + y_len)
+                    x_len = max(x_len, y_len)
+            return x_len
+        dfs(0)
+        return res + 1 # 节点数=边数+1
+```
+
 ## 337.打家劫舍 III[中等]*
 
 ### 链接
@@ -2590,6 +3944,22 @@ class Solution {
         return max(choose, skip);
     }
 };
+```
+
+```python
+from typing import Optional
+
+class Solution:
+    def rob(self, root: Optional[TreeNode]) -> int:
+        def dfs(node):
+            if node is None:
+                return 0, 0
+            left_rob, left_not_rob = dfs(node.left)
+            right_rob, right_not_rob = dfs(node.right)
+            rob = left_not_rob + right_not_rob + node.val
+            not_rob = max(left_rob, left_not_rob) + max(right_rob, right_not_rob)
+            return rob, not_rob
+        return max(dfs(root))
 ```
 
 ## 968.监控二叉树[困难]*
@@ -2658,6 +4028,25 @@ class Solution {
         return min(state[0], state[2]);
     }
 };
+```
+
+```python
+from math import inf
+from typing import Optional
+
+class Solution:
+    def minCameraCover(self, root: Optional[TreeNode]) -> int:
+        def dfs(node):
+            if node is None:
+                return inf, 0, 0
+            left_choose, left_by_father, left_by_children = dfs(node.left)
+            right_choose, right_by_father, right_by_children = dfs(node.right)
+            choose = min(left_choose, left_by_father, left_by_children) + min(right_choose, right_by_father, right_by_children) + 1
+            by_father = min(left_choose, left_by_children) + min(right_choose, right_by_children)
+            by_children = min(left_choose + right_by_children, left_by_children + right_choose, left_choose + right_choose)
+            return choose, by_father, by_children
+        choose, _, by_children = dfs(root)
+        return min(choose, by_children)
 ```
 
 ### 思考题

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>链表 · C++ 刷题笔记</title><meta name="description" content="基础操作 · 快慢指针 · 递归">
+<title>链表 · 算法刷题笔记</title><meta name="description" content="基础操作 · 快慢指针 · 递归">
 <link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
 <script defer src="assets/site.js"></script>
@@ -8,11 +8,11 @@
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
 <a class="skip-link" href="#main">跳到正文</a>
-<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html" aria-current="page">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html" aria-current="page">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<a href="index.html" class="crumb">算法刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">刷题笔记</p><h1>链表</h1><p class="subtitle">基础操作 · 快慢指针 · 递归</p></div>
-<article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a></p><details class="code-conventions"><summary>C++ 示例约定</summary><p>示例采用 C++17，省略标准库头文件与 <code>using namespace std;</code>。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。标为“文本”的块是输入、输出或示意；其余 C++ 片段按所在小节的上下文使用。</p></details><h1 id="基础操作">基础操作</h1>
+<article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a></p><details class="code-conventions"><summary>代码示例约定</summary><p>使用 C++ / Python 标签切换同一解法。C++ 采用 C++17，省略标准库头文件与 <code>using namespace std;</code>；Python 采用 3.10+，包含所需标准库导入。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。输入、输出、框架及局部片段按所在小节的上下文使用。</p></details><h1 id="基础操作">基础操作</h1>
 <p>链表的很多操作都要涉及多个指针的操作，我觉得比较核心的有：</p>
 <ul>
 <li>对于单链表而言，由于每个节点只有指向下一个节点的指针，因此所有的<strong>增删元素都是对当前节点的下一节点进行操作</strong></li>
@@ -28,7 +28,7 @@
 <h3 id="思路">思路</h3>
 <p>反转链表也就是把原本从<code>pre</code>指向<code>cur</code>的指针反转成从<code>cur</code>指向<code>pre</code>的指针，很自然地就需要使用双指针（一个巴掌拍不响）,<code>cur</code>是我们当前正在处理的节点，（对于第一个节点<code>pre=NULL</code>，对于最后一个节点<code>cur=NULL</code>），此外我们还需要<code>nxt</code>来记录一下下一个<code>cur</code>，不然我们把<code>cur</code>的next指针反转过来了就没法遍历下一个节点了。</p>
 <h3 id="解法">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-0-cpp-tab" aria-controls="example-0-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-0-python-tab" aria-controls="example-0-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-0-cpp" aria-labelledby="example-0-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">reverseList</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="k">pre</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
@@ -42,7 +42,21 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">pre</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-0-python" aria-labelledby="example-0-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reverseList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="n">pre</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">cur</span><span class="p">:</span>
+            <span class="n">nxt</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">pre</span>
+            <span class="n">pre</span> <span class="o">=</span> <span class="n">cur</span>
+            <span class="n">cur</span> <span class="o">=</span> <span class="n">nxt</span>
+        <span class="k">return</span> <span class="n">pre</span>
+</pre></div>
+</div></div>
 
 <h2 id="92-反转链表-ii-中等">92.反转链表 II[中等]*</h2>
 <h3 id="链接_1">链接</h3>
@@ -55,7 +69,7 @@
 <h3 id="思路_1">思路</h3>
 <p>遍历时记录leftPre，leftNode，在left和right之间反转链表，到rightNode时记录rightNext，然后修改leftPre，leftNode，rightNode，rightNext之间的关系即可，即修改leftPre-&gt;rightNode, leftNode -&gt; rightNext这两条边。</p>
 <h3 id="解法_1">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-1-cpp-tab" aria-controls="example-1-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-1-python-tab" aria-controls="example-1-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-1-cpp" aria-labelledby="example-1-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">reverseBetween</span><span class="p">(</span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">left</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">right</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">temp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">left</span><span class="p">;</span>
@@ -83,7 +97,22 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">dummyHead</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-1-python" aria-labelledby="example-1-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reverseBetween</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">):</span>
+        <span class="n">dummy</span> <span class="o">=</span> <span class="n">ListNode</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">head</span><span class="p">)</span>
+        <span class="n">pre</span> <span class="o">=</span> <span class="n">dummy</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">left</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span> <span class="n">pre</span> <span class="o">=</span> <span class="n">pre</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">left_pre</span><span class="p">,</span> <span class="n">left_node</span> <span class="o">=</span> <span class="n">pre</span><span class="p">,</span> <span class="n">pre</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">cur</span><span class="p">,</span> <span class="n">pre</span> <span class="o">=</span> <span class="n">left_node</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">left_node</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">):</span>
+            <span class="n">nxt</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">pre</span>
+            <span class="n">pre</span><span class="p">,</span> <span class="n">cur</span> <span class="o">=</span> <span class="n">cur</span><span class="p">,</span> <span class="n">nxt</span>
+        <span class="n">left_pre</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">left_node</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">pre</span><span class="p">,</span> <span class="n">cur</span>
+        <span class="k">return</span> <span class="n">dummy</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div></div>
 
 <h2 id="25-k个一组翻转链表-困难">25.K个一组翻转链表[困难]*</h2>
 <h3 id="链接_2">链接</h3>
@@ -96,7 +125,7 @@
 <p><code>k</code> 是一个正整数，它的值小于或等于链表的长度。如果节点总数不是 <code>k</code> 的整数倍，那么请将最后剩余的节点保持原有顺序。</p>
 <p>你不能只是单纯的改变节点内部的值，而是需要实际进行节点交换。</p>
 <h3 id="解法_2">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-2-cpp-tab" aria-controls="example-2-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-2-python-tab" aria-controls="example-2-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-2-cpp" aria-labelledby="example-2-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">reverseKGroup</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">k</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
@@ -122,7 +151,38 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">dummy</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-2-python" aria-labelledby="example-2-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">getLength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">head</span><span class="p">:</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">res</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">reverseKGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">],</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getLength</span><span class="p">(</span><span class="n">head</span><span class="p">)</span>
+        <span class="n">dummyHead</span> <span class="o">=</span> <span class="n">ListNode</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">head</span><span class="p">)</span>
+        <span class="n">leftPre</span> <span class="o">=</span> <span class="n">dummyHead</span>
+        <span class="k">while</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">pre</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">cur</span> <span class="o">=</span> <span class="n">leftPre</span><span class="o">.</span><span class="n">next</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                <span class="n">nxt</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">next</span>
+                <span class="n">cur</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">pre</span>
+                <span class="n">pre</span> <span class="o">=</span> <span class="n">cur</span>
+                <span class="n">cur</span> <span class="o">=</span> <span class="n">nxt</span>
+            <span class="c1"># 此时rightNxt指向cur/nxt</span>
+            <span class="n">leftNode</span> <span class="o">=</span> <span class="n">leftPre</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">leftNode</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">cur</span>
+            <span class="n">leftPre</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">pre</span>
+            <span class="n">leftPre</span> <span class="o">=</span> <span class="n">leftNode</span>
+            <span class="n">n</span> <span class="o">-=</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="n">dummyHead</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div></div>
 
 <h2 id="237-删除链表中的节点-中等">237.删除链表中的节点[中等]*</h2>
 <h3 id="链接_3">链接</h3>
@@ -144,7 +204,7 @@
 <h3 id="思路_2">思路</h3>
 <p>这个题看起来很反直觉，在单链表中删除一个节点，还不让我们知道上一个节点，这根本做不到嘛！但细看题目，<strong>所有节点的值唯一</strong>，<strong>不用从内存中删除</strong>，似乎也暗示着我们只要把给定节点的值给它删掉即可（有点脑筋急转弯了）。题目又说了删除<code>node</code>前后所有值顺序不变，那么最简单的方法就是把<code>node</code>节点的下一个节点的值覆盖<code>node</code>，然后把下一个节点物理删除。</p>
 <h3 id="解法_3">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-3-cpp-tab" aria-controls="example-3-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-3-python-tab" aria-controls="example-3-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-3-cpp" aria-labelledby="example-3-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">deleteNode</span><span class="p">(</span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">node</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">val</span><span class="p">;</span>
@@ -153,7 +213,13 @@
 <span class="w">        </span><span class="k">delete</span><span class="w"> </span><span class="n">nxt</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-3-python" aria-labelledby="example-3-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deleteNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="n">node</span><span class="o">.</span><span class="n">val</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">val</span>
+        <span class="n">node</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div></div>
 
 <h2 id="21-合并两个有序链表-简单">21.合并两个有序链表[简单]</h2>
 <h3 id="链接_4">链接</h3>
@@ -163,7 +229,7 @@
 <h3 id="题目_4">题目</h3>
 <p>将两个升序链表合并为一个新的 <strong>升序</strong> 链表并返回。新链表是通过拼接给定的两个链表的所有节点组成的。 </p>
 <h3 id="解法_4">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-4-cpp-tab" aria-controls="example-4-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-4-python-tab" aria-controls="example-4-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-4-cpp" aria-labelledby="example-4-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">mergeTwoLists</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">list1</span><span class="p">,</span><span class="w"> </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">list2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="n">dummy</span><span class="p">;</span>
@@ -182,7 +248,25 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">dummy</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-4-python" aria-labelledby="example-4-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mergeTwoLists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list1</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">],</span> <span class="n">list2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="n">dummyHead</span> <span class="o">=</span> <span class="n">ListNode</span><span class="p">()</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">dummyHead</span>
+        <span class="k">while</span> <span class="n">list1</span> <span class="ow">and</span> <span class="n">list2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">list1</span><span class="o">.</span><span class="n">val</span> <span class="o">&lt;=</span> <span class="n">list2</span><span class="o">.</span><span class="n">val</span><span class="p">:</span>
+                <span class="n">prev</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">list1</span>
+                <span class="n">list1</span> <span class="o">=</span> <span class="n">list1</span><span class="o">.</span><span class="n">next</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prev</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">list2</span>
+                <span class="n">list2</span> <span class="o">=</span> <span class="n">list2</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">prev</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">list1</span> <span class="k">if</span> <span class="n">list1</span> <span class="k">else</span> <span class="n">list2</span>
+        <span class="k">return</span> <span class="n">dummyHead</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div></div>
 
 <h2 id="160-相交链表-简单">160.相交链表[简单]</h2>
 <h3 id="链接_5">链接</h3>
@@ -199,7 +283,7 @@
 <h3 id="思路_3">思路</h3>
 <p>如果不限空间复杂度，直接用哈希表就行。如果限制常量空间，我觉得就有一丢丢难了，但如果刷过了，就很简单了。先分别从两个头节点开始遍历各自的链表，求出链表的长度，然后求出二者的长度差，让长的先走几步，对齐之后二者链表长度相等，那么接下来直接遍历就行。</p>
 <h3 id="解法_5">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-5-cpp-tab" aria-controls="example-5-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-5-python-tab" aria-controls="example-5-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-5-cpp" aria-labelledby="example-5-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">getIntersectionNode</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">headA</span><span class="p">,</span><span class="w"> </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">headB</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
@@ -224,7 +308,33 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">p</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-5-python" aria-labelledby="example-5-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">getLength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">head</span><span class="p">:</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">length</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">length</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">getIntersectionNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">headA</span><span class="p">:</span> <span class="n">ListNode</span><span class="p">,</span> <span class="n">headB</span><span class="p">:</span> <span class="n">ListNode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getLength</span><span class="p">(</span><span class="n">headA</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getLength</span><span class="p">(</span><span class="n">headB</span><span class="p">)</span>
+        <span class="n">p</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">headA</span><span class="p">,</span> <span class="n">headB</span>
+        <span class="k">while</span> <span class="n">m</span> <span class="o">&gt;</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">m</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="n">m</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="n">p</span> <span class="o">!=</span> <span class="n">q</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">return</span> <span class="n">p</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(m+n)\)</span></li>
@@ -258,7 +368,7 @@
 <p>或者遍历两边链表，第一次拿到节点总数<code>N</code>，第二次遍历到<code>N/2</code>的位置，时间复杂度<span class="math">\(O(2N)\)</span>，空间复杂度<span class="math">\(O(1)\)</span>。</p>
 <p>中间结点我们可以看做是在链表中<strong>控制距离</strong>（中间结点到头/尾结点的距离为链表长度的一半），因此可以考虑使用快慢指针。快指针每次走两步，慢指针每次走一步，这样当快指针走到末尾时，慢指针刚好在链表中间。</p>
 <h3 id="解法_6">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-6-cpp-tab" aria-controls="example-6-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-6-python-tab" aria-controls="example-6-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-6-cpp" aria-labelledby="example-6-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">middleNode</span><span class="p">(</span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">fast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
@@ -270,14 +380,21 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">slow</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-6-python" aria-labelledby="example-6-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">middleNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">fast</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="p">:</span> <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">return</span> <span class="n">slow</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N)\)</span></li>
 <li>空间复杂度：<span class="math">\(O(1)\)</span></li>
 </ul>
 <p>上面的代码返回的是中间靠右边的节点，下面的代码返回的是靠左边的节点</p>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-7-cpp-tab" aria-controls="example-7-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-7-python-tab" aria-controls="example-7-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-7-cpp" aria-labelledby="example-7-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">middleNode</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">head</span><span class="p">)</span>
@@ -291,7 +408,14 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">slow</span><span class="p">;</span><span class="w"> </span><span class="c1">// 偶数长度时返回前一个中点，用于切分链表。</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-7-python" aria-labelledby="example-7-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">middleNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">fast</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span><span class="p">:</span> <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">return</span> <span class="n">slow</span>  <span class="c1"># 偶数长度时返回前一个中点。</span>
+</pre></div>
+</div></div>
 
 <h2 id="141-环形链表-简单">141.环形链表[简单]*</h2>
 <h3 id="链接_7">链接</h3>
@@ -306,7 +430,7 @@
 <h3 id="思路_5">思路</h3>
 <p>判断链表是否有环，其实就是看有没有重复元素，符合使用哈希表的特征。不过哈希表需要使用额外<span class="math">\(O(N)\)</span>的空间，在链表中我们可以使用快慢指针进行优化（龟兔赛跑算法）。同样快指针每次走两步，慢指针每次走一步，如果有环，那么快指针一定能追上慢指针，如果快指针变成<code>NULL</code>了，说明没有环。</p>
 <h3 id="解法_7">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-8-cpp-tab" aria-controls="example-8-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-8-python-tab" aria-controls="example-8-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-8-cpp" aria-labelledby="example-8-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasCycle</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">slow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">fast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
@@ -320,7 +444,16 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-8-python" aria-labelledby="example-8-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hasCycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">fast</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="p">:</span>
+            <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+            <span class="k">if</span> <span class="n">slow</span> <span class="ow">is</span> <span class="n">fast</span><span class="p">:</span> <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N)\)</span></li>
@@ -346,7 +479,7 @@
 有了 a=c+(n−1)(b+c) 的等量关系，我们会发现：从相遇点到入环点的距离加上 n−1 圈的环长，恰好等于从链表头部到入环点的距离。</p>
 <p>因此，当发现 slow 与 fast 相遇时，我们再额外使用一个指针 ptr。起始，它指向链表头部；随后，它和 slow 每次向后移动一个位置。最终，它们会在入环点相遇。</p>
 <h3 id="解法_8">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-9-cpp-tab" aria-controls="example-9-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-9-python-tab" aria-controls="example-9-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-9-cpp" aria-labelledby="example-9-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">detectCycle</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">slow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
@@ -365,7 +498,23 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-9-python" aria-labelledby="example-9-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detectCycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">fast</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="p">:</span>
+            <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+            <span class="k">if</span> <span class="n">slow</span> <span class="o">==</span> <span class="n">fast</span><span class="p">:</span>
+                <span class="k">while</span> <span class="n">slow</span> <span class="o">!=</span> <span class="n">head</span><span class="p">:</span>
+                    <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span>
+                    <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="n">next</span>
+                <span class="k">return</span> <span class="n">slow</span>
+        <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N)\)</span></li>
@@ -373,24 +522,27 @@
 </ul>
 <h2 id="143-重排链表-中等">143.重排链表[中等]*</h2>
 <p>给定一个单链表 <code>L</code> 的头节点 <code>head</code> ，单链表 <code>L</code> 表示为：</p>
-<div class="codehilite"><pre><span></span><code>L0 → L1 → … → Ln - 1 → Ln
-</code></pre></div>
+<div class="codehilite"><pre><span></span>L0 → L1 → … → Ln - 1 → Ln
+</pre></div>
+
 
 <p>请将其重新排列后变为：</p>
-<div class="codehilite"><pre><span></span><code>L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
-</code></pre></div>
+<div class="codehilite"><pre><span></span>L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
+</pre></div>
+
 
 <p>不能只是单纯的改变节点内部的值，而是需要实际的进行节点交换。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://pic.leetcode-cn.com/1626420311-PkUiGI-image.png" /></p>
-<div class="codehilite"><pre><span></span><code>输入：head = [1,2,3,4]
+<div class="codehilite"><pre><span></span>输入：head = [1,2,3,4]
 输出：[1,4,2,3]
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="思路_7">思路</h3>
 <p>这个题还是很tricky的，先把链表从中间分成两半，把后一半的链表全部翻转过来，例如上面的例子就变成了<code>[1-&gt;2-&gt;3&lt;-4]</code>，接下来用两个指针分别从两头交错合并成一个链表即可。（即876题和206题的结合）</p>
 <h3 id="解法_9">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-10-cpp-tab" aria-controls="example-10-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-10-python-tab" aria-controls="example-10-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-10-cpp" aria-labelledby="example-10-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">middleNode</span><span class="p">(</span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="o">*</span><span class="w"> </span><span class="n">fast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
@@ -424,7 +576,24 @@
 <span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-10-python" aria-labelledby="example-10-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reorderList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">head</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">return</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">fast</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="p">:</span> <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">pre</span><span class="p">,</span> <span class="n">cur</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slow</span>
+        <span class="k">while</span> <span class="n">cur</span><span class="p">:</span>
+            <span class="n">nxt</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">pre</span>
+            <span class="n">pre</span><span class="p">,</span> <span class="n">cur</span> <span class="o">=</span> <span class="n">cur</span><span class="p">,</span> <span class="n">nxt</span>
+        <span class="n">head2</span> <span class="o">=</span> <span class="n">pre</span>
+        <span class="k">while</span> <span class="n">head2</span><span class="o">.</span><span class="n">next</span><span class="p">:</span>
+            <span class="n">nxt</span><span class="p">,</span> <span class="n">nxt2</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">head2</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">head</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="n">head2</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">head2</span><span class="p">,</span> <span class="n">nxt</span>
+            <span class="n">head</span><span class="p">,</span> <span class="n">head2</span> <span class="o">=</span> <span class="n">nxt</span><span class="p">,</span> <span class="n">nxt2</span>
+</pre></div>
+</div></div>
 
 <h2 id="19-删除链表的倒数第n个结点-中等">19.删除链表的倒数第N个结点[中等]*</h2>
 <h3 id="链接_9">链接</h3>
@@ -441,7 +610,7 @@
 <h3 id="思路_8">思路</h3>
 <p>倒数第N个结点属于典型的<strong>控制距离</strong>类型，可以先让快指针移动N步，然后快慢指针同时移动，当快指针到达末尾时，慢指针刚好指向倒数第N个结点。</p>
 <h3 id="解法_10">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-11-cpp-tab" aria-controls="example-11-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-11-python-tab" aria-controls="example-11-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-11-cpp" aria-labelledby="example-11-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">removeNthFromEnd</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="nf">dummy</span><span class="p">(</span><span class="mi">-1</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">);</span>
@@ -457,7 +626,24 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">dummy</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-11-python" aria-labelledby="example-11-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">removeNthFromEnd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">],</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="n">dummyHead</span> <span class="o">=</span> <span class="n">ListNode</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">head</span><span class="p">)</span> <span class="c1"># 去掉删除头节点的特殊情况</span>
+        <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">dummyHead</span><span class="p">,</span> <span class="n">dummyHead</span>
+        <span class="k">while</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="p">:</span>
+            <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span>
+        <span class="c1"># 此时slow指向倒数第N+1个结点</span>
+        <span class="n">slow</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">return</span> <span class="n">dummyHead</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div></div>
 
 <h1 id="递归">递归</h1>
 <h2 id="焚诀_1">焚诀</h2>
@@ -477,7 +663,7 @@
 <p>这个题是简单题，我们可以用一些暴力的方法做出来，例如遍历链表然后把元素全存到数组里，然后再用双指针判断数组是否回文。对于单链表，我们的常规思路都是用递推的思路顺着链往后处理，想要倒着处理是做不到的。这道题一个很天才的想法在于我们可以使用递归，在“递”的过程是顺着链往后走的，到“归”的时候就是倒着处理了。</p>
 <p>假设有一个递归函数dfs，我们沿着链表一直调用就能到达最后一个节点了，那么我们是不是可以拿这个节点和头节点开始比较了，所以额外需要一个指针left指向头节点（还是类似双指针的思路，不过right指针是在“归”的过程中往前走的）。递归到的当前节点就是right指针指向的位置，如果它的值和left指向的值不相等，可以直接返回false，我们期望整个dfs都应该是false的，所以前一个节点如果发现后面的节点返回了false，就继续返回false传播回去。如果二者的值相等，那么left指针就往后走一步，right指针返回true，那么就会递归到前一个节点去，前一个节点看到后面的节点返回true，就知道后面的节点都是匹配的，那么我们就继续比较当前节点即right指针和left指针指的值是否相等。</p>
 <h3 id="解法_11">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-12-cpp-tab" aria-controls="example-12-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-12-python-tab" aria-controls="example-12-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-12-cpp" aria-labelledby="example-12-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">isPalindrome</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">left</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">head</span><span class="p">;</span>
@@ -492,7 +678,25 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">dfs</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span><span class="w"> </span><span class="n">head</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-12-python" aria-labelledby="example-12-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">isPalindrome</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">dfs</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">dfs</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">next</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+                <span class="k">nonlocal</span> <span class="n">left</span>
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">val</span> <span class="o">!=</span> <span class="n">left</span><span class="o">.</span><span class="n">val</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+                <span class="c1"># left和right匹配成功,left往后走一步,right在递归回去时相当于往前走一步</span>
+                <span class="n">left</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">next</span>
+            <span class="k">return</span> <span class="kc">True</span> <span class="c1"># 空节点返回True从而开始归</span>
+        <span class="k">return</span> <span class="n">dfs</span><span class="p">(</span><span class="n">head</span><span class="p">)</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N)\)</span></li>
@@ -510,7 +714,7 @@
 <p>虽然题目没有限制复杂度，但是如果空间复杂度允许<span class="math">\(O(N)\)</span>，那就是简单题了，直接转成数组做就行了。排序时间为<span class="math">\(O(N\log N)\)</span>的算法有快排、堆排、归并，在链表中显然只能用归并排序，自顶向下的归并空间复杂度是<span class="math">\(O(\log N)\)</span>，也就是递归的栈开销。<a href="linked-lists.html#876-链表的中间结点-简单">876.链表的中间结点</a> 和 <a href="linked-lists.html#21-合并两个有序链表-简单">21.合并两个有序链表</a> 的结合。</p>
 <p>也可以改成自底向上的归并，先计算整个链表的长度，然后按1、2、4...的步长每次切两个链表出来归并，直到步长大于链表长度，空间就是<span class="math">\(O(1)\)</span>了，感觉也没必要，就是递归变迭代嘛。</p>
 <h3 id="解法_12">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-13-cpp-tab" aria-controls="example-13-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-13-python-tab" aria-controls="example-13-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-13-cpp" aria-labelledby="example-13-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="nf">merge</span><span class="p">(</span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">left</span><span class="p">,</span><span class="w"> </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">right</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="n">dummy</span><span class="p">;</span>
 <span class="w">        </span><span class="n">ListNode</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">dummy</span><span class="p">;</span>
@@ -543,7 +747,42 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">merge</span><span class="p">(</span><span class="n">sortList</span><span class="p">(</span><span class="n">head</span><span class="p">),</span><span class="w"> </span><span class="n">sortList</span><span class="p">(</span><span class="n">right</span><span class="p">));</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-13-python" aria-labelledby="example-13-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">):</span>
+        <span class="n">dummyHead</span> <span class="o">=</span> <span class="n">ListNode</span><span class="p">()</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="n">dummyHead</span>
+        <span class="k">while</span> <span class="n">left</span> <span class="ow">and</span> <span class="n">right</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">left</span><span class="o">.</span><span class="n">val</span> <span class="o">&lt;=</span> <span class="n">right</span><span class="o">.</span><span class="n">val</span><span class="p">:</span>
+                <span class="n">prev</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">left</span>
+                <span class="n">left</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="n">next</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prev</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">right</span>
+                <span class="n">right</span> <span class="o">=</span> <span class="n">right</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">prev</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">left</span> <span class="k">if</span> <span class="n">left</span> <span class="k">else</span> <span class="n">right</span>
+        <span class="k">return</span> <span class="n">dummyHead</span><span class="o">.</span><span class="n">next</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">middleNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="k">while</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span> <span class="ow">and</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span><span class="p">:</span>
+            <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">.</span><span class="n">next</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">return</span> <span class="n">slow</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">sortList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ListNode</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">head</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">head</span><span class="o">.</span><span class="n">next</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">head</span>
+        <span class="n">mid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">middleNode</span><span class="p">(</span><span class="n">head</span><span class="p">)</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="n">mid</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">mid</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sortList</span><span class="p">(</span><span class="n">head</span><span class="p">)</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sortList</span><span class="p">(</span><span class="n">right</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N\log N)\)</span></li>
@@ -568,14 +807,15 @@
 <p>你的代码 <strong>只</strong> 接受原链表的头节点 <code>head</code> 作为传入参数。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://assets.leetcode.cn/aliyun-lc-upload/uploads/2020/01/09/e1.png" /></p>
-<div class="codehilite"><pre><span></span><code>输入：head = [[7,null],[13,0],[11,4],[10,2],[1,0]]
+<div class="codehilite"><pre><span></span>输入：head = [[7,null],[13,0],[11,4],[10,2],[1,0]]
 输出：[[7,null],[13,0],[11,4],[10,2],[1,0]]
-</code></pre></div>
+</pre></div>
+
 
 <h3 id="思路_11">思路</h3>
 <p>在做题目时，不要陷入“过度优化”的陷阱，其实遍历两次和遍历一次都是<span class="math">\(O(N)\)</span>复杂度，所以有些题目不要执着于一次遍历就能一步到位，尤其是跟哈希表有关的一些题目。往往第一次遍历用来构建哈希表，第二次遍历利用哈希表<span class="math">\(O(1)\)</span>的查询性能完成收尾工作。这个题还是很明显的，一次遍历肯定做不到，但关键在于如何<strong>在新链表中知道旧链表中random指向的节点对应到新链表中哪个节点</strong>。所以哈希表构建思路就是，在第一次遍历直接拷贝不包括random部分的节点时，记录一个从旧节点到新节点的映射。第二次遍历时再根据这个表，来构建新节点的random指针。</p>
 <h3 id="解法_13">解法</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
+<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-14-cpp-tab" aria-controls="example-14-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-14-python-tab" aria-controls="example-14-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-14-cpp" aria-labelledby="example-14-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="n">Node</span><span class="w"> </span><span class="o">*</span><span class="n">copyRandomList</span><span class="p">(</span><span class="n">Node</span><span class="w"> </span><span class="o">*</span><span class="n">head</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">Node</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="n">Node</span><span class="w"> </span><span class="o">*&gt;</span><span class="w"> </span><span class="n">copies</span><span class="p">;</span>
@@ -591,12 +831,35 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">dummy</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
-</code></pre></div>
+</pre></div>
+</div><div role="tabpanel" id="example-14-python" aria-labelledby="example-14-python-tab" data-language="python" tabindex="0" hidden><div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">copyRandomList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">head</span><span class="p">:</span> <span class="s1">'Optional[Node]'</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">'Optional[Node]'</span><span class="p">:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="n">dummyHead</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">dummyHead</span>
+        <span class="nb">dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span> <span class="c1"># old node -&gt; new node</span>
+        <span class="k">while</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">q</span><span class="o">.</span><span class="n">next</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">val</span><span class="p">)</span>
+            <span class="nb">dict</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">next</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">head</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">dummyHead</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">while</span> <span class="n">p</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">random</span><span class="p">:</span>
+                <span class="n">q</span><span class="o">.</span><span class="n">random</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">random</span><span class="p">]</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">next</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">next</span>
+        <span class="k">return</span> <span class="n">dummyHead</span><span class="o">.</span><span class="n">next</span>
+</pre></div>
+</div></div>
 
 <ul>
 <li>时间复杂度：<span class="math">\(O(N)\)</span></li>
 <li>空间复杂度：<span class="math">\(O(N)\)</span></li>
-</ul></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；实现统一为 C++17。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-1" href="#基础操作">基础操作</a><a class="level-2" href="#206-反转链表-简单">206.反转链表[简单]*</a><a class="level-2" href="#92-反转链表-ii-中等">92.反转链表 II[中等]*</a><a class="level-2" href="#25-k个一组翻转链表-困难">25.K个一组翻转链表[困难]*</a><a class="level-2" href="#237-删除链表中的节点-中等">237.删除链表中的节点[中等]*</a><a class="level-2" href="#21-合并两个有序链表-简单">21.合并两个有序链表[简单]</a><a class="level-2" href="#160-相交链表-简单">160.相交链表[简单]</a><a class="level-1" href="#快慢双指针">快慢双指针</a><a class="level-2" href="#焚诀">焚诀</a><a class="level-2" href="#876-链表的中间结点-简单">876.链表的中间结点[简单]*</a><a class="level-2" href="#141-环形链表-简单">141.环形链表[简单]*</a><a class="level-2" href="#142-环形链表-ii-中等">142.环形链表 II[中等]*</a><a class="level-2" href="#143-重排链表-中等">143.重排链表[中等]*</a><a class="level-2" href="#19-删除链表的倒数第n个结点-中等">19.删除链表的倒数第N个结点[中等]*</a><a class="level-1" href="#递归">递归</a><a class="level-2" href="#焚诀_1">焚诀</a><a class="level-2" href="#234-回文链表-简单">234.回文链表[简单]</a><a class="level-2" href="#148-排序链表-中等">148.排序链表[中等]</a><a class="level-1" href="#哈希表">哈希表</a><a class="level-2" href="#138-随机链表的复制-中等">138.随机链表的复制[中等]</a></nav></aside></div>
+</ul></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-1" href="#基础操作">基础操作</a><a class="level-2" href="#206-反转链表-简单">206.反转链表[简单]*</a><a class="level-2" href="#92-反转链表-ii-中等">92.反转链表 II[中等]*</a><a class="level-2" href="#25-k个一组翻转链表-困难">25.K个一组翻转链表[困难]*</a><a class="level-2" href="#237-删除链表中的节点-中等">237.删除链表中的节点[中等]*</a><a class="level-2" href="#21-合并两个有序链表-简单">21.合并两个有序链表[简单]</a><a class="level-2" href="#160-相交链表-简单">160.相交链表[简单]</a><a class="level-1" href="#快慢双指针">快慢双指针</a><a class="level-2" href="#焚诀">焚诀</a><a class="level-2" href="#876-链表的中间结点-简单">876.链表的中间结点[简单]*</a><a class="level-2" href="#141-环形链表-简单">141.环形链表[简单]*</a><a class="level-2" href="#142-环形链表-ii-中等">142.环形链表 II[中等]*</a><a class="level-2" href="#143-重排链表-中等">143.重排链表[中等]*</a><a class="level-2" href="#19-删除链表的倒数第n个结点-中等">19.删除链表的倒数第N个结点[中等]*</a><a class="level-1" href="#递归">递归</a><a class="level-2" href="#焚诀_1">焚诀</a><a class="level-2" href="#234-回文链表-简单">234.回文链表[简单]</a><a class="level-2" href="#148-排序链表-中等">148.排序链表[中等]</a><a class="level-1" href="#哈希表">哈希表</a><a class="level-2" href="#138-随机链表的复制-中等">138.随机链表的复制[中等]</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与 STL</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、priority_queue" autocomplete="off"><p id="search-status" role="status">输入题号、题目或 STL 用法</p><div id="search-results"></div></dialog>
