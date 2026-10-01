@@ -82,7 +82,7 @@ async function loadIndex() {
 async function openSearch() {
     dialog.showModal();
     input.focus();
-    status.textContent = searchIndex ? '输入题号、题目或 STL 用法' : '正在加载搜索索引…';
+    status.textContent = searchIndex ? '输入题号、题目或容器 / API 名称' : '正在加载搜索索引…';
     try { await loadIndex(); search(); }
     catch (error) { status.textContent = '搜索索引加载失败，请刷新后重试。'; }
 }
@@ -94,7 +94,7 @@ document.addEventListener('keydown', (event) => {
 function search() {
     results.replaceChildren();
     const query = input.value.trim().toLowerCase();
-    if (!query) { status.textContent = '输入题号、题目或 STL 用法'; return; }
+    if (!query) { status.textContent = '输入题号、题目或容器 / API 名称'; return; }
     if (!searchIndex) return;
     const terms = query.split(/\s+/);
     const matches = searchIndex.map((item) => {

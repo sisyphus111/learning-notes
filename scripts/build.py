@@ -36,7 +36,11 @@ REFERENCES = [
     ('STL/stl-associative-containers.md', 'stl-associative-containers.html', '关联容器', 'map / set · unordered 系列'),
     ('STL/stl-adapters-iterators.md', 'stl-adapters-iterators.html', '适配器与算法', '栈 · 队列 · 堆 · 迭代器 · 标准算法'),
 ]
-PAGES = CHAPTERS + REFERENCES
+PYTHON_REFERENCES = [
+    ('Python/data-structures.md', 'python-data-structures.html', 'Python 基础数据结构',
+     'list · tuple · dict · set · str · 常用标准库容器'),
+]
+PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}
 
 
@@ -173,8 +177,8 @@ def links(html, source):
 
 
 def sidebar(current):
-    result = '<a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a>'
-    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES)]:
+    result = '<a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · 语法</small></span></a>'
+    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 语法参考', PYTHON_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
             active = ' aria-current="page"' if current == output else ''
@@ -184,12 +188,17 @@ def sidebar(current):
     return result
 
 
-def shell(title, current, content, toc='', subtitle='', is_reference=False):
-    kind = 'STL 参考' if is_reference else '刷题笔记'
-    source_note = 'STL 内容选自旧手册，现以 Markdown 维护。' if is_reference else '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。'
+def shell(title, current, content, toc='', subtitle='', reference_kind=''):
+    kind = reference_kind or '刷题笔记'
+    if reference_kind == 'Python 语法参考':
+        source_note = 'Python 标准库用法与易错点，附官方文档链接。'
+    elif reference_kind == 'STL 参考':
+        source_note = 'STL 内容选自旧手册，现以 Markdown 维护。'
+    else:
+        source_note = '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。'
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(title)} · 算法刷题笔记</title><meta name="description" content="{escape(subtitle)}">
+<title>{escape(title if title == '刷题笔记' else title + ' · 刷题笔记')}</title><meta name="description" content="{escape(subtitle)}">
 <link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
 <script>try{{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}}catch(e){{}}</script>
 <script defer src="assets/site.js"></script>
@@ -199,32 +208,33 @@ def shell(title, current, content, toc='', subtitle='', is_reference=False):
 <a class="skip-link" href="#main">跳到正文</a>
 <aside class="sidebar" id="sidebar">{sidebar(current)}</aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">算法刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<a href="index.html" class="crumb">刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">{kind}</p><h1>{escape(title)}</h1><p class="subtitle">{escape(subtitle)}</p></div>
 <article>{content}</article><footer>{source_note}</footer></main>{toc}</div>
 </div>
-<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与 STL</label><button aria-label="关闭搜索">关闭</button></form>
-<input id="search-input" type="search" placeholder="例如：146、滑动窗口、priority_queue" autocomplete="off"><p id="search-status" role="status">输入题号、题目或 STL 用法</p><div id="search-results"></div></dialog>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
 </body></html>'''
 
 
 index = []
 problem_count = 0
 for source, output, title, subtitle in PAGES:
+    reference_kind = 'Python 语法参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
     body, tokens = RENDERED[source]
     # Each chapter starts with a page title; original headings remain available.
     body = links(body, source)
-    references = '<p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a></p>'
-    if source.startswith('STL/'):
+    references = '<p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a> · <a href="python-data-structures.html">Python 数据结构</a></p>'
+    if reference_kind:
         # Avoid repeating the reference's h1 below the page title.
         body = re.sub(r'^<h1[^>]*>.*?</h1>\s*', '', body, count=1, flags=re.S)
     else:
         body = references + '<details class="code-conventions"><summary>代码示例约定</summary><p>使用 C++ / Python 标签切换同一解法。C++ 采用 C++17，省略标准库头文件与 <code>using namespace std;</code>；Python 采用 3.10+，包含所需标准库导入。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。输入、输出、框架及局部片段按所在小节的上下文使用。</p></details>' + body
     top = [item for item in tokens if item['level'] <= 2]
-    if source.startswith('STL/') and top and top[0]['level'] == 1:
+    if reference_kind and top and top[0]['level'] == 1:
         top = top[1:]
     toc = '<aside class="toc"><p>本页目录</p><nav aria-label="本页目录">' + ''.join(f'<a class="level-{item["level"]}" href="#{item["id"]}">{escape(item["name"])}</a>' for item in top) + '</nav></aside>'
-    (ROOT / output).write_text(shell(title, output, body, toc, subtitle, source.startswith('STL/')))
+    (ROOT / output).write_text(shell(title, output, body, toc, subtitle, reference_kind))
     index.append({'title': title, 'chapter': title, 'url': output, 'text': subtitle})
     # Search through headings and their following prose, including STL API names.
     parts = re.split(r'(<h[1-3]\b[^>]*>.*?</h[1-3]>)', body, flags=re.S)
@@ -242,15 +252,16 @@ for source, output, title, subtitle in PAGES:
             problem_title = ''
         search_title = problem_title + ' · ' + label if problem_title and heading.startswith('<h3') else label
         index.append({'title': search_title, 'chapter': title, 'url': output+'#'+match[1], 'text': text})
-        if not source.startswith('STL/') and re.match(r'^\d+\s*\.', label):
+        if not reference_kind and re.match(r'^\d+\s*\.', label):
             problem_count += 1
 
 cards = lambda pages: '<div class="cards">' + ''.join(f'<a class="card" href="{output}"><h3>{title}<span>↗</span></h3><p>{desc}</p></a>' for _, output, title, desc in pages) + '</div>'
 home = f'''<div class="home-lead"><p>从题面找到线索，从思路走到实现。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
+<section class="home-section"><h2>Python 语法参考</h2><p class="section-desc">先掌握基础数据结构，查常用 API、修改行为与容易踩的坑。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
-(ROOT / 'index.html').write_text(shell('算法刷题笔记', 'index.html', home, subtitle='C++ / Python 算法思路与题解，配套常用 STL 写法。'))
+(ROOT / 'index.html').write_text(shell('刷题笔记', 'index.html', home, subtitle='算法思路与题解，配套 C++ STL 和 Python 语法参考。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
 (ROOT / 'assets/code.css').write_text(HtmlFormatter(style='friendly').get_style_defs('.codehilite'))
 print(f'Built {len(PAGES)+1} pages; {problem_count} problem entries; {len(index)} searchable sections.')

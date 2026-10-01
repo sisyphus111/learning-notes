@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Check Python example syntax and run representative cases in Python 3.10+."""
 import ast
+import contextlib
+import io
 import re
 import sys
 from pathlib import Path
@@ -116,7 +118,7 @@ CASES = {
 def main():
     if sys.version_info < (3,10):
         raise SystemExit('Behavior checks require Python 3.10+ for Counter comparisons.')
-    syntax = behavior = 0
+    syntax = behavior = reference_examples = 0
     errors = []
     for path in sorted(ROOT.glob('*/*.md')):
         if path.parent.name == 'STL': continue
@@ -125,6 +127,14 @@ def main():
             try:
                 tree = ast.parse(code)
                 syntax += 1
+                if path.parent.name == 'Python':
+                    expected = re.findall(r'# 输出：(.*)', code)
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output):
+                        exec(compile(tree, str(path), 'exec'), {})
+                    assert output.getvalue().splitlines() == expected, (output.getvalue(), expected)
+                    reference_examples += 1
+                    continue
                 solution = next((node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'Solution'), None)
                 methods = {node.name for node in solution.body if isinstance(node, ast.FunctionDef)} if solution else set()
                 complete = solution is not None
@@ -160,7 +170,7 @@ def main():
             except Exception as error:
                 errors.append(f'{path.relative_to(ROOT)} block {index}: {type(error).__name__}: {error}')
     for error in errors: print(error)
-    print(f'{syntax} Python examples parse; {behavior} documented variants pass behavior checks; {len(errors)} errors.')
+    print(f'{syntax} Python examples parse; {behavior} documented variants pass behavior checks; {reference_examples} reference examples match their printed output; {len(errors)} errors.')
     raise SystemExit(bool(errors))
 
 if __name__ == '__main__': main()

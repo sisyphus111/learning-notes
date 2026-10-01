@@ -1,11 +1,12 @@
-# 算法刷题笔记
+# 刷题笔记
 
-按题型整理的算法思路与 C++17 / Python 3.10+ 实现，配套 STL 速查和容器行为参考。
+按题型整理的算法思路与 C++17 / Python 3.10+ 实现，配套 STL 参考与 Python 语法参考。
 
 **阅读网站：[sisyphus111.github.io/code-notes](https://sisyphus111.github.io/code-notes/)**
 
 - 10 个题型，133 个题目条目；保留「焚诀」、思路推导、复杂度和原有参考链接。
 - 同一解法提供 C++ / Python 标签页，恢复 7 个记忆化搜索小节；运行时间伪造片段仍不收录。
+- Python 语法参考从基础数据结构开始，包含内置容器、deque、Counter、defaultdict、heapq 及复制/可哈希等易错点。
 - 5 个 STL 页面：速查、对象语义、序列容器、关联容器、适配器与算法。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、与个人主页相同的太阳/月亮主题图标及手机阅读。
 
@@ -19,7 +20,7 @@ STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存�
 
 ## 维护方式
 
-编辑各题型目录与 `STL/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
+编辑各题型目录、`STL/` 与 `Python/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
 
 构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
 
@@ -49,7 +50,7 @@ git diff --check
 
 - `check_cpp.py`：分别编译 197 个完整 C++17 示例，提供标准库与题目节点类型的测试前置定义；明确排除非独立片段和 STL 参考片段。
 - `test_examples.py`：直接提取文档代码，运行 155 个实现版本的代表性与边界检查，启用 AddressSanitizer 和 UBSan。其中包含对子数组计数的穷举对照。
-- `check_python.py`：检查全部 209 个 Python 块的语法，并运行 164 个实现版本的代表性用例。需要 Python 3.10+，以支持 `Counter` 的比较语义。
+- `check_python.py`：检查全部 Python 代码块的语法，运行 164 个题解实现版本的代表性用例，并逐段运行 Python 参考页示例、核对打印结果。需要 Python 3.10+，以支持 `Counter` 的比较语义。
 - 验证覆盖编译和上述行为检查，不等于全部题目都经过 LeetCode 在线判题。
 
 旧的 `count.py`、`check.py` 已由网页的条目统计和搜索替代。

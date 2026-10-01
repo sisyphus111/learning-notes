@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Python 基础数据结构 · 刷题笔记</title><meta name="description" content="list · tuple · dict · set · str · 常用标准库容器">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · 语法</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 语法参考</p><nav aria-label="Python 语法参考"><a href="python-data-structures.html" aria-current="page">Python 基础数据结构</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Python 语法参考</p><h1>Python 基础数据结构</h1><p class="subtitle">list · tuple · dict · set · str · 常用标准库容器</p></div>
+<article><p>刷题时先选容器：要按位置访问，用 <code>list</code>；要记录一个固定组合，用 <code>tuple</code>；要按键查值，用 <code>dict</code>；只关心是否出现，用 <code>set</code>；处理文本，用 <code>str</code>。队列、计数和堆则有对应的标准库工具。</p>
+<p>这一页面向 Python 3.10+。示例中的 <code># 输出：</code> 标出实际打印结果，代码块可单独运行。API 行为以 <a href="https://docs.python.org/3.12/library/stdtypes.html">Python 官方内置类型文档</a>为依据。</p>
+<h2 id="先选对容器">先选对容器</h2>
+<table>
+<thead>
+<tr>
+<th>要做什么</th>
+<th>常用结构</th>
+<th>关键区别</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>保存序列、按下标读写、模拟栈</td>
+<td><code>list</code></td>
+<td>有序、可变，保存对元素对象的引用</td>
+</tr>
+<tr>
+<td>保存坐标、状态、固定组合</td>
+<td><code>tuple</code></td>
+<td>序列本身不可变；元素都可哈希时，可作字典键</td>
+</tr>
+<tr>
+<td>记录元素的位置、次数或关联信息</td>
+<td><code>dict</code></td>
+<td>键到值的映射，按插入顺序遍历</td>
+</tr>
+<tr>
+<td>判断是否出现、去重、集合运算</td>
+<td><code>set</code></td>
+<td>元素唯一，没有序列下标，不保证遍历顺序</td>
+</tr>
+<tr>
+<td>保存和处理文本</td>
+<td><code>str</code></td>
+<td>不可变，切片、替换等操作返回字符串结果</td>
+</tr>
+<tr>
+<td>从两端入队、出队</td>
+<td><code>collections.deque</code></td>
+<td>避免 <code>list.pop(0)</code> 的整体搬移</td>
+</tr>
+<tr>
+<td>统计出现次数</td>
+<td><code>collections.Counter</code></td>
+<td>字典式计数，缺失元素的计数为 <code>0</code></td>
+</tr>
+<tr>
+<td>分组、邻接表、自动创建默认值</td>
+<td><code>collections.defaultdict</code></td>
+<td>用 <code>d[key]</code> 读缺失键时会创建默认值</td>
+</tr>
+<tr>
+<td>反复取当前最小元素</td>
+<td><code>heapq</code> + <code>list</code></td>
+<td>列表保存堆，只有堆顶保证是最小值</td>
+</tr>
+</tbody>
+</table>
+<p>如果从 C++ 切过来，先记住：<strong>Python 的赋值通常只是让另一个名字指向同一个对象；不会像复制一个 <code>vector</code> 那样自动得到独立容器。</strong> 切片、<code>copy()</code> 与 <code>list(...)</code> 才会新建外层列表，但通常仍共享其中的对象。</p>
+<h2 id="list-列表">list：列表</h2>
+<h3 id="创建-索引与切片">创建、索引与切片</h3>
+<p>下标从 <code>0</code> 开始，负下标从末尾倒数。切片 <code>a[start:stop:step]</code> 的结束位置不包含在结果中。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>            <span class="c1"># 输出：8 1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>                   <span class="c1"># 输出：[3, 5]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span>          <span class="c1"># 输出：[8, 3] [5, 1]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>                  <span class="c1"># 输出：[1, 5, 3, 8]</span>
+<span class="nb">print</span><span class="p">([</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span><span class="p">)</span>                    <span class="c1"># 输出：[0, 0, 0, 0]</span>
+</pre></div>
+
+
+<p>索引越界会抛出 <code>IndexError</code>；普通切片越过两端会截到有效范围，不会因端点过大报错。列表切片是浅拷贝，长为 <code>k</code> 的切片需要处理 <code>k</code> 个元素，不能把它当作一个免费视图。</p>
+<h3 id="添加-删除与查找">添加、删除与查找</h3>
+<p><code>append(x)</code> 添加一个对象，<code>extend(xs)</code> 逐个添加可迭代对象中的元素。<code>pop(i)</code> 按位置删除并返回元素，<code>remove(x)</code> 删除第一个等于 <code>x</code> 的元素。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span>
+<span class="n">nums</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                       <span class="c1"># 输出：[4, 7, [2, 3]]</span>
+<span class="n">nums</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="n">nums</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                       <span class="c1"># 输出：[4, 7, 2, 3]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>                  <span class="c1"># 输出：3</span>
+<span class="n">nums</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">nums</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>         <span class="c1"># 输出：[4, 2] 1</span>
+</pre></div>
+
+
+<p><code>index(x)</code>、<code>remove(x)</code> 找不到时抛出 <code>ValueError</code>。只想判断是否存在，用 <code>x in nums</code>；反复查找时，应考虑 <code>set</code> 或 <code>dict</code>。删除一段用 <code>del nums[l:r]</code>，清空用 <code>nums.clear()</code>。</p>
+<h3 id="排序-反转与栈">排序、反转与栈</h3>
+<p><code>sort()</code>、<code>reverse()</code> 修改原列表，返回 <code>None</code>；<code>sorted(...)</code> 返回一个新列表。不要把 <code>nums = nums.sort()</code> 写成获取排序结果的方式。<a href="https://docs.python.org/3.12/tutorial/datastructures.html#more-on-lists">官方列表方法说明</a></p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="n">ordered</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">ordered</span><span class="p">)</span>              <span class="c1"># 输出：[5, 2, 4] [2, 4, 5]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="o">.</span><span class="n">sort</span><span class="p">())</span>                <span class="c1"># 输出：None</span>
+<span class="n">nums</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                       <span class="c1"># 输出：[5, 4, 2]</span>
+
+<span class="n">pairs</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">pairs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>  <span class="c1"># 输出：[(1, 9), (2, 8), (2, 3)]</span>
+</pre></div>
+
+
+<p>模拟栈时，用尾部 <code>append()</code>、<code>pop()</code> 和 <code>stack[-1]</code>。后两者要求栈非空，通常先写 <code>if stack:</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+<span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>                  <span class="c1"># 输出：9</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(),</span> <span class="n">stack</span><span class="p">)</span>         <span class="c1"># 输出：9 [6]</span>
+</pre></div>
+
+
+<h3 id="赋值-浅拷贝与二维列表">赋值、浅拷贝与二维列表</h3>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">nums</span>
+<span class="n">copy</span> <span class="o">=</span> <span class="n">nums</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">alias</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span>                 <span class="c1"># 输出：[1, 2, 3] [1, 2]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span> <span class="ow">is</span> <span class="n">nums</span><span class="p">,</span> <span class="n">copy</span> <span class="ow">is</span> <span class="n">nums</span><span class="p">)</span> <span class="c1"># 输出：True False</span>
+</pre></div>
+
+
+<p><code>is</code> 判断是不是同一个对象，<code>判断值是否相等。对数字、字符串、列表等做值比较，用</code>；判断空指针式的哨兵值，用 <code>x is None</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">rows</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+<span class="n">copy</span> <span class="o">=</span> <span class="n">rows</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">copy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span>                 <span class="c1"># 输出：[[1, 9], [2]] [[1, 9], [2]]</span>
+</pre></div>
+
+
+<p>浅拷贝只复制外层：上面的两个列表仍引用同一个第一行。刷题的二维 DP 数组，应该让每行独立创建。<a href="https://docs.python.org/3.12/faq/programming.html#how-do-i-create-a-multidimensional-list">官方 FAQ：二维列表</a></p>
+<div class="codehilite"><pre><span></span><span class="n">bad</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span>               <span class="c1"># 两个位置引用同一行</span>
+<span class="n">bad</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">bad</span><span class="p">)</span>                        <span class="c1"># 输出：[[0, 7, 0], [0, 7, 0]]</span>
+
+<span class="n">good</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+<span class="n">good</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">good</span><span class="p">)</span>                       <span class="c1"># 输出：[[0, 7, 0], [0, 0, 0]]</span>
+</pre></div>
+
+
+<p>遍历时不要一边按原下标向前走、一边从同一列表删除元素：后面的元素会前移，容易漏处理。筛选通常直接新建列表：<code>kept = [x for x in nums if x != 0]</code>；如果题目要求原地操作，再使用双指针。</p>
+<h2 id="tuple-元组">tuple：元组</h2>
+<p>元组适合坐标、边、返回多个结果等固定组合。逗号决定单元素元组；仅写 <code>(7)</code> 仍然是整数。</p>
+<div class="codehilite"><pre><span></span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">point</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>                       <span class="c1"># 输出：3 5</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">((</span><span class="mi">7</span><span class="p">))</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">type</span><span class="p">((</span><span class="mi">7</span><span class="p">,))</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>  <span class="c1"># 输出：int tuple</span>
+
+<span class="n">distance</span> <span class="o">=</span> <span class="p">{(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="mi">1</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">distance</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>            <span class="c1"># 输出：1</span>
+</pre></div>
+
+
+<p>元组不可变，指的是不能替换它的元素位置；如果元素本身是可变对象，该对象仍可修改。</p>
+<div class="codehilite"><pre><span></span><span class="n">state</span> <span class="o">=</span> <span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>                      <span class="c1"># 输出：([1, 2, 4], 3)</span>
+</pre></div>
+
+
+<p><code>tuple</code> 只有在所有元素都可哈希时才能作为 <code>dict</code> 的键或 <code>set</code> 的元素。<code>(1, 2)</code> 可以，<code>([1, 2],)</code> 不可以，因为里面的列表不可哈希。</p>
+<h2 id="dict-字典">dict：字典</h2>
+<h3 id="按键查询-插入与删除">按键查询、插入与删除</h3>
+<p>字典适合 <code>元素 → 次数</code>、<code>值 → 下标</code>、<code>状态 → 结果</code> 等映射。<code>key in d</code> 查的是键，不是值。</p>
+<div class="codehilite"><pre><span></span><span class="n">positions</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'red'</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'blue'</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">positions</span><span class="p">[</span><span class="s1">'red'</span><span class="p">])</span>           <span class="c1"># 输出：2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">positions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'green'</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="c1"># 输出：-1</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'green'</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">)</span>       <span class="c1"># 输出：False</span>
+<span class="n">positions</span><span class="p">[</span><span class="s1">'green'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">positions</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">'blue'</span><span class="p">))</span>      <span class="c1"># 输出：5</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">positions</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>    <span class="c1"># 输出：[('red', 2), ('green', 8)]</span>
+</pre></div>
+
+
+<p><code>d[key]</code> 在键不存在时抛出 <code>KeyError</code>，<code>d.get(key, default)</code> 返回默认值且不插入键；<code>d.pop(key, default)</code> 删除并返回值，缺失时返回默认值。<code>del d[key]</code> 删除但不返回值，键不存在时会报错。</p>
+<h3 id="遍历-计数与分组">遍历、计数与分组</h3>
+<p><code>for key in d</code> 遍历键；键值一起用 <code>d.items()</code>，只看值用 <code>d.values()</code>。字典按插入顺序遍历，<strong>不是按键大小排序</strong>。</p>
+<div class="codehilite"><pre><span></span><span class="n">counts</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'pear'</span><span class="p">,</span> <span class="s1">'apple'</span><span class="p">,</span> <span class="s1">'pear'</span><span class="p">]:</span>
+    <span class="n">counts</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>                     <span class="c1"># 输出：{'pear': 2, 'apple': 1}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">counts</span><span class="p">))</span>             <span class="c1"># 输出：['apple', 'pear']</span>
+</pre></div>
+
+
+<p><code>setdefault(key, default)</code> 适合分组：键存在就返回原来的值，不存在就插入默认值并返回它。这里返回的是字典内那个列表本身。</p>
+<div class="codehilite"><pre><span></span><span class="n">groups</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'aa'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="s1">'cc'</span><span class="p">]:</span>
+    <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word</span><span class="p">),</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>                     <span class="c1"># 输出：{2: ['aa', 'cc'], 1: ['b']}</span>
+</pre></div>
+
+
+<p>遍历字典时不要增删键。需要按条件删除，可以先收集要删除的键，再逐个删除；或新建字典。键和值的浅拷贝与列表类似，<code>d.copy()</code> 不会递归复制里面的可变对象。</p>
+<h2 id="set-与-frozenset-集合">set 与 frozenset：集合</h2>
+<p>集合适合去重、判断是否出现、维护 <code>visited</code>。空集合写 <code>set()</code>，<code>{}</code> 是空字典。<code>set</code> 没有下标，也不保证遍历顺序；需要稳定输出时用 <code>sorted(...)</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">seen</span><span class="o">.</span><span class="n">update</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">7</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">seen</span><span class="p">))</span>               <span class="c1"># 输出：[2, 4, 7]</span>
+<span class="n">seen</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>                   <span class="c1"># 缺失也不报错</span>
+<span class="n">seen</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>                    <span class="c1"># 缺失会抛出 KeyError</span>
+<span class="nb">print</span><span class="p">(</span><span class="mi">4</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">seen</span><span class="p">))</span>        <span class="c1"># 输出：True 2</span>
+</pre></div>
+
+
+<p><code>set.pop()</code> 删除并返回任意一个元素，不是最小值，也不是最后插入的值。</p>
+<div class="codehilite"><pre><span></span><span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">},</span> <span class="p">{</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">a</span> <span class="o">&amp;</span> <span class="n">b</span><span class="p">))</span>              <span class="c1"># 输出：[2, 3]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">))</span>              <span class="c1"># 输出：[1, 2, 3, 4]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">))</span>              <span class="c1"># 输出：[1]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">a</span> <span class="o">^</span> <span class="n">b</span><span class="p">))</span>              <span class="c1"># 输出：[1, 4]</span>
+<span class="nb">print</span><span class="p">({</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span> <span class="o">&lt;=</span> <span class="n">a</span><span class="p">)</span>                <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<p><code>&amp;</code> 是交集，<code>|</code> 是并集，<code>-</code> 是差集，<code>^</code> 是对称差，<code>&lt;=</code> 判断是否为子集。<code>frozenset</code> 是不可变集合，可以用来表示一个与顺序无关的可哈希状态。</p>
+<div class="codehilite"><pre><span></span><span class="n">key</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="s1">'visited'</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cache</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])])</span>    <span class="c1"># 输出：visited</span>
+</pre></div>
+
+
+<h2 id="str-字符串">str：字符串</h2>
+<p>字符串是不可变序列：可以索引、切片、遍历，但不能写 <code>s[i] = 'x'</code>。要反复修改字符，可以先转成列表，最后 <code>''.join(chars)</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'stone'</span>
+<span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'a'</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chars</span><span class="p">),</span> <span class="n">s</span><span class="p">)</span>          <span class="c1"># 输出：atone stone</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">s</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>            <span class="c1"># 输出：ton enots</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'on'</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'x'</span><span class="p">))</span>   <span class="c1"># 输出：2 -1</span>
+</pre></div>
+
+
+<p><code>find()</code> 找不到返回 <code>-1</code>，<code>index()</code> 找不到抛出 <code>ValueError</code>。<code>x in s</code> 判断子串存在。<code>strip()</code> 去掉两端指定字符集合中的字符；不会删除中间字符，也不是删除一个指定的完整前后缀。</p>
+<div class="codehilite"><pre><span></span><span class="n">text</span> <span class="o">=</span> <span class="s1">'  a  b   c  '</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>       <span class="c1"># 输出：['a', 'b', 'c']</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'a,,b'</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">','</span><span class="p">))</span>           <span class="c1"># 输出：['a', '', 'b']</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'-'</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">,</span> <span class="s1">'c'</span><span class="p">]))</span>   <span class="c1"># 输出：a-b-c</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'banana'</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">'na'</span><span class="p">,</span> <span class="s1">'X'</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># 输出：baXna</span>
+</pre></div>
+
+
+<p><code>split()</code> 不传分隔符时按连续空白切分，且省略两端空白造成的空项；显式分隔符会保留空项。构造大量文本时，先收集片段再 <code>join</code>，可以避免依赖循环拼接的性能表现。</p>
+<h2 id="deque-双端队列">deque：双端队列</h2>
+<p>BFS 队列通常用 <code>deque</code>：右端 <code>append()</code> 入队、左端 <code>popleft()</code> 出队。<code>appendleft()</code>、<code>pop()</code> 操作另一端。两端插入、删除大致是 <span class="math">\(O(1)\)</span>，而 <code>list.pop(0)</code> 需要移动后面的元素。<a href="https://docs.python.org/3.12/library/collections.html#collections.deque">官方 deque 文档</a></p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+
+<span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+<span class="n">queue</span><span class="o">.</span><span class="n">appendleft</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">(),</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>  <span class="c1"># 输出：1 9</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">queue</span><span class="p">))</span>                <span class="c1"># 输出：[3, 6]</span>
+</pre></div>
+
+
+<p>要频繁访问中间下标，用 <code>list</code>，不要因为 <code>deque</code> 支持 <code>queue[i]</code> 就把它当作动态数组。</p>
+<h2 id="counter-计数器">Counter：计数器</h2>
+<p><code>Counter(iterable)</code> 直接统计元素出现次数。它是字典的子类，但查询缺失元素返回 <code>0</code>。修改到 <code>0</code> 的键不会自动删除；<code>+counter</code> 会过滤掉零和负计数。<a href="https://docs.python.org/3.12/library/collections.html#collections.Counter">官方 Counter 文档</a></p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="n">counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="s1">'aab'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s1">'a'</span><span class="p">],</span> <span class="n">counts</span><span class="p">[</span><span class="s1">'z'</span><span class="p">])</span>    <span class="c1"># 输出：2 0</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">most_common</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>       <span class="c1"># 输出：[('a', 2)]</span>
+<span class="n">counts</span><span class="p">[</span><span class="s1">'a'</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">2</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'a'</span> <span class="ow">in</span> <span class="n">counts</span><span class="p">)</span>              <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="o">+</span><span class="n">counts</span><span class="p">))</span>             <span class="c1"># 输出：{'b': 1}</span>
+</pre></div>
+
+
+<p>Python 3.10+ 的 <code>Counter</code> 比较把缺失计数当作零，<code>&gt;=</code> 表示逐元素计数包含关系。这与普通列表、元组的字典序比较不同。</p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="n">have</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="s1">'aabbc'</span><span class="p">)</span>
+<span class="n">need</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="s1">'abc'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">have</span> <span class="o">&gt;=</span> <span class="n">need</span><span class="p">)</span>               <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="n">Counter</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>  <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<h2 id="defaultdict-默认值字典">defaultdict：默认值字典</h2>
+<p><code>defaultdict(int)</code> 为缺失键提供 <code>0</code>，<code>defaultdict(list)</code> 为缺失键创建新列表。只有 <code>d[key]</code> 这种缺失键访问触发默认工厂，<code>.get()</code> 和 <code>in</code> 不会。</p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="n">groups</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">groups</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'new'</span><span class="p">),</span> <span class="s1">'new'</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">)</span>  <span class="c1"># 输出：None False</span>
+<span class="n">groups</span><span class="p">[</span><span class="s1">'new'</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">groups</span><span class="p">))</span>               <span class="c1"># 输出：{'new': [4]}</span>
+</pre></div>
+
+
+<p><code>defaultdict</code> 适合邻接表、分组、计数，但在只想查询时要留意隐式插入。<a href="https://docs.python.org/3.12/library/collections.html#collections.defaultdict">官方 defaultdict 文档</a></p>
+<h2 id="heapq-用列表维护小顶堆">heapq：用列表维护小顶堆</h2>
+<p><code>heapq</code> 不是容器类，而是修改普通列表的一组堆操作。<code>heapify()</code> 原地建堆；<code>heappush()</code> 入堆；<code>heappop()</code> 返回并删除堆顶；<code>heap[0]</code> 查看堆顶。堆中其余位置不是排好序的。</p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">heapq</span><span class="w"> </span><span class="kn">import</span> <span class="n">heapify</span><span class="p">,</span> <span class="n">heappush</span><span class="p">,</span> <span class="n">heappop</span>
+
+<span class="n">heap</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="n">heapify</span><span class="p">(</span><span class="n">heap</span><span class="p">)</span>
+<span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">heap</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>                    <span class="c1"># 输出：1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">),</span> <span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">))</span>  <span class="c1"># 输出：1 2</span>
+</pre></div>
+
+
+<p>Python 3.10+ 的通用大顶堆写法是把数值取负后放入小顶堆：</p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">heapq</span><span class="w"> </span><span class="kn">import</span> <span class="n">heapify</span><span class="p">,</span> <span class="n">heappop</span>
+
+<span class="n">heap</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]</span>
+<span class="n">heapify</span><span class="p">(</span><span class="n">heap</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="o">-</span><span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">))</span>             <span class="c1"># 输出：7</span>
+</pre></div>
+
+
+<p>元组按字段从左到右比较，适合 <code>(距离, 节点编号)</code>。如果最后一个字段是无法比较的对象，给它之前加一个唯一编号，避免优先级相同时继续比较对象。<a href="https://docs.python.org/3.12/library/heapq.html">官方 heapq 文档</a></p>
+<h2 id="遍历与真假判断">遍历与真假判断</h2>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">nums</span><span class="p">)))</span>       <span class="c1"># 输出：[(0, 4), (1, 7), (2, 9)]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">])))</span>  <span class="c1"># 输出：[(1, 'a'), (2, 'b')]</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">])</span>  <span class="c1"># 输出：[49, 81]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">bool</span><span class="p">([]),</span> <span class="nb">bool</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">bool</span><span class="p">(</span><span class="s1">''</span><span class="p">))</span>  <span class="c1"># 输出：False True False</span>
+</pre></div>
+
+
+<p><code>enumerate()</code> 同时给出下标和值；<code>zip()</code> 默认在最短输入耗尽时结束；推导式适合筛选或构造容器。空容器为假，<strong>含有一个零的列表 <code>[0]</code> 仍为真</strong>。</p>
+<p>列表、元组、字符串的大小比较是字典序；集合的大小比较是包含关系；<code>Counter</code> 的大小比较是逐元素计数包含关系。不要把这几种 <code>&gt;=</code> 混在一起使用。</p>
+<h2 id="查题解时对应到哪里">查题解时对应到哪里</h2>
+<ul>
+<li><a href="arrays.html">数组</a>：<code>dict</code> 查位置、<code>set</code> 去重、<code>Counter</code> 做滑窗计数。</li>
+<li><a href="graphs.html">图</a>：<code>deque</code> 做 BFS，<code>defaultdict(list)</code> 建邻接表，<code>heapq</code> 做 Dijkstra。</li>
+<li><a href="backtracking.html">回溯</a>：用 <code>list</code> 维护路径，收集答案时用 <code>path.copy()</code> 保存当前快照。</li>
+<li><a href="dynamic-programming.html">动态规划</a>：独立创建二维列表，明确状态、初始化和遍历顺序。</li>
+</ul>
+<h2 id="官方资料">官方资料</h2>
+<ul>
+<li><a href="https://docs.python.org/3.12/tutorial/datastructures.html">Python 教程：数据结构</a></li>
+<li><a href="https://docs.python.org/3.12/library/stdtypes.html">内置类型：序列、集合与字典</a></li>
+<li><a href="https://docs.python.org/3.12/library/collections.html">collections：deque、Counter、defaultdict</a></li>
+<li><a href="https://docs.python.org/3.12/library/heapq.html">heapq：堆操作</a></li>
+</ul></article><footer>Python 标准库用法与易错点，附官方文档链接。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#先选对容器">先选对容器</a><a class="level-2" href="#list-列表">list：列表</a><a class="level-2" href="#tuple-元组">tuple：元组</a><a class="level-2" href="#dict-字典">dict：字典</a><a class="level-2" href="#set-与-frozenset-集合">set 与 frozenset：集合</a><a class="level-2" href="#str-字符串">str：字符串</a><a class="level-2" href="#deque-双端队列">deque：双端队列</a><a class="level-2" href="#counter-计数器">Counter：计数器</a><a class="level-2" href="#defaultdict-默认值字典">defaultdict：默认值字典</a><a class="level-2" href="#heapq-用列表维护小顶堆">heapq：用列表维护小顶堆</a><a class="level-2" href="#遍历与真假判断">遍历与真假判断</a><a class="level-2" href="#查题解时对应到哪里">查题解时对应到哪里</a><a class="level-2" href="#官方资料">官方资料</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>
