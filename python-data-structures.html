@@ -123,6 +123,141 @@
 </pre></div>
 
 
+<h3 id="交换两个位置-先求右边-再写左边">交换两个位置：先求右边，再写左边</h3>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+<span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+<span class="n">nums</span><span class="p">[</span><span class="n">left</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="n">right</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">right</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="n">left</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[20, 10]</span>
+</pre></div>
+
+
+<p>这是<strong>多目标赋值与解包</strong>。执行时，先从左到右求出右边的两个结果，保留它们所引用的对象，再依次赋给左边的两个位置。写入第一个位置时，第二个右值已经取到了，所以不会丢失原来的元素。</p>
+<p>当 <code>nums</code> 是普通列表、<code>left</code> 与 <code>right</code> 是固定整数下标时，可以这样理解它的赋值顺序：</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+<span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+<span class="n">old_right</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">right</span><span class="p">]</span>
+<span class="n">old_left</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">left</span><span class="p">]</span>
+<span class="n">nums</span><span class="p">[</span><span class="n">left</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_right</span>
+<span class="n">nums</span><span class="p">[</span><span class="n">right</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_left</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[20, 10]</span>
+</pre></div>
+
+
+<p>上面是语义上的展开，不是要求解释器必须创建两个临时变量或实际分配一个临时元组。关键是<strong>右边先完整求值，左边再从左到右写入</strong>。<a href="https://docs.python.org/3.12/reference/simple_stmts.html#assignment-statements">官方赋值规则</a></p>
+<p>如果拆成下面两行，就不是交换：</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+<span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[20, 20]</span>
+</pre></div>
+
+
+<p>第一行已经让 <code>nums[0]</code> 指向对象 <code>20</code>；第二行才读取 <code>nums[0]</code>，读到的也是 <code>20</code>，原来的 <code>10</code> 没有被保存下来。</p>
+<h3 id="值-对象引用与变量名">值、对象引用与变量名</h3>
+<p><strong>对象有自己的类型、内容和身份；变量名绑定到对象，列表的每个位置也保存对某个对象的引用。</strong> 可以把引用理解为“关联到哪个对象”，不必把它等同于 C++ 中可以解引用、做地址运算的指针。</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>实际改变什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x = nums[0]</code></td>
+<td>让名字 <code>x</code> 绑定到该元素对象，没有复制这个对象</td>
+</tr>
+<tr>
+<td><code>x = 99</code></td>
+<td>让名字 <code>x</code> 改绑到另一个对象，不修改 <code>nums[0]</code></td>
+</tr>
+<tr>
+<td><code>nums[0] = 99</code></td>
+<td>改变列表第 <code>0</code> 个位置保存的引用</td>
+</tr>
+<tr>
+<td><code>nums[0].append(99)</code></td>
+<td>如果该元素是列表，修改它所引用的列表对象</td>
+</tr>
+<tr>
+<td><code>nums[left], nums[right] = ...</code></td>
+<td>改变外层列表两个位置保存的引用，不复制元素对象</td>
+</tr>
+</tbody>
+</table>
+<p>整数、字符串等对象不可变；列表、字典等对象可变。<strong>名字改绑</strong>与<strong>对象内容被修改</strong>必须分开理解。<a href="https://docs.python.org/3.12/reference/datamodel.html#objects-values-and-types">官方对象模型</a></p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">99</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">nums</span><span class="p">)</span>                   <span class="c1"># 输出：99 [10, 20]</span>
+<span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">77</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">nums</span><span class="p">)</span>                   <span class="c1"># 输出：99 [77, 20]</span>
+</pre></div>
+
+
+<p><code>x = 99</code> 不会把整数对象 <code>10</code> 的内部内容改成 <code>99</code>，只是改变名字 <code>x</code> 的绑定。<code>nums[0] = 77</code> 修改的是列表位置，也不是修改整数对象本身。</p>
+<h3 id="交换嵌套列表-对象没有被复制">交换嵌套列表：对象没有被复制</h3>
+<p>换成可变元素，可以更清楚地看到“交换引用”的效果：</p>
+<div class="codehilite"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">]</span>
+<span class="n">b</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20</span><span class="p">]</span>
+<span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">nums</span>
+<span class="n">snapshot</span> <span class="o">=</span> <span class="n">nums</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">alias</span><span class="p">)</span>               <span class="c1"># 输出：[[20], [10]] [[20], [10]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span> <span class="ow">is</span> <span class="n">alias</span><span class="p">)</span>             <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">b</span><span class="p">,</span> <span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="n">a</span><span class="p">)</span> <span class="c1"># 输出：True True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>                  <span class="c1"># 输出：[[10], [20]]</span>
+
+<span class="n">a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">99</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[[20], [10, 99]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>                  <span class="c1"># 输出：[[10, 99], [20]]</span>
+</pre></div>
+
+
+<p>逐步看这个例子：</p>
+<ol>
+<li><code>alias = nums</code> 没有创建新列表，两个名字指向同一个外层列表。因此交换位置后，<code>alias</code> 也看到交换后的顺序。</li>
+<li><code>snapshot = nums.copy()</code> 新建了外层列表，所以它的位置顺序不随 <code>nums</code> 的交换而改变；但它的元素仍引用同一个 <code>a</code>、<code>b</code>。</li>
+<li>交换后 <code>nums[0] is b</code>、<code>nums[1] is a</code>：两个内层对象本身没有改变，只是外层列表的两个位置换了引用。</li>
+<li><code>a.append(99)</code> 修改了内层列表 <code>a</code>，所有仍引用 <code>a</code> 的地方都会看到 <code>[10, 99]</code>，无论它现在放在哪个位置。</li>
+</ol>
+<p>所以交换是对原来的外层列表做修改，额外空间为 <span class="math">\(O(1)\)</span>；普通列表的固定下标交换时间为 <span class="math">\(O(1)\)</span>。它不会递归复制嵌套列表，也不会让引用这些元素的其他变量“跟着位置换名字”。</p>
+<h3 id="传进函数后-改参数名-还是改列表">传进函数后：改参数名，还是改列表？</h3>
+<p>函数的参数名绑定到调用方提供的对象。重新绑定参数名不会改变调用方的变量；修改同一个可变对象，则会被调用方看到。</p>
+<div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">swap_values</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span>                  <span class="c1"># 只交换函数内两个参数名的绑定</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">swap_positions</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">):</span>
+    <span class="n">nums</span><span class="p">[</span><span class="n">left</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="n">right</span><span class="p">]</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="n">right</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="n">left</span><span class="p">]</span>
+
+<span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+<span class="n">swap_values</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[10, 20]</span>
+<span class="n">swap_positions</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[20, 10]</span>
+</pre></div>
+
+
+<p>第二个函数没有重新创建列表，而是修改调用方也引用着的那个列表。</p>
+<h3 id="也要看对象类型">+= 也要看对象类型</h3>
+<p><code>+=</code> 不能一律理解成“改名”或“修改原对象”。对于整数，它计算新结果并重新绑定；对于普通列表，它会原地扩展列表。</p>
+<div class="codehilite"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
+<span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>                      <span class="c1"># 输出：11 10</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">a</span>
+<span class="n">a</span> <span class="o">+=</span> <span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span><span class="p">)</span>              <span class="c1"># 输出：[1, 2] [1, 2] True</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span>                     <span class="c1"># 新建一个列表，再让 a 改绑</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">b</span><span class="p">)</span>              <span class="c1"># 输出：[1, 2, 3] [1, 2] False</span>
+</pre></div>
+
+
 <h3 id="赋值-浅拷贝与二维列表">赋值、浅拷贝与二维列表</h3>
 <div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
 <span class="n">alias</span> <span class="o">=</span> <span class="n">nums</span>
@@ -142,6 +277,20 @@
 
 
 <p>浅拷贝只复制外层：上面的两个列表仍引用同一个第一行。刷题的二维 DP 数组，应该让每行独立创建。<a href="https://docs.python.org/3.12/faq/programming.html#how-do-i-create-a-multidimensional-list">官方 FAQ：二维列表</a></p>
+<p>如果确实需要让这些内层列表也独立，可以使用 <code>deepcopy</code>。这是显式的深拷贝操作，不是交换或普通赋值自动做的事情。</p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+
+<span class="n">nums</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+<span class="n">shallow</span> <span class="o">=</span> <span class="n">nums</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">deep</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>
+<span class="n">nums</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                      <span class="c1"># 输出：[[1, 9], [2]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">)</span>                   <span class="c1"># 输出：[[1, 9], [2]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">deep</span><span class="p">)</span>                      <span class="c1"># 输出：[[1], [2]]</span>
+</pre></div>
+
+
+<p><code>deepcopy</code> 会按深拷贝规则递归处理对象，成本取决于需要复制的对象图；只为交换两个位置时，不需要复制整张列表。<a href="https://docs.python.org/3.12/library/copy.html">官方 copy 文档</a></p>
 <div class="codehilite"><pre><span></span><span class="n">bad</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span>               <span class="c1"># 两个位置引用同一行</span>
 <span class="n">bad</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">7</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">bad</span><span class="p">)</span>                        <span class="c1"># 输出：[[0, 7, 0], [0, 7, 0]]</span>

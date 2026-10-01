@@ -81,6 +81,137 @@ print(stack[-1])                  # 输出：9
 print(stack.pop(), stack)         # 输出：9 [6]
 ```
 
+### 交换两个位置：先求右边，再写左边
+
+```python
+nums = [10, 20]
+left, right = 0, 1
+nums[left], nums[right] = nums[right], nums[left]
+print(nums)                      # 输出：[20, 10]
+```
+
+这是**多目标赋值与解包**。执行时，先从左到右求出右边的两个结果，保留它们所引用的对象，再依次赋给左边的两个位置。写入第一个位置时，第二个右值已经取到了，所以不会丢失原来的元素。
+
+当 `nums` 是普通列表、`left` 与 `right` 是固定整数下标时，可以这样理解它的赋值顺序：
+
+```python
+nums = [10, 20]
+left, right = 0, 1
+old_right = nums[right]
+old_left = nums[left]
+nums[left] = old_right
+nums[right] = old_left
+print(nums)                      # 输出：[20, 10]
+```
+
+上面是语义上的展开，不是要求解释器必须创建两个临时变量或实际分配一个临时元组。关键是**右边先完整求值，左边再从左到右写入**。[官方赋值规则](https://docs.python.org/3.12/reference/simple_stmts.html#assignment-statements)
+
+如果拆成下面两行，就不是交换：
+
+```python
+nums = [10, 20]
+nums[0] = nums[1]
+nums[1] = nums[0]
+print(nums)                      # 输出：[20, 20]
+```
+
+第一行已经让 `nums[0]` 指向对象 `20`；第二行才读取 `nums[0]`，读到的也是 `20`，原来的 `10` 没有被保存下来。
+
+### 值、对象引用与变量名
+
+**对象有自己的类型、内容和身份；变量名绑定到对象，列表的每个位置也保存对某个对象的引用。** 可以把引用理解为“关联到哪个对象”，不必把它等同于 C++ 中可以解引用、做地址运算的指针。
+
+| 操作 | 实际改变什么 |
+| --- | --- |
+| `x = nums[0]` | 让名字 `x` 绑定到该元素对象，没有复制这个对象 |
+| `x = 99` | 让名字 `x` 改绑到另一个对象，不修改 `nums[0]` |
+| `nums[0] = 99` | 改变列表第 `0` 个位置保存的引用 |
+| `nums[0].append(99)` | 如果该元素是列表，修改它所引用的列表对象 |
+| `nums[left], nums[right] = ...` | 改变外层列表两个位置保存的引用，不复制元素对象 |
+
+整数、字符串等对象不可变；列表、字典等对象可变。**名字改绑**与**对象内容被修改**必须分开理解。[官方对象模型](https://docs.python.org/3.12/reference/datamodel.html#objects-values-and-types)
+
+```python
+nums = [10, 20]
+x = nums[0]
+x = 99
+print(x, nums)                   # 输出：99 [10, 20]
+nums[0] = 77
+print(x, nums)                   # 输出：99 [77, 20]
+```
+
+`x = 99` 不会把整数对象 `10` 的内部内容改成 `99`，只是改变名字 `x` 的绑定。`nums[0] = 77` 修改的是列表位置，也不是修改整数对象本身。
+
+### 交换嵌套列表：对象没有被复制
+
+换成可变元素，可以更清楚地看到“交换引用”的效果：
+
+```python
+a = [10]
+b = [20]
+nums = [a, b]
+alias = nums
+snapshot = nums.copy()
+
+nums[0], nums[1] = nums[1], nums[0]
+print(nums, alias)               # 输出：[[20], [10]] [[20], [10]]
+print(nums is alias)             # 输出：True
+print(nums[0] is b, nums[1] is a) # 输出：True True
+print(snapshot)                  # 输出：[[10], [20]]
+
+a.append(99)
+print(nums)                      # 输出：[[20], [10, 99]]
+print(snapshot)                  # 输出：[[10, 99], [20]]
+```
+
+逐步看这个例子：
+
+1. `alias = nums` 没有创建新列表，两个名字指向同一个外层列表。因此交换位置后，`alias` 也看到交换后的顺序。
+2. `snapshot = nums.copy()` 新建了外层列表，所以它的位置顺序不随 `nums` 的交换而改变；但它的元素仍引用同一个 `a`、`b`。
+3. 交换后 `nums[0] is b`、`nums[1] is a`：两个内层对象本身没有改变，只是外层列表的两个位置换了引用。
+4. `a.append(99)` 修改了内层列表 `a`，所有仍引用 `a` 的地方都会看到 `[10, 99]`，无论它现在放在哪个位置。
+
+所以交换是对原来的外层列表做修改，额外空间为 $O(1)$；普通列表的固定下标交换时间为 $O(1)$。它不会递归复制嵌套列表，也不会让引用这些元素的其他变量“跟着位置换名字”。
+
+### 传进函数后：改参数名，还是改列表？
+
+函数的参数名绑定到调用方提供的对象。重新绑定参数名不会改变调用方的变量；修改同一个可变对象，则会被调用方看到。
+
+```python
+def swap_values(a, b):
+    a, b = b, a                  # 只交换函数内两个参数名的绑定
+
+def swap_positions(nums, left, right):
+    nums[left], nums[right] = nums[right], nums[left]
+
+nums = [10, 20]
+swap_values(nums[0], nums[1])
+print(nums)                      # 输出：[10, 20]
+swap_positions(nums, 0, 1)
+print(nums)                      # 输出：[20, 10]
+```
+
+第二个函数没有重新创建列表，而是修改调用方也引用着的那个列表。
+
+### += 也要看对象类型
+
+`+=` 不能一律理解成“改名”或“修改原对象”。对于整数，它计算新结果并重新绑定；对于普通列表，它会原地扩展列表。
+
+```python
+x = 10
+y = x
+x += 1
+print(x, y)                      # 输出：11 10
+
+a = [1]
+b = a
+a += [2]
+print(a, b, a is b)              # 输出：[1, 2] [1, 2] True
+
+a = a + [3]                     # 新建一个列表，再让 a 改绑
+print(a, b, a is b)              # 输出：[1, 2, 3] [1, 2] False
+```
+
 ### 赋值、浅拷贝与二维列表
 
 ```python
@@ -102,6 +233,22 @@ print(rows, copy)                 # 输出：[[1, 9], [2]] [[1, 9], [2]]
 ```
 
 浅拷贝只复制外层：上面的两个列表仍引用同一个第一行。刷题的二维 DP 数组，应该让每行独立创建。[官方 FAQ：二维列表](https://docs.python.org/3.12/faq/programming.html#how-do-i-create-a-multidimensional-list)
+
+如果确实需要让这些内层列表也独立，可以使用 `deepcopy`。这是显式的深拷贝操作，不是交换或普通赋值自动做的事情。
+
+```python
+from copy import deepcopy
+
+nums = [[1], [2]]
+shallow = nums.copy()
+deep = deepcopy(nums)
+nums[0].append(9)
+print(nums)                      # 输出：[[1, 9], [2]]
+print(shallow)                   # 输出：[[1, 9], [2]]
+print(deep)                      # 输出：[[1], [2]]
+```
+
+`deepcopy` 会按深拷贝规则递归处理对象，成本取决于需要复制的对象图；只为交换两个位置时，不需要复制整张列表。[官方 copy 文档](https://docs.python.org/3.12/library/copy.html)
 
 ```python
 bad = [[0] * 3] * 2               # 两个位置引用同一行
