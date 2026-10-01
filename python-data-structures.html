@@ -277,6 +277,86 @@
 <p>这意味着“看到一个 <code>0</code>”不能用来判断键已经存在，判断存在仍用 <code>key in d</code>。<a href="https://docs.python.org/3.12/library/collections.html#collections.defaultdict">官方 defaultdict 文档</a>、<a href="https://docs.python.org/3.12/library/collections.html#collections.Counter">官方 Counter 文档</a></p>
 <h3 id="遍历-计数与分组">遍历、计数与分组</h3>
 <p><code>for key in d</code> 遍历键；键值一起用 <code>d.items()</code>，只看值用 <code>d.values()</code>。字典按插入顺序遍历，<strong>不是按键大小排序</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>每轮得到什么</th>
+<th>适合的用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>for key in d</code></td>
+<td>一个键</td>
+<td>只需要键，或通过键访问 <code>d[key]</code></td>
+</tr>
+<tr>
+<td><code>for key in d.keys()</code></td>
+<td>一个键</td>
+<td>显式表示遍历键，与直接遍历字典等价</td>
+</tr>
+<tr>
+<td><code>for value in d.values()</code></td>
+<td>一个值</td>
+<td>对所有值求和、找最值或逐个处理</td>
+</tr>
+<tr>
+<td><code>for key, value in d.items()</code></td>
+<td>一对键和值</td>
+<td>同时处理键和值，不必再写 <code>d[key]</code></td>
+</tr>
+</tbody>
+</table>
+<p>只遍历键：</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">scores</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="c1"># 输出：Alice</span>
+<span class="c1"># 输出：Bob</span>
+</pre></div>
+
+
+<p>显式使用 <code>keys()</code>，得到相同的键：</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">scores</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="c1"># 输出：Alice</span>
+<span class="c1"># 输出：Bob</span>
+</pre></div>
+
+
+<p><code>values()</code> 只遍历值，也可以直接交给 <code>sum()</code>、<code>max()</code> 等函数：</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">scores</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">score</span><span class="p">)</span>
+<span class="c1"># 输出：90</span>
+<span class="c1"># 输出：80</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>       <span class="c1"># 输出：170</span>
+</pre></div>
+
+
+<p><code>items()</code> 每轮产生一个 <code>(key, value)</code> 元组；在 <code>for</code> 中用两个变量解包：</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">scores</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
+<span class="c1"># 输出：Alice 90</span>
+<span class="c1"># 输出：Bob 80</span>
+</pre></div>
+
+
+<p><code>keys()</code>、<code>values()</code>、<code>items()</code> 返回的是<strong>视图（view）</strong>，不是复制出来的列表。视图会反映字典后续的变化；需要保存当前快照时再用 <code>list(...)</code>，这会遍历并新建一个列表。</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">}</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<span class="n">snapshot</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+<span class="n">scores</span><span class="p">[</span><span class="s1">'Carol'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">70</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>               <span class="c1"># 输出：[90, 80, 70]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>                   <span class="c1"># 输出：[90, 80]</span>
+</pre></div>
+
+
+<p><code>values()</code> 会保留重复值；要去重需显式使用 <code>set(d.values())</code>。这些视图不支持 <code>view[0]</code> 这样的下标访问。循环中不要增删字典的键；视图不是允许边遍历边改变字典大小的快照。<a href="https://docs.python.org/3.12/library/stdtypes.html#dictionary-view-objects">官方字典视图文档</a></p>
+<p>下面再用字典做计数与分组：</p>
 <div class="codehilite"><pre><span></span><span class="n">counts</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'pear'</span><span class="p">,</span> <span class="s1">'apple'</span><span class="p">,</span> <span class="s1">'pear'</span><span class="p">]:</span>
     <span class="n">counts</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>

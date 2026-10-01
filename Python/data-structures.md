@@ -207,6 +207,69 @@ print(counts['score'], dict(counts))  # 输出：0 {}
 
 `for key in d` 遍历键；键值一起用 `d.items()`，只看值用 `d.values()`。字典按插入顺序遍历，**不是按键大小排序**。
 
+| 写法 | 每轮得到什么 | 适合的用途 |
+| --- | --- | --- |
+| `for key in d` | 一个键 | 只需要键，或通过键访问 `d[key]` |
+| `for key in d.keys()` | 一个键 | 显式表示遍历键，与直接遍历字典等价 |
+| `for value in d.values()` | 一个值 | 对所有值求和、找最值或逐个处理 |
+| `for key, value in d.items()` | 一对键和值 | 同时处理键和值，不必再写 `d[key]` |
+
+只遍历键：
+
+```python
+scores = {'Alice': 90, 'Bob': 80}
+for name in scores:
+    print(name)
+# 输出：Alice
+# 输出：Bob
+```
+
+显式使用 `keys()`，得到相同的键：
+
+```python
+scores = {'Alice': 90, 'Bob': 80}
+for name in scores.keys():
+    print(name)
+# 输出：Alice
+# 输出：Bob
+```
+
+`values()` 只遍历值，也可以直接交给 `sum()`、`max()` 等函数：
+
+```python
+scores = {'Alice': 90, 'Bob': 80}
+for score in scores.values():
+    print(score)
+# 输出：90
+# 输出：80
+print(sum(scores.values()))       # 输出：170
+```
+
+`items()` 每轮产生一个 `(key, value)` 元组；在 `for` 中用两个变量解包：
+
+```python
+scores = {'Alice': 90, 'Bob': 80}
+for name, score in scores.items():
+    print(name, score)
+# 输出：Alice 90
+# 输出：Bob 80
+```
+
+`keys()`、`values()`、`items()` 返回的是**视图（view）**，不是复制出来的列表。视图会反映字典后续的变化；需要保存当前快照时再用 `list(...)`，这会遍历并新建一个列表。
+
+```python
+scores = {'Alice': 90, 'Bob': 80}
+values = scores.values()
+snapshot = list(values)
+scores['Carol'] = 70
+print(list(values))               # 输出：[90, 80, 70]
+print(snapshot)                   # 输出：[90, 80]
+```
+
+`values()` 会保留重复值；要去重需显式使用 `set(d.values())`。这些视图不支持 `view[0]` 这样的下标访问。循环中不要增删字典的键；视图不是允许边遍历边改变字典大小的快照。[官方字典视图文档](https://docs.python.org/3.12/library/stdtypes.html#dictionary-view-objects)
+
+下面再用字典做计数与分组：
+
 ```python
 counts = {}
 for word in ['pear', 'apple', 'pear']:
