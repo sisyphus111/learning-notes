@@ -264,6 +264,67 @@ print(cache[frozenset([1, 2])])    # 输出：visited
 
 字符串是不可变序列：可以索引、切片、遍历，但不能写 `s[i] = 'x'`。要反复修改字符，可以先转成列表，最后 `''.join(chars)`。
 
+### 逐字符遍历
+
+只需要字符时，直接写 `for ch in s`。每轮的 `ch` 是一个长度为 `1` 的字符串。
+
+```python
+s = 'cat'
+for ch in s:
+    print(ch)
+# 输出：c
+# 输出：a
+# 输出：t
+```
+
+### 同时获取下标和字符
+
+用 `enumerate(s)`，每轮得到 `(下标, 字符)`，下标默认从 `0` 开始。
+
+```python
+s = 'cat'
+for i, ch in enumerate(s):
+    print(i, ch)
+# 输出：0 c
+# 输出：1 a
+# 输出：2 t
+```
+
+需要手动控制下标范围或步长时，可以按下标遍历：
+
+```python
+s = 'cat'
+for i in range(len(s)):
+    print(i, s[i])
+# 输出：0 c
+# 输出：1 a
+# 输出：2 t
+```
+
+### 倒序遍历
+
+只需要倒序的字符，用 `reversed(s)`，不必先通过 `s[::-1]` 构造反转字符串。需要原字符串的下标时，用 `range(len(s) - 1, -1, -1)`；结束值 `-1` 不包含在范围中，所以会处理到下标 `0`。
+
+```python
+s = 'cat'
+for ch in reversed(s):
+    print(ch)
+# 输出：t
+# 输出：a
+# 输出：c
+```
+
+```python
+s = 'cat'
+for i in range(len(s) - 1, -1, -1):
+    print(i, s[i])
+# 输出：2 t
+# 输出：1 a
+# 输出：0 c
+```
+
+### 索引、切片与常用方法
+
 ```python
 s = 'stone'
 chars = list(s)

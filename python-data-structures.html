@@ -326,6 +326,59 @@
 
 <h2 id="str-字符串">str：字符串</h2>
 <p>字符串是不可变序列：可以索引、切片、遍历，但不能写 <code>s[i] = 'x'</code>。要反复修改字符，可以先转成列表，最后 <code>''.join(chars)</code>。</p>
+<h3 id="逐字符遍历">逐字符遍历</h3>
+<p>只需要字符时，直接写 <code>for ch in s</code>。每轮的 <code>ch</code> 是一个长度为 <code>1</code> 的字符串。</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'cat'</span>
+<span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
+<span class="c1"># 输出：c</span>
+<span class="c1"># 输出：a</span>
+<span class="c1"># 输出：t</span>
+</pre></div>
+
+
+<h3 id="同时获取下标和字符">同时获取下标和字符</h3>
+<p>用 <code>enumerate(s)</code>，每轮得到 <code>(下标, 字符)</code>，下标默认从 <code>0</code> 开始。</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'cat'</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">ch</span><span class="p">)</span>
+<span class="c1"># 输出：0 c</span>
+<span class="c1"># 输出：1 a</span>
+<span class="c1"># 输出：2 t</span>
+</pre></div>
+
+
+<p>需要手动控制下标范围或步长时，可以按下标遍历：</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'cat'</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+<span class="c1"># 输出：0 c</span>
+<span class="c1"># 输出：1 a</span>
+<span class="c1"># 输出：2 t</span>
+</pre></div>
+
+
+<h3 id="倒序遍历">倒序遍历</h3>
+<p>只需要倒序的字符，用 <code>reversed(s)</code>，不必先通过 <code>s[::-1]</code> 构造反转字符串。需要原字符串的下标时，用 <code>range(len(s) - 1, -1, -1)</code>；结束值 <code>-1</code> 不包含在范围中，所以会处理到下标 <code>0</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'cat'</span>
+<span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
+<span class="c1"># 输出：t</span>
+<span class="c1"># 输出：a</span>
+<span class="c1"># 输出：c</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'cat'</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+<span class="c1"># 输出：2 t</span>
+<span class="c1"># 输出：1 a</span>
+<span class="c1"># 输出：0 c</span>
+</pre></div>
+
+
+<h3 id="索引-切片与常用方法">索引、切片与常用方法</h3>
 <div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'stone'</span>
 <span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'a'</span>
