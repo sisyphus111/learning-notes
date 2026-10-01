@@ -92,6 +92,7 @@ def render(source):
             tokens.append(item)
             flatten(item['children'])
     flatten(md.toc_tokens)
+    html = re.sub(r'[ \t]+$', '', html, flags=re.M)
     return html, tokens
 
 
