@@ -157,6 +157,52 @@ print(list(positions.items()))    # 输出：[('red', 2), ('green', 8)]
 
 `d[key]` 在键不存在时抛出 `KeyError`，`d.get(key, default)` 返回默认值且不插入键；`d.pop(key, default)` 删除并返回值，缺失时返回默认值。`del d[key]` 删除但不返回值，键不存在时会报错。
 
+### 键不存在时：返回默认值，还是插入默认值？
+
+**普通 `dict` 不会在读取缺失键时自动创建一个值。** 返回默认值与把默认值写进字典，是两种不同的行为。下面都假设 `key` 原本不存在：
+
+| 操作 | 缺失键时的结果 | 是否插入这个键 |
+| --- | --- | --- |
+| `d[key]` | 抛出 `KeyError` | 否 |
+| `d[key] = value` | 新建键，并写入指定的 `value` | 是，值由你指定 |
+| `d[key] += 1` | 先读取旧值，所以抛出 `KeyError` | 否 |
+| `d.get(key)` | 返回 `None` | 否 |
+| `d.get(key, 0)` | 返回 `0` | 否 |
+| `d.setdefault(key)` | 插入并返回 `None` | 是 |
+| `d.setdefault(key, 0)` | 插入并返回 `0` | 是 |
+| `d.pop(key)` / `del d[key]` | 抛出 `KeyError` | 否 |
+| `d.pop(key, 0)` | 返回 `0` | 否 |
+| `key in d` | 返回 `False` | 否 |
+
+最容易混淆的是 `get` 与 `setdefault`：
+
+```python
+d = {}
+try:
+    d['score']
+except KeyError:
+    print('KeyError')             # 输出：KeyError
+print(d.get('score', 0), d)       # 输出：0 {}
+print(d.setdefault('score', 0), d)  # 输出：0 {'score': 0}
+d['score'] += 1
+print(d)                         # 输出：{'score': 1}
+```
+
+如果键已经存在，`setdefault` 返回原来的值，不会用传入的默认值覆盖它。例如上面再调用 `d.setdefault('score', 100)`，结果仍是 `1`。[官方 dict 方法说明](https://docs.python.org/3.12/library/stdtypes.html#mapping-types-dict)
+
+还要区分两种字典式容器：`defaultdict(int)[key]` 会调用 `int()` 得到 `0`，**并插入这个键**；`Counter()[key]` 也返回 `0`，但**不会插入这个键**。`defaultdict` 的工厂为 `None` 时，缺失键访问仍会抛出 `KeyError`。
+
+```python
+from collections import Counter, defaultdict
+
+d = defaultdict(int)
+print(d['score'], dict(d))        # 输出：0 {'score': 0}
+counts = Counter()
+print(counts['score'], dict(counts))  # 输出：0 {}
+```
+
+这意味着“看到一个 `0`”不能用来判断键已经存在，判断存在仍用 `key in d`。[官方 defaultdict 文档](https://docs.python.org/3.12/library/collections.html#collections.defaultdict)、[官方 Counter 文档](https://docs.python.org/3.12/library/collections.html#collections.Counter)
+
 ### 遍历、计数与分组
 
 `for key in d` 遍历键；键值一起用 `d.items()`，只看值用 `d.values()`。字典按插入顺序遍历，**不是按键大小排序**。

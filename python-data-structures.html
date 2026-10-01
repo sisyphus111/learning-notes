@@ -187,6 +187,94 @@
 
 
 <p><code>d[key]</code> 在键不存在时抛出 <code>KeyError</code>，<code>d.get(key, default)</code> 返回默认值且不插入键；<code>d.pop(key, default)</code> 删除并返回值，缺失时返回默认值。<code>del d[key]</code> 删除但不返回值，键不存在时会报错。</p>
+<h3 id="键不存在时-返回默认值-还是插入默认值">键不存在时：返回默认值，还是插入默认值？</h3>
+<p><strong>普通 <code>dict</code> 不会在读取缺失键时自动创建一个值。</strong> 返回默认值与把默认值写进字典，是两种不同的行为。下面都假设 <code>key</code> 原本不存在：</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>缺失键时的结果</th>
+<th>是否插入这个键</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>d[key]</code></td>
+<td>抛出 <code>KeyError</code></td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>d[key] = value</code></td>
+<td>新建键，并写入指定的 <code>value</code></td>
+<td>是，值由你指定</td>
+</tr>
+<tr>
+<td><code>d[key] += 1</code></td>
+<td>先读取旧值，所以抛出 <code>KeyError</code></td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>d.get(key)</code></td>
+<td>返回 <code>None</code></td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>d.get(key, 0)</code></td>
+<td>返回 <code>0</code></td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>d.setdefault(key)</code></td>
+<td>插入并返回 <code>None</code></td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>d.setdefault(key, 0)</code></td>
+<td>插入并返回 <code>0</code></td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>d.pop(key)</code> / <code>del d[key]</code></td>
+<td>抛出 <code>KeyError</code></td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>d.pop(key, 0)</code></td>
+<td>返回 <code>0</code></td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>key in d</code></td>
+<td>返回 <code>False</code></td>
+<td>否</td>
+</tr>
+</tbody>
+</table>
+<p>最容易混淆的是 <code>get</code> 与 <code>setdefault</code>：</p>
+<div class="codehilite"><pre><span></span><span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">d</span><span class="p">[</span><span class="s1">'score'</span><span class="p">]</span>
+<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'KeyError'</span><span class="p">)</span>             <span class="c1"># 输出：KeyError</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'score'</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">d</span><span class="p">)</span>       <span class="c1"># 输出：0 {}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">'score'</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">d</span><span class="p">)</span>  <span class="c1"># 输出：0 {'score': 0}</span>
+<span class="n">d</span><span class="p">[</span><span class="s1">'score'</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>                         <span class="c1"># 输出：{'score': 1}</span>
+</pre></div>
+
+
+<p>如果键已经存在，<code>setdefault</code> 返回原来的值，不会用传入的默认值覆盖它。例如上面再调用 <code>d.setdefault('score', 100)</code>，结果仍是 <code>1</code>。<a href="https://docs.python.org/3.12/library/stdtypes.html#mapping-types-dict">官方 dict 方法说明</a></p>
+<p>还要区分两种字典式容器：<code>defaultdict(int)[key]</code> 会调用 <code>int()</code> 得到 <code>0</code>，<strong>并插入这个键</strong>；<code>Counter()[key]</code> 也返回 <code>0</code>，但<strong>不会插入这个键</strong>。<code>defaultdict</code> 的工厂为 <code>None</code> 时，缺失键访问仍会抛出 <code>KeyError</code>。</p>
+<div class="codehilite"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">defaultdict</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">'score'</span><span class="p">],</span> <span class="nb">dict</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>        <span class="c1"># 输出：0 {'score': 0}</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s1">'score'</span><span class="p">],</span> <span class="nb">dict</span><span class="p">(</span><span class="n">counts</span><span class="p">))</span>  <span class="c1"># 输出：0 {}</span>
+</pre></div>
+
+
+<p>这意味着“看到一个 <code>0</code>”不能用来判断键已经存在，判断存在仍用 <code>key in d</code>。<a href="https://docs.python.org/3.12/library/collections.html#collections.defaultdict">官方 defaultdict 文档</a>、<a href="https://docs.python.org/3.12/library/collections.html#collections.Counter">官方 Counter 文档</a></p>
 <h3 id="遍历-计数与分组">遍历、计数与分组</h3>
 <p><code>for key in d</code> 遍历键；键值一起用 <code>d.items()</code>，只看值用 <code>d.values()</code>。字典按插入顺序遍历，<strong>不是按键大小排序</strong>。</p>
 <div class="codehilite"><pre><span></span><span class="n">counts</span> <span class="o">=</span> <span class="p">{}</span>
