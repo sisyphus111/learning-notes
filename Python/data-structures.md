@@ -327,6 +327,36 @@ print(cache[frozenset([1, 2])])    # 输出：visited
 
 字符串是不可变序列：可以索引、切片、遍历，但不能写 `s[i] = 'x'`。要反复修改字符，可以先转成列表，最后 `''.join(chars)`。
 
+### 非负下标与负数下标
+
+非负下标从开头数，`s[0]` 是第一个字符；负数下标从末尾数，`s[-1]` 是最后一个字符，`s[-2]` 是倒数第二个字符。
+
+以 `s = 'abcba'` 为例：
+
+| 字符 | `a` | `b` | `c` | `b` | `a` |
+| --- | --- | --- | --- | --- | --- |
+| 非负下标 | `0` | `1` | `2` | `3` | `4` |
+| 负数下标 | `-5` | `-4` | `-3` | `-2` | `-1` |
+
+```python
+s = 'abcba'
+print(s[0], s[-1], s[-2])         # 输出：a a b
+print(s[-len(s)])                # 输出：a
+print(s[-0])                     # 输出：a
+```
+
+对于长度为 `n` 的字符串，合法的负数下标 `j` 对应非负下标 `n + j`。因此 `s[-1 - i]` 与 `s[n - 1 - i]` 指向同一个字符。注意 `-0` 仍然是 `0`，不是最后一个位置；负数下标超出范围也会抛出 `IndexError`。
+
+```python
+s = 'abcba'
+try:
+    print(s[-6])
+except IndexError:
+    print('下标越界')             # 输出：下标越界
+```
+
+这些下标规则也适用于列表和元组。[官方序列索引规则](https://docs.python.org/3.12/library/stdtypes.html#common-sequence-operations)
+
 ### 逐字符遍历
 
 只需要字符时，直接写 `for ch in s`。每轮的 `ch` 是一个长度为 `1` 的字符串。
@@ -385,6 +415,50 @@ for i in range(len(s) - 1, -1, -1):
 # 输出：1 a
 # 输出：0 c
 ```
+
+### 回文判断：// 与左右配对
+
+`//` 是**向下取整除法**：先看除法结果，再取不大于它的最大整数。两个操作数都是整数时，结果也是整数；`/` 则返回浮点数。
+
+```python
+print(5 / 2, 5 // 2)             # 输出：2.5 2
+print(6 / 2, 6 // 2)             # 输出：3.0 3
+print(-5 // 2)                   # 输出：-3
+```
+
+负数时尤其要注意：`-5 / 2` 是 `-2.5`，向下取整得到 `-3`，不是简单去掉小数后的 `-2`。这里的 `len(s)` 一定非负，所以 `len(s) // 2` 就是需要检查的字符对数。[官方数值运算规则](https://docs.python.org/3.12/library/stdtypes.html#numeric-types-int-float-complex)
+
+```python
+def is_palindrome(s):
+    for i in range(len(s) // 2):
+        if s[i] != s[-1 - i]:
+            return False
+    return True
+
+print(is_palindrome('abcba'))     # 输出：True
+print(is_palindrome('abba'))      # 输出：True
+print(is_palindrome('abca'))      # 输出：False
+print(is_palindrome(''))          # 输出：True
+print(is_palindrome('a'))         # 输出：True
+```
+
+以 `'abcba'` 为例，长度为 `5`，`5 // 2 == 2`，所以 `range(2)` 只产生 `0`、`1`：
+
+| `i` | 左边 `s[i]` | 右边 `s[-1 - i]` | 对应非负下标 |
+| --- | --- | --- | --- |
+| `0` | `s[0]`，字符 `a` | `s[-1]`，字符 `a` | 比较位置 `0` 与 `4` |
+| `1` | `s[1]`，字符 `b` | `s[-2]`，字符 `b` | 比较位置 `1` 与 `3` |
+
+中间的 `s[2]` 不需要与自己比较；继续遍历右半边只会重复检查同一对字符。长度为偶数时，例如 `'abba'`，`4 // 2 == 2`，两轮比较位置 `(0, 3)`、`(1, 2)`，也恰好覆盖全部配对。
+
+```python
+s = 'abcba'
+n = len(s)
+print(list(range(n // 2)))        # 输出：[0, 1]
+print([(i, n - 1 - i) for i in range(n // 2)])  # 输出：[(0, 4), (1, 3)]
+```
+
+空字符串与单字符字符串的循环都执行零次，直接返回 `True`。最坏时间复杂度为 $O(n)$，额外空间为 $O(1)$；遇到第一对不同字符就提前返回。
 
 ### 索引、切片与常用方法
 

@@ -406,6 +406,56 @@
 
 <h2 id="str-字符串">str：字符串</h2>
 <p>字符串是不可变序列：可以索引、切片、遍历，但不能写 <code>s[i] = 'x'</code>。要反复修改字符，可以先转成列表，最后 <code>''.join(chars)</code>。</p>
+<h3 id="非负下标与负数下标">非负下标与负数下标</h3>
+<p>非负下标从开头数，<code>s[0]</code> 是第一个字符；负数下标从末尾数，<code>s[-1]</code> 是最后一个字符，<code>s[-2]</code> 是倒数第二个字符。</p>
+<p>以 <code>s = 'abcba'</code> 为例：</p>
+<table>
+<thead>
+<tr>
+<th>字符</th>
+<th><code>a</code></th>
+<th><code>b</code></th>
+<th><code>c</code></th>
+<th><code>b</code></th>
+<th><code>a</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>非负下标</td>
+<td><code>0</code></td>
+<td><code>1</code></td>
+<td><code>2</code></td>
+<td><code>3</code></td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td>负数下标</td>
+<td><code>-5</code></td>
+<td><code>-4</code></td>
+<td><code>-3</code></td>
+<td><code>-2</code></td>
+<td><code>-1</code></td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'abcba'</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>         <span class="c1"># 输出：a a b</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)])</span>                <span class="c1"># 输出：a</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">0</span><span class="p">])</span>                     <span class="c1"># 输出：a</span>
+</pre></div>
+
+
+<p>对于长度为 <code>n</code> 的字符串，合法的负数下标 <code>j</code> 对应非负下标 <code>n + j</code>。因此 <code>s[-1 - i]</code> 与 <code>s[n - 1 - i]</code> 指向同一个字符。注意 <code>-0</code> 仍然是 <code>0</code>，不是最后一个位置；负数下标超出范围也会抛出 <code>IndexError</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'abcba'</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">])</span>
+<span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'下标越界'</span><span class="p">)</span>             <span class="c1"># 输出：下标越界</span>
+</pre></div>
+
+
+<p>这些下标规则也适用于列表和元组。<a href="https://docs.python.org/3.12/library/stdtypes.html#common-sequence-operations">官方序列索引规则</a></p>
 <h3 id="逐字符遍历">逐字符遍历</h3>
 <p>只需要字符时，直接写 <code>for ch in s</code>。每轮的 <code>ch</code> 是一个长度为 <code>1</code> 的字符串。</p>
 <div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'cat'</span>
@@ -458,6 +508,63 @@
 </pre></div>
 
 
+<h3 id="回文判断-与左右配对">回文判断：// 与左右配对</h3>
+<p><code>//</code> 是<strong>向下取整除法</strong>：先看除法结果，再取不大于它的最大整数。两个操作数都是整数时，结果也是整数；<code>/</code> 则返回浮点数。</p>
+<div class="codehilite"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="mi">5</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>             <span class="c1"># 输出：2.5 2</span>
+<span class="nb">print</span><span class="p">(</span><span class="mi">6</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">6</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>             <span class="c1"># 输出：3.0 3</span>
+<span class="nb">print</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>                   <span class="c1"># 输出：-3</span>
+</pre></div>
+
+
+<p>负数时尤其要注意：<code>-5 / 2</code> 是 <code>-2.5</code>，向下取整得到 <code>-3</code>，不是简单去掉小数后的 <code>-2</code>。这里的 <code>len(s)</code> 一定非负，所以 <code>len(s) // 2</code> 就是需要检查的字符对数。<a href="https://docs.python.org/3.12/library/stdtypes.html#numeric-types-int-float-complex">官方数值运算规则</a></p>
+<div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">is_palindrome</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">is_palindrome</span><span class="p">(</span><span class="s1">'abcba'</span><span class="p">))</span>     <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">is_palindrome</span><span class="p">(</span><span class="s1">'abba'</span><span class="p">))</span>      <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">is_palindrome</span><span class="p">(</span><span class="s1">'abca'</span><span class="p">))</span>      <span class="c1"># 输出：False</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">is_palindrome</span><span class="p">(</span><span class="s1">''</span><span class="p">))</span>          <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">is_palindrome</span><span class="p">(</span><span class="s1">'a'</span><span class="p">))</span>         <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<p>以 <code>'abcba'</code> 为例，长度为 <code>5</code>，<code>5 // 2 == 2</code>，所以 <code>range(2)</code> 只产生 <code>0</code>、<code>1</code>：</p>
+<table>
+<thead>
+<tr>
+<th><code>i</code></th>
+<th>左边 <code>s[i]</code></th>
+<th>右边 <code>s[-1 - i]</code></th>
+<th>对应非负下标</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td><code>s[0]</code>，字符 <code>a</code></td>
+<td><code>s[-1]</code>，字符 <code>a</code></td>
+<td>比较位置 <code>0</code> 与 <code>4</code></td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>s[1]</code>，字符 <code>b</code></td>
+<td><code>s[-2]</code>，字符 <code>b</code></td>
+<td>比较位置 <code>1</code> 与 <code>3</code></td>
+</tr>
+</tbody>
+</table>
+<p>中间的 <code>s[2]</code> 不需要与自己比较；继续遍历右半边只会重复检查同一对字符。长度为偶数时，例如 <code>'abba'</code>，<code>4 // 2 == 2</code>，两轮比较位置 <code>(0, 3)</code>、<code>(1, 2)</code>，也恰好覆盖全部配对。</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'abcba'</span>
+<span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)))</span>        <span class="c1"># 输出：[0, 1]</span>
+<span class="nb">print</span><span class="p">([(</span><span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)])</span>  <span class="c1"># 输出：[(0, 4), (1, 3)]</span>
+</pre></div>
+
+
+<p>空字符串与单字符字符串的循环都执行零次，直接返回 <code>True</code>。最坏时间复杂度为 <span class="math">\(O(n)\)</span>，额外空间为 <span class="math">\(O(1)\)</span>；遇到第一对不同字符就提前返回。</p>
 <h3 id="索引-切片与常用方法">索引、切片与常用方法</h3>
 <div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'stone'</span>
 <span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
