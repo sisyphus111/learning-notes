@@ -39,6 +39,8 @@ REFERENCES = [
 PYTHON_REFERENCES = [
     ('Python/data-structures.md', 'python-data-structures.html', 'Python 基础数据结构',
      'list · tuple · dict · set · str · 常用标准库容器'),
+    ('Python/iterables-and-functions.md', 'python-iterables-and-functions.html',
+     '可迭代对象与常用函数', '生成器表达式 · all / any · sum · min / max · map / filter'),
 ]
 PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}

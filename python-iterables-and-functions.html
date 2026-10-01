@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>可迭代对象与常用函数 · 刷题笔记</title><meta name="description" content="生成器表达式 · all / any · sum · min / max · map / filter">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">Code</span><span>刷题笔记<small>思路 · 实现 · 语法</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 语法参考</p><nav aria-label="Python 语法参考"><a href="python-data-structures.html">Python 基础数据结构</a><a href="python-iterables-and-functions.html" aria-current="page">可迭代对象与常用函数</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Python 语法参考</p><h1>可迭代对象与常用函数</h1><p class="subtitle">生成器表达式 · all / any · sum · min / max · map / filter</p></div>
+<article><p><code>all</code>、<code>any</code>、<code>sum</code> 等是 <strong>Python 内置函数</strong>；<code>表达式 for 变量 in 对象</code> 则属于 <strong>生成器表达式语法</strong>。把它们组合起来，可以把“逐个检查、求和、转换”的循环写得简洁，同时明确要得到的结果。</p>
+<p>本页使用 Python 3.10+，从字符异位词的判断出发，介绍生成器表达式与常用函数。相关 API 见 <a href="https://docs.python.org/3.12/library/functions.html">官方内置函数文档</a>。</p>
+<h2 id="先拆开这句-all">先拆开这句 all</h2>
+<div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">is_anagram</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+    <span class="n">diff_counts</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">s_ch</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+        <span class="n">diff_counts</span><span class="p">[</span><span class="n">s_ch</span><span class="p">]</span> <span class="o">=</span> <span class="n">diff_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">s_ch</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">t_ch</span> <span class="ow">in</span> <span class="n">t</span><span class="p">:</span>
+        <span class="n">diff_counts</span><span class="p">[</span><span class="n">t_ch</span><span class="p">]</span> <span class="o">=</span> <span class="n">diff_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">t_ch</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">count</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">diff_counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">is_anagram</span><span class="p">(</span><span class="s1">'aab'</span><span class="p">,</span> <span class="s1">'aba'</span><span class="p">))</span>    <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">is_anagram</span><span class="p">(</span><span class="s1">'aab'</span><span class="p">,</span> <span class="s1">'abb'</span><span class="p">))</span>    <span class="c1"># 输出：False</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">is_anagram</span><span class="p">(</span><span class="s1">''</span><span class="p">,</span> <span class="s1">''</span><span class="p">))</span>         <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<p>这段写法是正确的：<code>diff_counts</code> 记录每个字符在两个字符串中的出现次数之差，所有差值都为零，两个字符串才是字符异位词。重复字符也会按次数比较。</p>
+<p>最后一句可以分成三个部分：</p>
+<table>
+<thead>
+<tr>
+<th>部分</th>
+<th>做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>diff_counts.values()</code></td>
+<td>提供各个字符的次数差，例如 <code>[0, 0]</code> 或 <code>[1, -1]</code></td>
+</tr>
+<tr>
+<td><code>count == 0 for count in ...</code></td>
+<td>每次取一个差值，产生一个 <code>True</code> / <code>False</code> 判断结果</td>
+</tr>
+<tr>
+<td><code>all(...)</code></td>
+<td>所有结果都为真才返回 <code>True</code>；遇到第一个假值就返回 <code>False</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>values()</code> 本身是字典视图，上表中的列表只用于展示取到的数值。整个写法不会先创建一张完整的布尔结果列表。</p>
+<p>如果把最后一句展开，它等价于下面的循环：</p>
+<div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">all_counts_zero</span><span class="p">(</span><span class="n">diff_counts</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">diff_counts</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">all_counts_zero</span><span class="p">({</span><span class="s1">'a'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">:</span> <span class="mi">0</span><span class="p">}))</span>  <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">all_counts_zero</span><span class="p">({</span><span class="s1">'a'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">}))</span> <span class="c1"># 输出：False</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">all_counts_zero</span><span class="p">({}))</span>               <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<p>注意不能直接写 <code>all(diff_counts.values())</code>：它判断的是“每个数值是否为真”，而整数 <code>0</code> 的真假值恰好是 <code>False</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">counts</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'a'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>       <span class="c1"># 输出：False</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="n">count</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>  <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<h2 id="可迭代对象与迭代器">可迭代对象与迭代器</h2>
+<p><strong>可迭代对象（iterable）</strong>就是可以放在 <code>for x in ...</code> 后面、逐个取出元素的对象。字符串、列表、元组、字典、集合、字典视图，以及生成器都可以用于迭代。</p>
+<p><strong>迭代器（iterator）</strong>保存当前遍历的位置，用 <code>next()</code> 取下一个元素；取完后会抛出 <code>StopIteration</code>。生成器也是迭代器，通常只能消耗一次。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span>
+<span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">))</span>                  <span class="c1"># 输出：3</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">))</span>                  <span class="c1"># 输出：7</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="s1">'已结束'</span><span class="p">))</span>         <span class="c1"># 输出：已结束</span>
+</pre></div>
+
+
+<p>列表本身可以反复开始新的遍历；上面的 <code>it</code> 已经消耗完，再遍历它不会自动回到开头。</p>
+<h2 id="列表推导式与生成器表达式">列表推导式与生成器表达式</h2>
+<h3 id="方括号-立即创建列表">方括号：立即创建列表</h3>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="n">squares</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">squares</span><span class="p">)</span>                   <span class="c1"># 输出：[4, 16]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">squares</span><span class="p">),</span> <span class="nb">sum</span><span class="p">(</span><span class="n">squares</span><span class="p">))</span> <span class="c1"># 输出：20 20</span>
+</pre></div>
+
+
+<p>通用形式是 <code>[结果表达式 for 变量 in 可迭代对象 if 筛选条件]</code>。<code>if</code> 筛选条件可以省略；结果会完整保存到新列表中，后续可以反复使用。</p>
+<p>同一套推导式写法也能构造集合与字典：集合自动去重，字典需要同时写出键和值的表达式。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="n">odd_numbers</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">}</span>
+<span class="n">squares</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">odd_numbers</span><span class="p">))</span>        <span class="c1"># 输出：[1, 3]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">squares</span><span class="p">)</span>                   <span class="c1"># 输出：{1: 1, 2: 4, 3: 9}</span>
+</pre></div>
+
+
+<h3 id="圆括号-按需产生元素">圆括号：按需产生元素</h3>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="n">squares</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">squares</span><span class="p">))</span>             <span class="c1"># 输出：4</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">squares</span><span class="p">))</span>             <span class="c1"># 输出：[16]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">squares</span><span class="p">))</span>             <span class="c1"># 输出：[]</span>
+</pre></div>
+
+
+<p>生成器表达式先创建一个生成器，结果表达式在取元素时才执行。它不会保存完整结果；需要多次复用结果时，可以明确保存成列表。相关语言规则见 <a href="https://docs.python.org/3.12/reference/expressions.html#generator-expressions">官方生成器表达式说明</a>。</p>
+<p>生成器表达式是函数的唯一参数时，可以省略它外面单独那一层括号：</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">))</span>   <span class="c1"># 输出：14</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">((</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">),</span> <span class="mi">10</span><span class="p">))</span>  <span class="c1"># 输出：24</span>
+</pre></div>
+
+
+<p>第二句还有一个起始值参数 <code>10</code>，所以给生成器保留了单独的括号。</p>
+<h2 id="常用函数速查">常用函数速查</h2>
+<table>
+<thead>
+<tr>
+<th>目标</th>
+<th>写法</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>是否全部满足条件</td>
+<td><code>all(P(x) for x in xs)</code></td>
+<td><code>bool</code>，遇到假值停止</td>
+</tr>
+<tr>
+<td>是否至少一个满足条件</td>
+<td><code>any(P(x) for x in xs)</code></td>
+<td><code>bool</code>，遇到真值停止</td>
+</tr>
+<tr>
+<td>求和</td>
+<td><code>sum(f(x) for x in xs)</code></td>
+<td>累加后的数值</td>
+</tr>
+<tr>
+<td>求最小 / 最大元素</td>
+<td><code>min(xs)</code> / <code>max(xs)</code></td>
+<td>一个元素，可指定 <code>key</code></td>
+</tr>
+<tr>
+<td>生成排序结果</td>
+<td><code>sorted(xs, key=...)</code></td>
+<td>一个新列表</td>
+</tr>
+<tr>
+<td>同时取下标和值</td>
+<td><code>enumerate(xs)</code></td>
+<td>依次产生 <code>(下标, 值)</code></td>
+</tr>
+<tr>
+<td>将多个输入并排遍历</td>
+<td><code>zip(xs, ys)</code></td>
+<td>依次产生元素元组</td>
+</tr>
+<tr>
+<td>逐个应用函数</td>
+<td><code>map(f, xs)</code></td>
+<td>迭代器，按需产生 <code>f(x)</code></td>
+</tr>
+<tr>
+<td>保留满足条件的元素</td>
+<td><code>filter(P, xs)</code></td>
+<td>迭代器，按需产生筛选结果</td>
+</tr>
+</tbody>
+</table>
+<p>表中的 <code>P</code> 表示返回判断结果的函数，<code>f</code> 表示一个转换或计算函数；它们不是需要导入的特殊名字。上述函数都是内置的，直接使用即可。</p>
+<h3 id="函数作为参数与-lambda">函数作为参数与 lambda</h3>
+<p><code>map</code>、<code>filter</code> 和 <code>key=</code> 等参数接收的是函数对象。例如 <code>map(double, nums)</code> 会对每个元素调用 <code>double(x)</code>，不是先写 <code>double()</code> 调用一次，再把返回值传进去。</p>
+<p><code>lambda 参数: 表达式</code> 创建一个匿名函数，调用时返回该表达式的结果。它适合在参数位置写简单的转换或条件；需要多条语句时用 <code>def</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">double</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">double</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>                 <span class="c1"># 输出：6</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">double</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])))</span>  <span class="c1"># 输出：[2, 4, 6]</span>
+</pre></div>
+
+
+<h2 id="all-与-any-全部-至少一个">all 与 any：全部 / 至少一个</h2>
+<p><code>all</code>、<code>any</code> 检查元素的真假值，不要求元素必须已经是布尔类型。非零数、非空字符串等也为真。空输入时，<code>all</code> 返回 <code>True</code>，<code>any</code> 返回 <code>False</code>。<a href="https://docs.python.org/3.12/library/functions.html#all">官方 all / any 说明</a></p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">))</span>  <span class="c1"># 输出：False</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">))</span>  <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">([]),</span> <span class="nb">any</span><span class="p">([]))</span>           <span class="c1"># 输出：True False</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="nb">any</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="s1">''</span><span class="p">]))</span>   <span class="c1"># 输出：True False</span>
+</pre></div>
+
+
+<p>“全部满足”也就是“不存在不满足的元素”：</p>
+<div class="codehilite"><pre><span></span><span class="n">counts</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'a'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">count</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>  <span class="c1"># 输出：True</span>
+</pre></div>
+
+
+<h3 id="短路检查">短路检查</h3>
+<p>生成器按需产生结果，因此 <code>all</code> 遇到第一个 <code>False</code> 后，后面的检查可以不执行：</p>
+<div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">checks</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'检查 1'</span><span class="p">)</span>               <span class="c1"># 输出：检查 1</span>
+    <span class="k">yield</span> <span class="kc">True</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'检查 2'</span><span class="p">)</span>               <span class="c1"># 输出：检查 2</span>
+    <span class="k">yield</span> <span class="kc">False</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'检查 3'</span><span class="p">)</span>               <span class="c1"># 这一行不会执行</span>
+    <span class="k">yield</span> <span class="kc">True</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="n">checks</span><span class="p">()))</span>              <span class="c1"># 输出：False</span>
+</pre></div>
+
+
+<p><code>any</code> 类似，只是遇到第一个 <code>True</code> 就停止。若写成 <code>all([P(x) for x in xs])</code>，列表推导式会先执行完所有 <code>P(x)</code>；<code>all</code> 对列表的短路遍历不会撤销前面已经做过的计算。</p>
+<h2 id="sum-求和与计数">sum：求和与计数</h2>
+<p><code>sum(xs)</code> 默认从 <code>0</code> 开始累加；可以用第二个参数指定起始值。空输入返回起始值。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">nums</span><span class="p">))</span>                  <span class="c1"># 输出：16</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">))</span>   <span class="c1"># 输出：98</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">([],</span> <span class="mi">10</span><span class="p">))</span>                <span class="c1"># 输出：10</span>
+</pre></div>
+
+
+<p>布尔值参与数值运算时，<code>True</code> 相当于 <code>1</code>，<code>False</code> 相当于 <code>0</code>，所以可以统计满足条件的元素数目：</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">))</span>  <span class="c1"># 输出：2</span>
+</pre></div>
+
+
+<p>这与 <code>all(...)</code>、<code>any(...)</code> 不同：求准确数量通常需要检查所有元素。字符串拼接用 <code>''.join(parts)</code>，不要用 <code>sum</code>。</p>
+<h2 id="min-max-取元素与指定比较依据">min / max：取元素与指定比较依据</h2>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">nums</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">nums</span><span class="p">))</span>       <span class="c1"># 输出：2 9</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>              <span class="c1"># 输出：2</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">max</span><span class="p">([],</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span>       <span class="c1"># 输出：-1</span>
+</pre></div>
+
+
+<p><code>min(xs)</code>、<code>max(xs)</code> 对空输入默认抛出 <code>ValueError</code>；可迭代对象形式可以用 <code>default=</code> 指定空输入的结果。</p>
+<p><code>key=</code> 接收一个函数：Python 对每个候选元素调用它，用函数返回的值比较大小，而 <code>min</code> / <code>max</code> 的返回值仍然是原来的元素。例如找最高分的名字：</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">scores</span><span class="o">.</span><span class="n">get</span><span class="p">))</span>  <span class="c1"># 输出：Alice</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>      <span class="c1"># 输出：90</span>
+</pre></div>
+
+
+<p>直接迭代字典得到键，所以第一句比较每个键对应的分数，返回名字；第二句只取分数，返回数值。</p>
+<h2 id="sorted-得到新的有序列表">sorted：得到新的有序列表</h2>
+<p><code>sorted</code> 接受可迭代对象并返回新列表，原输入不因排序而修改。列表的 <code>sort()</code> 则原地修改并返回 <code>None</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'pear'</span><span class="p">,</span> <span class="s1">'fig'</span><span class="p">,</span> <span class="s1">'apple'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="nb">len</span><span class="p">))</span>     <span class="c1"># 输出：['fig', 'pear', 'apple']</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>                     <span class="c1"># 输出：['pear', 'fig', 'apple']</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>  <span class="c1"># 输出：['pear', 'fig', 'apple']</span>
+</pre></div>
+
+
+<p>多条件排序，可以让 <code>key</code> 返回元组；元组从第一个字段开始比较：</p>
+<div class="codehilite"><pre><span></span><span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'Alice'</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s1">'Bob'</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span> <span class="s1">'Carol'</span><span class="p">:</span> <span class="mi">90</span><span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+<span class="c1"># 输出：[('Alice', 90), ('Carol', 90), ('Bob', 80)]</span>
+</pre></div>
+
+
+<p>上面先按分数降序，再按名字升序。</p>
+<h2 id="enumerate-zip-组织循环中拿到的值">enumerate / zip：组织循环中拿到的值</h2>
+<div class="codehilite"><pre><span></span><span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>  <span class="c1"># 输出：[(1, 'a'), (2, 'b')]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">])))</span>  <span class="c1"># 输出：[(1, 'a'), (2, 'b')]</span>
+</pre></div>
+
+
+<p><code>enumerate</code> 的下标默认从 <code>0</code> 开始。<code>zip</code> 默认在最短输入结束时停止；如果要求输入长度相等，Python 3.10+ 可用 <code>zip(..., strict=True)</code>，遇到长度不一致时抛出 <code>ValueError</code>。</p>
+<div class="codehilite"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">],</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'输入长度不同'</span><span class="p">)</span>         <span class="c1"># 输出：输入长度不同</span>
+</pre></div>
+
+
+<p>它们都按迭代方式产生结果，普通 <code>for</code> 循环直接使用即可，不必先转成列表。</p>
+<h2 id="map-filter-转换与筛选">map / filter：转换与筛选</h2>
+<p><code>map(f, xs)</code> 对每个元素应用函数，<code>filter(P, xs)</code> 保留判断结果为真的元素。两者都返回迭代器，不会立即创建完整结果列表。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="s1">'3 1 2'</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">nums</span><span class="p">))</span>                 <span class="c1"># 输出：[3, 1, 2]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">nums</span><span class="p">))</span>                 <span class="c1"># 输出：[]</span>
+</pre></div>
+
+
+<p>刷题时，<code>map(int, input().split())</code> 常用于读取一行整数；若后面需要按下标访问或多次遍历，再写 <code>list(map(...))</code>。</p>
+<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nums</span><span class="p">)))</span>  <span class="c1"># 输出：[2, 4]</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span> <span class="k">if</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">])</span>          <span class="c1"># 输出：[2, 4]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span><span class="p">,</span> <span class="n">nums</span><span class="p">)))</span>        <span class="c1"># 输出：[1, 4, 9, 16]</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">])</span>                  <span class="c1"># 输出：[1, 4, 9, 16]</span>
+</pre></div>
+
+
+<p>筛选与转换也能直接用推导式表达。需要保存结果时选列表推导式；只想让后续函数逐个消费时，可以用生成器表达式、<code>map</code> 或 <code>filter</code>。</p>
+<h2 id="使用前检查这几件事">使用前检查这几件事</h2>
+<ul>
+<li><code>all</code> / <code>any</code> 的条件是否写对？<code>all(counts.values())</code> 判断数值是否全为真，<code>all(x == 0 for x in counts.values())</code> 判断是否全为零，不能互换；它们也不是互为取反。</li>
+<li>输入为空时，期望的结果是什么？<code>all</code> 为真、<code>any</code> 为假，<code>min</code> / <code>max</code> 默认报错。</li>
+<li>拿到的是列表还是迭代器？迭代器消耗后不会自动重置，也不能直接用下标访问。</li>
+<li><code>key=</code> 只控制比较依据；<code>min</code> / <code>max</code> 仍返回原元素，<code>sorted</code> 返回原元素组成的新列表。</li>
+<li>字典直接迭代的是键；只处理值用 <code>values()</code>，键值一起处理用 <code>items()</code>。</li>
+</ul>
+<h2 id="继续查阅">继续查阅</h2>
+<ul>
+<li><a href="python-data-structures.html">基础数据结构</a>：字典视图、字符串遍历、容器修改与复制。</li>
+<li><a href="https://docs.python.org/3.12/library/functions.html">官方内置函数</a>：<code>all</code>、<code>any</code>、<code>sum</code>、<code>min/max</code>、<code>sorted</code>、<code>enumerate</code>、<code>zip</code>、<code>map/filter</code>。</li>
+<li><a href="https://docs.python.org/3.12/reference/expressions.html#generator-expressions">官方生成器表达式</a>：语法与按需求值规则。</li>
+</ul></article><footer>Python 标准库用法与易错点，附官方文档链接。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#先拆开这句-all">先拆开这句 all</a><a class="level-2" href="#可迭代对象与迭代器">可迭代对象与迭代器</a><a class="level-2" href="#列表推导式与生成器表达式">列表推导式与生成器表达式</a><a class="level-2" href="#常用函数速查">常用函数速查</a><a class="level-2" href="#all-与-any-全部-至少一个">all 与 any：全部 / 至少一个</a><a class="level-2" href="#sum-求和与计数">sum：求和与计数</a><a class="level-2" href="#min-max-取元素与指定比较依据">min / max：取元素与指定比较依据</a><a class="level-2" href="#sorted-得到新的有序列表">sorted：得到新的有序列表</a><a class="level-2" href="#enumerate-zip-组织循环中拿到的值">enumerate / zip：组织循环中拿到的值</a><a class="level-2" href="#map-filter-转换与筛选">map / filter：转换与筛选</a><a class="level-2" href="#使用前检查这几件事">使用前检查这几件事</a><a class="level-2" href="#继续查阅">继续查阅</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>
