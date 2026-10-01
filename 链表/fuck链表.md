@@ -21,17 +21,21 @@
 
 ### 解法
 
-```python
-class Solution:
-    def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:
-        pre = None
-        cur = head
-        while cur:
-            nxt = cur.next
-            cur.next = pre
-            pre = cur
-            cur = nxt
-        return pre
+```cpp
+class Solution {
+  public:
+    ListNode *reverseList(ListNode *head) {
+        ListNode *pre = nullptr;
+        ListNode *cur = head;
+        while (cur) {
+            ListNode *next = cur->next;
+            cur->next = pre;
+            pre = cur;
+            cur = next;
+        }
+        return pre;
+    }
+};
 ```
 
 ## 92.反转链表 II[中等]*
@@ -51,7 +55,7 @@ class Solution:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     ListNode* reverseBetween(ListNode* head, int left, int right) {
@@ -99,35 +103,33 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def getLength(self, head):
-        res = 0
-        while head:
-            head = head.next
-            res += 1
-        return res
-
-    def reverseKGroup(self, head: Optional[ListNode], k: int) -> Optional[ListNode]:
-        n = self.getLength(head)
-        dummyHead = ListNode(0, head)
-        leftPre = dummyHead
-        while k <= n:
-            pre = None
-            cur = leftPre.next
-            for i in range(k):
-                nxt = cur.next
-                cur.next = pre
-                pre = cur
-                cur = nxt
-            # 此时rightNxt指向cur/nxt
-            leftNode = leftPre.next
-            leftNode.next = cur
-            leftPre.next = pre
-            leftPre = leftNode
-            n -= k
-        return dummyHead.next
-
+```cpp
+class Solution {
+  public:
+    ListNode *reverseKGroup(ListNode *head, int k) {
+        int n = 0;
+        for (ListNode *p = head; p; p = p->next)
+            ++n;
+        ListNode dummy(0, head);
+        ListNode *leftPre = &dummy;
+        while (n >= k) {
+            ListNode *pre = nullptr;
+            ListNode *cur = leftPre->next;
+            for (int i = 0; i < k; ++i) {
+                ListNode *next = cur->next;
+                cur->next = pre;
+                pre = cur;
+                cur = next;
+            }
+            ListNode *leftNode = leftPre->next;
+            leftNode->next = cur;
+            leftPre->next = pre;
+            leftPre = leftNode;
+            n -= k;
+        }
+        return dummy.next;
+    }
+};
 ```
 
 ## 237.删除链表中的节点[中等]*
@@ -158,7 +160,7 @@ class Solution:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     void deleteNode(ListNode* node) {
@@ -182,21 +184,26 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def mergeTwoLists(self, list1: Optional[ListNode], list2: Optional[ListNode]) -> Optional[ListNode]:
-        dummyHead = ListNode()
-        prev = dummyHead
-        while list1 and list2:
-            if list1.val <= list2.val:
-                prev.next = list1
-                list1 = list1.next
-            else:
-                prev.next = list2
-                list2 = list2.next
-            prev = prev.next
-        prev.next = list1 if list1 else list2
-        return dummyHead.next
+```cpp
+class Solution {
+  public:
+    ListNode *mergeTwoLists(ListNode *list1, ListNode *list2) {
+        ListNode dummy;
+        ListNode *prev = &dummy;
+        while (list1 && list2) {
+            if (list1->val <= list2->val) {
+                prev->next = list1;
+                list1 = list1->next;
+            } else {
+                prev->next = list2;
+                list2 = list2->next;
+            }
+            prev = prev->next;
+        }
+        prev->next = list1 ? list1 : list2;
+        return dummy.next;
+    }
+};
 ```
 
 ## 160.相交链表[简单]
@@ -225,29 +232,32 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def getLength(self, head):
-        length = 0
-        while head:
-            head = head.next
-            length += 1
-        return length
-
-    def getIntersectionNode(self, headA: ListNode, headB: ListNode) -> Optional[ListNode]:
-        m = self.getLength(headA)
-        n = self.getLength(headB)
-        p, q = headA, headB
-        while m > n:
-            p = p.next
-            m -= 1
-        while m < n:
-            q = q.next
-            n -= 1
-        while p != q:
-            p = p.next
-            q = q.next
-        return p
+```cpp
+class Solution {
+  public:
+    ListNode *getIntersectionNode(ListNode *headA, ListNode *headB) {
+        int m = 0, n = 0;
+        for (auto p = headA; p; p = p->next)
+            ++m;
+        for (auto q = headB; q; q = q->next)
+            ++n;
+        auto p = headA;
+        auto q = headB;
+        while (m > n) {
+            p = p->next;
+            --m;
+        }
+        while (n > m) {
+            q = q->next;
+            --n;
+        }
+        while (p != q) {
+            p = p->next;
+            q = q->next;
+        }
+        return p;
+    }
+};
 ```
 
 + 时间复杂度：$O(m+n)$
@@ -291,7 +301,7 @@ class Solution:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     ListNode* middleNode(ListNode* head) {
@@ -311,18 +321,19 @@ public:
 
 上面的代码返回的是中间靠右边的节点，下面的代码返回的是靠左边的节点
 
-```python
+```cpp
 class Solution {
-public:
-    ListNode* middleNode(ListNode* head) {
-        if(!head) return head;
-        ListNode* fast = head;
-        ListNode* slow = head;
-        while(fast->next != NULL && fast->next->next != NULL){
+  public:
+    ListNode *middleNode(ListNode *head) {
+        if (!head)
+            return head;
+        ListNode *slow = head;
+        ListNode *fast = head;
+        while (fast->next && fast->next->next) {
             slow = slow->next;
             fast = fast->next->next;
         }
-        return slow;
+        return slow; // 偶数长度时返回前一个中点，用于切分链表。
     }
 };
 ```
@@ -348,7 +359,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     bool hasCycle(ListNode *head) {
@@ -402,19 +413,26 @@ a+(n+1)b+nc=2(a+b)⟹a=c+(n−1)(b+c)
 
 ### 解法
 
-```python
-class Solution:
-    def detectCycle(self, head: Optional[ListNode]) -> Optional[ListNode]:
-        slow = fast = head
-        while fast and fast.next:
-            slow = slow.next
-            fast = fast.next.next
-            if slow == fast:
-                while slow != head:
-                    slow = slow.next
-                    head = head.next
-                return slow
-        return None
+```cpp
+class Solution {
+  public:
+    ListNode *detectCycle(ListNode *head) {
+        ListNode *slow = head;
+        ListNode *fast = head;
+        while (fast && fast->next) {
+            slow = slow->next;
+            fast = fast->next->next;
+            if (slow == fast) {
+                while (slow != head) {
+                    slow = slow->next;
+                    head = head->next;
+                }
+                return slow;
+            }
+        }
+        return nullptr;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -424,13 +442,13 @@ class Solution:
 
 给定一个单链表 `L` 的头节点 `head` ，单链表 `L` 表示为：
 
-```
+```text
 L0 → L1 → … → Ln - 1 → Ln
 ```
 
 请将其重新排列后变为：
 
-```
+```text
 L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
 ```
 
@@ -440,7 +458,7 @@ L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
 
 ![img](https://pic.leetcode-cn.com/1626420311-PkUiGI-image.png)
 
-```
+```text
 输入：head = [1,2,3,4]
 输出：[1,4,2,3]
 ```
@@ -451,7 +469,7 @@ L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     ListNode* middleNode(ListNode* head) {
@@ -506,20 +524,23 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -> Optional[ListNode]:
-        dummyHead = ListNode(-1, head) # 去掉删除头节点的特殊情况
-        slow, fast = dummyHead, dummyHead
-        while n > 0:
-            fast = fast.next
-            n -= 1
-        while fast.next:
-            slow = slow.next
-            fast = fast.next
-        # 此时slow指向倒数第N+1个结点
-        slow.next = slow.next.next
-        return dummyHead.next
+```cpp
+class Solution {
+  public:
+    ListNode *removeNthFromEnd(ListNode *head, int n) {
+        ListNode dummy(-1, head);
+        ListNode *slow = &dummy;
+        ListNode *fast = &dummy;
+        for (int i = 0; i < n; ++i)
+            fast = fast->next;
+        while (fast->next) {
+            slow = slow->next;
+            fast = fast->next;
+        }
+        slow->next = slow->next->next;
+        return dummy.next;
+    }
+};
 ```
 
 
@@ -550,25 +571,26 @@ class Solution:
 
 这个题是简单题，我们可以用一些暴力的方法做出来，例如遍历链表然后把元素全存到数组里，然后再用双指针判断数组是否回文。对于单链表，我们的常规思路都是用递推的思路顺着链往后处理，想要倒着处理是做不到的。这道题一个很天才的想法在于我们可以使用递归，在“递”的过程是顺着链往后走的，到“归”的时候就是倒着处理了。
 
-假设有一个递归函数dfs，我们沿着链表一直调用就能到达最后一个节点了，那么我们是不是可以拿这个节点和头节点开始比较了，所以额外需要一个指针left指向头节点（还是类似双指针的思路，不过right指针是在“归”的过程中往前走的）。递归到的当前节点就是right指针指向的位置，如果它的值和left指向的值不相等，可以直接返回False，我们期望整个dfs都应该是False的，所以前一个节点如果发现后面的节点返回了False，就继续返回False传播回去。如果二者的值相等，那么left指针就往后走一步，right指针返回True，那么就会递归到前一个节点去，前一个节点看到后面的节点返回True，就知道后面的节点都是匹配的，那么我们就继续比较当前节点即right指针和left指针指的值是否相等。
+假设有一个递归函数dfs，我们沿着链表一直调用就能到达最后一个节点了，那么我们是不是可以拿这个节点和头节点开始比较了，所以额外需要一个指针left指向头节点（还是类似双指针的思路，不过right指针是在“归”的过程中往前走的）。递归到的当前节点就是right指针指向的位置，如果它的值和left指向的值不相等，可以直接返回false，我们期望整个dfs都应该是false的，所以前一个节点如果发现后面的节点返回了false，就继续返回false传播回去。如果二者的值相等，那么left指针就往后走一步，right指针返回true，那么就会递归到前一个节点去，前一个节点看到后面的节点返回true，就知道后面的节点都是匹配的，那么我们就继续比较当前节点即right指针和left指针指的值是否相等。
 
 ### 解法
 
-```python
-class Solution:
-    def isPalindrome(self, head: Optional[ListNode]) -> bool:
-        left = head
-        def dfs(node):
-            if node is not None:
-                if not dfs(node.next):
-                    return False
-                nonlocal left
-                if node.val != left.val:
-                    return False
-                # left和right匹配成功,left往后走一步,right在递归回去时相当于往前走一步
-                left = left.next
-            return True # 空节点返回True从而开始归
-        return dfs(head)
+```cpp
+class Solution {
+  public:
+    bool isPalindrome(ListNode *head) {
+        ListNode *left = head;
+        auto dfs = [&](auto &&self, ListNode *node) -> bool {
+            if (!node)
+                return true;
+            if (!self(self, node->next) || node->val != left->val)
+                return false;
+            left = left->next;
+            return true;
+        };
+        return dfs(dfs, head);
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -594,38 +616,40 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def merge(self, left, right):
-        dummyHead = ListNode()
-        prev = dummyHead
-        while left and right:
-            if left.val <= right.val:
-                prev.next = left
-                left = left.next
-            else:
-                prev.next = right
-                right = right.next
-            prev = prev.next
-        prev.next = left if left else right
-        return dummyHead.next
-    
-    def middleNode(self, head):
-       	slow = fast = head
-        while fast.next and fast.next.next:
-            slow = slow.next
-            fast = fast.next.next
-        return slow
-        
-    def sortList(self, head: Optional[ListNode]) -> Optional[ListNode]:
-        if not head or not head.next: 
-            return head
-        mid = self.middleNode(head)
-        right = mid.next
-        mid.next = None
-        left = self.sortList(head)
-        right = self.sortList(right)
-        return self.merge(left, right)
+```cpp
+class Solution {
+    ListNode *merge(ListNode *left, ListNode *right) {
+        ListNode dummy;
+        ListNode *prev = &dummy;
+        while (left && right) {
+            if (left->val <= right->val) {
+                prev->next = left;
+                left = left->next;
+            } else {
+                prev->next = right;
+                right = right->next;
+            }
+            prev = prev->next;
+        }
+        prev->next = left ? left : right;
+        return dummy.next;
+    }
+
+  public:
+    ListNode *sortList(ListNode *head) {
+        if (!head || !head->next)
+            return head;
+        ListNode *slow = head;
+        ListNode *fast = head;
+        while (fast->next && fast->next->next) {
+            slow = slow->next;
+            fast = fast->next->next;
+        }
+        ListNode *right = slow->next;
+        slow->next = nullptr;
+        return merge(sortList(head), sortList(right));
+    }
+};
 ```
 
 + 时间复杂度：$O(N\log N)$
@@ -678,7 +702,7 @@ class Solution:
 
 ![img](https://assets.leetcode.cn/aliyun-lc-upload/uploads/2020/01/09/e1.png)
 
-```
+```text
 输入：head = [[7,null],[13,0],[11,4],[10,2],[1,0]]
 输出：[[7,null],[13,0],[11,4],[10,2],[1,0]]
 ```
@@ -689,26 +713,23 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def copyRandomList(self, head: 'Optional[Node]') -> 'Optional[Node]':
-        p = head
-        dummyHead = Node(-1)
-        q = dummyHead
-        dict = defaultdict(list) # old node -> new node
-        while p:
-            q.next = Node(p.val)
-            dict[p] = q.next 
-            p = p.next
-            q = q.next
-        p = head
-        q = dummyHead.next
-        while p:
-            if p.random:
-                q.random = dict[p.random]
-            p = p.next
-            q = q.next
-        return dummyHead.next
+```cpp
+class Solution {
+  public:
+    Node *copyRandomList(Node *head) {
+        unordered_map<Node *, Node *> copies;
+        Node dummy(-1);
+        Node *q = &dummy;
+        for (Node *p = head; p; p = p->next) {
+            q->next = new Node(p->val);
+            copies[p] = q->next;
+            q = q->next;
+        }
+        for (Node *p = head; p; p = p->next)
+            copies[p]->random = p->random ? copies.at(p->random) : nullptr;
+        return dummy.next;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$

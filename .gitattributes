@@ -1,0 +1,2 @@
+# Imported notes use CRLF; keep checking spaces without flagging carriage returns.
+*.md whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

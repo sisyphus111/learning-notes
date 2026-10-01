@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设计 · C++ 刷题笔记</title><meta name="description" content="最小栈 · LRU 缓存">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html" aria-current="page">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">刷题笔记</p><h1>设计</h1><p class="subtitle">最小栈 · LRU 缓存</p></div>
+<article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a></p><details class="code-conventions"><summary>C++ 示例约定</summary><p>示例采用 C++17，省略标准库头文件与 <code>using namespace std;</code>。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。标为“文本”的块是输入、输出或示意；其余 C++ 片段按所在小节的上下文使用。</p></details><h1 id="焚诀">焚诀</h1>
+<p>设计类题目最常见的是有时间复杂度的限制，而使用单个的数据结构很有可能无法达到，所以通常采用<strong>空间换时间</strong>的思想，使用额外的数据结构辅助实现。下面列出常用数据结构的时间复杂度：</p>
+<table>
+<thead>
+<tr>
+<th>数据结构</th>
+<th style="text-align: left;">查询</th>
+<th>修改</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数组<code>vector</code></td>
+<td style="text-align: left;"><span class="math">\(O(1)\)</span></td>
+<td><span class="math">\(O(N)\)</span>，尾部插入摊销后为<span class="math">\(O(1)\)</span></td>
+</tr>
+<tr>
+<td>链表<code>list</code></td>
+<td style="text-align: left;"><span class="math">\(O(N)\)</span></td>
+<td><span class="math">\(O(1)\)</span></td>
+</tr>
+<tr>
+<td>栈<code>stack</code></td>
+<td style="text-align: left;"><span class="math">\(O(1)\)</span>（栈顶）</td>
+<td><span class="math">\(O(1)\)</span>（栈顶）</td>
+</tr>
+<tr>
+<td>队列<code>queue</code>/<code>deque</code></td>
+<td style="text-align: left;"><span class="math">\(O(1)\)</span>（队头/队尾）</td>
+<td><span class="math">\(O(1)\)</span>（队头/队尾）</td>
+</tr>
+<tr>
+<td>哈希表<code>unordered_set</code>、<code>unordered_map</code></td>
+<td style="text-align: left;"><span class="math">\(O(1)\)</span></td>
+<td><span class="math">\(O(1)\)</span></td>
+</tr>
+<tr>
+<td>红黑树<code>set</code>、<code>map</code>、<code>multiset</code>、<code>multimap</code></td>
+<td style="text-align: left;"><span class="math">\(O(\log N)\)</span></td>
+<td><span class="math">\(O(\log N)\)</span></td>
+</tr>
+<tr>
+<td>堆<code>priority_queue</code></td>
+<td style="text-align: left;"><span class="math">\(O(1)\)</span>（堆顶）</td>
+<td><span class="math">\(O(\log N)\)</span></td>
+</tr>
+</tbody>
+</table>
+<h1 id="栈">栈</h1>
+<h2 id="155-最小栈-中等">155.最小栈[中等]</h2>
+<h3 id="链接">链接</h3>
+<ul>
+<li><a href="https://leetcode.cn/problems/min-stack">155. 最小栈 - 力扣（LeetCode）</a></li>
+</ul>
+<h3 id="题目">题目</h3>
+<p>设计一个支持 <code>push</code> ，<code>pop</code> ，<code>top</code> 操作，并能在<strong>常数时间</strong>内检索到最小元素的栈。</p>
+<p>实现 <code>MinStack</code> 类:</p>
+<ul>
+<li><code>MinStack()</code> 初始化堆栈对象。</li>
+<li><code>void push(int val)</code> 将元素val推入堆栈。</li>
+<li><code>void pop()</code> 删除堆栈顶部的元素。</li>
+<li><code>int top()</code> 获取堆栈顶部的元素。</li>
+<li><code>int getMin()</code> 获取堆栈中的最小元素。</li>
+</ul>
+<h3 id="思路">思路</h3>
+<p>这个题如果第一次做可能不是特别好想，看到最小值可能会想到用小顶堆这样可以<span class="math">\(O(1)\)</span>查到最小值的数据结构，但是最小栈还需要pop修改元素，那么同时修改小顶堆的时间复杂度就变成<span class="math">\(O(\log N)\)</span>了，所以这个方法行不通。注意到，这个题本质上是求<strong>前缀最小值</strong>，假设题目有一个数组，遍历这个数组只push然后getMin，那么我们用一个数组就可以维护前缀最小值了。为了支持栈的结构，我们用求前缀最小值的方法维护一个辅助栈。</p>
+<h3 id="解法">解法</h3>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MinStack</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">stack</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">x_stack</span><span class="p">;</span>
+<span class="w">    </span><span class="n">stack</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">min_stack</span><span class="p">;</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="n">MinStack</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">min_stack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">INT_MAX</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">push</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">x_stack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+<span class="w">        </span><span class="n">min_stack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">min</span><span class="p">(</span><span class="n">min_stack</span><span class="p">.</span><span class="n">top</span><span class="p">(),</span><span class="w"> </span><span class="n">x</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">pop</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">x_stack</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+<span class="w">        </span><span class="n">min_stack</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">top</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">x_stack</span><span class="p">.</span><span class="n">top</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">getMin</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">min_stack</span><span class="p">.</span><span class="n">top</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<h3 id="变形">变形</h3>
+<p>把栈改成队列（queue），<code>getMin</code>返回队列中的最小元素。</p>
+<p>可以尝试同样的方法，除了正常的队列外，使用一个辅助队列。不过队列是FIFO的，不能像栈那样直接取min（因为先取min的元素后出栈，所以没问题），这里的方法是使用<strong>单调递增队列（求下一个最小元素）</strong>。其实最小栈这道题也可以把辅助栈改成<strong>单调递减栈</strong>。</p>
+<h1 id="哈希表">哈希表</h1>
+<h2 id="146-lru缓存-中等">146.LRU缓存[中等]</h2>
+<h3 id="链接_1">链接</h3>
+<ul>
+<li><a href="https://leetcode.cn/problems/lru-cache">146. LRU 缓存 - 力扣（LeetCode）</a></li>
+</ul>
+<h3 id="题目_1">题目</h3>
+<p>请你设计并实现一个满足 <a href="https://baike.baidu.com/item/LRU">LRU (最近最少使用) 缓存</a> 约束的数据结构。</p>
+<p>实现 <code>LRUCache</code> 类：</p>
+<ul>
+<li><code>LRUCache(int capacity)</code> 以 <strong>正整数</strong> 作为容量 <code>capacity</code> 初始化 LRU 缓存</li>
+<li><code>int get(int key)</code> 如果关键字 <code>key</code> 存在于缓存中，则返回关键字的值，否则返回 <code>-1</code> 。</li>
+<li><code>void put(int key, int value)</code> 如果关键字 <code>key</code> 已经存在，则变更其数据值 <code>value</code> ；如果不存在，则向缓存中插入该组 <code>key-value</code> 。如果插入操作导致关键字数量超过 <code>capacity</code> ，则应该 <strong>逐出</strong> 最久未使用的关键字。</li>
+</ul>
+<p>函数 <code>get</code> 和 <code>put</code> 必须以 <code>O(1)</code> 的平均时间复杂度运行。</p>
+<h3 id="思路_1">思路</h3>
+<p>使用<strong>哈希表</strong>可以保证<code>get</code>和<code>put</code>的时间是<span class="math">\(O(1)\)</span>，而记录最近使用的key，可以用<strong>链表</strong>，每访问一个key就把它放到链表头来，逐出时就逐出链表尾即可。但从链表找key的时间是<span class="math">\(O(N)\)</span>，所以我们要用哈希表记录key到链表中节点的映射，而移动这个节点到链表头，需要修改前后节点的指针，所以要用<strong>双向链表</strong>。</p>
+<h3 id="解法_1">解法</h3>
+<p>C++ 用 <code>std::list</code> 管理双向链表节点，用哈希表保存迭代器。<code>splice</code> 把已有节点移到表头，既不复制元素，也不使指向该节点的迭代器失效。</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LRUCache</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">capacity</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// list 拥有节点；哈希表保存稳定的迭代器，最前面是最近访问的元素。</span>
+<span class="w">    </span><span class="n">list</span><span class="o">&lt;</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">items</span><span class="p">;</span>
+<span class="w">    </span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">list</span><span class="o">&lt;</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;&gt;::</span><span class="n">iterator</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cache</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="k">explicit</span><span class="w"> </span><span class="n">LRUCache</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">capacity</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">capacity</span><span class="p">(</span><span class="n">capacity</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">get</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">key</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cache</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">it</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">cache</span><span class="p">.</span><span class="n">end</span><span class="p">())</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<span class="w">        </span><span class="n">items</span><span class="p">.</span><span class="n">splice</span><span class="p">(</span><span class="n">items</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">items</span><span class="p">,</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">put</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">value</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cache</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">cache</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="o">-&gt;</span><span class="n">second</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">;</span>
+<span class="w">            </span><span class="n">items</span><span class="p">.</span><span class="n">splice</span><span class="p">(</span><span class="n">items</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">items</span><span class="p">,</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">items</span><span class="p">.</span><span class="n">emplace_front</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">);</span>
+<span class="w">        </span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">items</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">capacity</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">cache</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">items</span><span class="p">.</span><span class="n">back</span><span class="p">().</span><span class="n">first</span><span class="p">);</span>
+<span class="w">            </span><span class="n">items</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；实现统一为 C++17。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-1" href="#焚诀">焚诀</a><a class="level-1" href="#栈">栈</a><a class="level-2" href="#155-最小栈-中等">155.最小栈[中等]</a><a class="level-1" href="#哈希表">哈希表</a><a class="level-2" href="#146-lru缓存-中等">146.LRU缓存[中等]</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与 STL</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、priority_queue" autocomplete="off"><p id="search-status" role="status">输入题号、题目或 STL 用法</p><div id="search-results"></div></dialog>
+</body></html>

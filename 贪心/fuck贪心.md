@@ -22,19 +22,22 @@
 
 ### 解法1：动态规划
 
-如果看过 [fuck动态规划.md](..\动态规划\fuck动态规划.md) ，那么这道题可以很容易想出动态规划的解法，就是线性dp，`dp[i]`就表示是否可以到达`nums[i]`。但是如果内层循环写`for j in range(i)`的话会超时。
+如果看过 [fuck动态规划.md](../动态规划/fuck动态规划.md) ，那么这道题可以很容易想出动态规划的解法，就是线性dp，`dp[i]`就表示是否可以到达`nums[i]`。但是如果内层循环写`for (int j = 0; j < i; ++j)`的话会超时。
 
-```python
-class Solution:
-    def canJump(self, nums: List[int]) -> bool:
-        n = len(nums)
-        dp = [False] * n
-        dp[0] = True
-        for i in range(n):
-            if dp[i]:
-                for j in range(i + 1, min(i + nums[i] + 1, n)):
-                    dp[j] = True
-        return dp[-1]
+```cpp
+class Solution {
+  public:
+    bool canJump(vector<int> &nums) {
+        int n = nums.size();
+        vector<bool> dp(n);
+        dp[0] = true;
+        for (int i = 0; i < n; ++i)
+            if (dp[i])
+                for (int j = i + 1; j < n && j <= i + nums[i]; ++j)
+                    dp[j] = true;
+        return dp[n - 1];
+    }
+};
 ```
 
 + 时间复杂度：$O(N^2)$
@@ -43,20 +46,23 @@ class Solution:
 
 ### 解法2：贪心
 
-我觉得贪心暂时没有什么明显的表面特征可以总结，对于这道题，其实可以注意到，在更新dp数组时对于某些可以到达的位置，我们会重复地设置它为True。一个还算自然的想法就是，我们只关心最远可到达的位置就行了，也就是遍历`i`时，如果`i`在之前可达的范围内，并且`i+nums[i]`超过数组范围了，那么显然所有位置都可达；如果`i`是之前可达的最远的位置了，并且`i+nums[i]`无法更新这个最远的位置了，而`i`又不是数组末尾，那么自然无法到达数组末尾了。
+我觉得贪心暂时没有什么明显的表面特征可以总结，对于这道题，其实可以注意到，在更新dp数组时对于某些可以到达的位置，我们会重复地设置它为true。一个还算自然的想法就是，我们只关心最远可到达的位置就行了，也就是遍历`i`时，如果`i`在之前可达的范围内，并且`i+nums[i]`超过数组范围了，那么显然所有位置都可达；如果`i`是之前可达的最远的位置了，并且`i+nums[i]`无法更新这个最远的位置了，而`i`又不是数组末尾，那么自然无法到达数组末尾了。
 
-```python
-class Solution:
-    def canJump(self, nums: List[int]) -> bool:
-        n = len(nums)
-        farthest = 0
-        for i in range(n):
-            if i > farthest:
-                return False
-            farthest = max(farthest, i + nums[i])
-            if farthest >= n - 1:
-                return True
-        return False
+```cpp
+class Solution {
+  public:
+    bool canJump(vector<int> &nums) {
+        int n = nums.size(), farthest = 0;
+        for (int i = 0; i < n; ++i) {
+            if (i > farthest)
+                return false;
+            farthest = max(farthest, i + nums[i]);
+            if (farthest >= n - 1)
+                return true;
+        }
+        return false;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -83,16 +89,19 @@ class Solution:
 
 和 [55.跳跃游戏](#55.跳跃游戏[中等]) 题的动规思路如出一辙，而且题目保证一定可达，甚至不用判断可达性了，定义`dp[i]`表示到达`nums[i]`的最小跳跃次数。
 
-```python
-class Solution:
-    def jump(self, nums: List[int]) -> int:
-        n = len(nums)
-        dp = [inf] * n
-        dp[0] = 0
-        for i in range(n):
-            for j in range(i + 1, min(i + nums[i] + 1, n)):
-                dp[j] = min(dp[j], dp[i] + 1)
-        return dp[-1]
+```cpp
+class Solution {
+  public:
+    int jump(vector<int> &nums) {
+        int n = nums.size();
+        vector<int> dp(n, INT_MAX / 2);
+        dp[0] = 0;
+        for (int i = 0; i < n; ++i)
+            for (int j = i + 1; j < n && j <= i + nums[i]; ++j)
+                dp[j] = min(dp[j], dp[i] + 1);
+        return dp[n - 1];
+    }
+};
 ```
 
 + 时间复杂度：$O(N^2)$
@@ -103,17 +112,21 @@ class Solution:
 
 贪心思路和前一题也是一样的，每一跳都要跳得尽可能远。但是假设从位置1出发，更新了最远距离可以到达2,3两个位置，而从2最远可以跳到4，从3最远可以跳到5，如果是在每次更新最远距离时增加步数这就会出问题，虽然2跳得没3远，但是2先跳，就会先累积一次步数。所以有点类似于BFS，对于每一跳可到达的所有候选位置，我们只从这些位置中找出下一跳可以跳的最远的那个去跳。具体代码实现是用`end`去维护上一跳可到达的最远位置。
 
-```python
-class Solution:
-    def jump(self, nums: List[int]) -> int:
-        n = len(nums)
-        farthest, step, end = 0, 0, 0
-        for i in range(n - 1):
-            farthest = max(farthest, i + nums[i])
-            if i == end:
-                step += 1
-                end = farthest
-        return step
+```cpp
+class Solution {
+  public:
+    int jump(vector<int> &nums) {
+        int n = nums.size(), farthest = 0, step = 0, end = 0;
+        for (int i = 0; i < n - 1; ++i) {
+            farthest = max(farthest, i + nums[i]);
+            if (i == end) {
+                ++step;
+                end = farthest;
+            }
+        }
+        return step;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -144,20 +157,25 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def partitionLabels(self, s: str) -> List[int]:
-        last = [0] * 26
-        for i, c in enumerate(s):
-            last[ord(c) - ord('a')] = i
-        res = []
-        start = end = 0
-        for i, c in enumerate(s):
-            end = max(end, last[ord(c) - ord('a')])
-            if i == end:
-                res.append(end - start + 1)
-                start = i + 1
-        return res
+```cpp
+class Solution {
+  public:
+    vector<int> partitionLabels(string s) {
+        array<int, 26> last{};
+        for (int i = 0; i < (int)s.size(); ++i)
+            last[s[i] - 'a'] = i;
+        vector<int> res;
+        int start = 0, end = 0;
+        for (int i = 0; i < (int)s.size(); ++i) {
+            end = max(end, last[s[i] - 'a']);
+            if (i == end) {
+                res.push_back(end - start + 1);
+                start = i + 1;
+            }
+        }
+        return res;
+    }
+};
 ```
 
 

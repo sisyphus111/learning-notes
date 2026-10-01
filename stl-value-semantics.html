@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>对象语义 · C++ 刷题笔记</title><meta name="description" content="构造 · 复制与移动 · 引用 · 传参">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html" aria-current="page">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">STL 参考</p><h1>对象语义</h1><p class="subtitle">构造 · 复制与移动 · 引用 · 传参</p></div>
+<article><p>理解 STL 的第一步不是记容器 API，而是理解“容器本身也是一个普通 C++ 对象”。它拥有一组元素，遵循构造、析构、复制、移动、引用和 <code>const</code> 的统一语言规则。</p>
+<h2 id="1-容器默认拥有元素">1. 容器默认拥有元素</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s">"Ada"</span><span class="p">,</span><span class="w"> </span><span class="s">"Linus"</span><span class="p">};</span>
+</code></pre></div>
+
+<p><code>names</code> 拥有两个独立的 <code>std::string</code> 对象，而不是保存外部字符串变量的别名。容器析构时会先析构所有元素，再释放自己管理的存储空间。</p>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Ada"</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">names</span><span class="p">;</span>
+<span class="n">names</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">name</span><span class="p">);</span><span class="w">      </span><span class="c1">// 复制 name</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Grace"</span><span class="p">;</span><span class="w">            </span><span class="c1">// names[0] 仍然是 "Ada"</span>
+<span class="n">names</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">name</span><span class="p">));</span><span class="w"> </span><span class="c1">// 移动 name 的资源</span>
+</code></pre></div>
+
+<p>如果元素类型是指针，容器拥有的是“指针值”，不自动拥有指针指向的对象。需要独占所有权时优先使用 <code>std::unique_ptr&lt;T&gt;</code>。</p>
+<h2 id="2-构造语法可能只差一对括号">2. 构造语法可能只差一对括号</h2>
+<table>
+<thead>
+<tr>
+<th>代码</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vector&lt;int&gt; a;</code></td>
+<td>空 vector</td>
+</tr>
+<tr>
+<td><code>vector&lt;int&gt; a(3);</code></td>
+<td>3 个值初始化的 <code>int</code>，即 <code>{0,0,0}</code></td>
+</tr>
+<tr>
+<td><code>vector&lt;int&gt; a(3, 7);</code></td>
+<td>3 个 7</td>
+</tr>
+<tr>
+<td><code>vector&lt;int&gt; a{3};</code></td>
+<td>1 个元素，值为 3</td>
+</tr>
+<tr>
+<td><code>vector&lt;int&gt; a{3, 7};</code></td>
+<td>两个元素 <code>{3,7}</code></td>
+</tr>
+<tr>
+<td><code>vector&lt;int&gt; a(first, last);</code></td>
+<td>复制半开区间 <code>[first,last)</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>高频错误：</strong><code>vector&lt;int&gt;(n)</code> 表示 n 个元素，<code>vector&lt;int&gt;{n}</code> 表示一个值为 n 的元素。</p>
+<h2 id="3-复制容器是深度逐元素复制">3. 复制容器是深度逐元素复制</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s">"x"</span><span class="p">,</span><span class="w"> </span><span class="s">"y"</span><span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"changed"</span><span class="p">;</span>
+<span class="c1">// a[0] 仍是 "x"</span>
+</code></pre></div>
+
+<p>复制构造和复制赋值都会产生独立元素。对 n 个元素的容器，通常至少是 O(n)，元素自身的复制成本还要继续计算。</p>
+<table>
+<thead>
+<tr>
+<th>表达式</th>
+<th>发生什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Container b = a;</code></td>
+<td>复制构造：创建新对象并复制 a 的元素</td>
+</tr>
+<tr>
+<td><code>b = a;</code></td>
+<td>复制赋值：替换 b 原有内容，再复制 a</td>
+</tr>
+<tr>
+<td><code>Container b = std::move(a);</code></td>
+<td>移动构造：通常接管 a 的内部资源</td>
+</tr>
+<tr>
+<td><code>b = std::move(a);</code></td>
+<td>移动赋值：释放/替换 b 的资源并接管 a</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-移动后对象仍有效-但值未指定">4. 移动后对象仍有效，但值未指定</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
+
+<span class="n">source</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span><span class="w">      </span><span class="c1">// 合法</span>
+<span class="n">source</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">9</span><span class="p">);</span><span class="w"> </span><span class="c1">// 合法</span>
+<span class="c1">// 不应假设 source 一定为空，也不应继续读取旧内容。</span>
+</code></pre></div>
+
+<p>“valid but unspecified”意味着对象仍满足类型不变量，可以析构、赋值或调用没有前置值要求的操作；但标准没有承诺它保留什么元素。移动通常是 O(1)，但分配器不兼容等场景可能退化为逐元素移动。</p>
+<h2 id="5-传参方式决定是否复制">5. 传参方式决定是否复制</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">values</span><span class="p">);</span><span class="w"> </span><span class="c1">// 不复制，只读</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">mutate</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">values</span><span class="p">);</span><span class="w">        </span><span class="c1">// 不复制，可修改调用者</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">consume</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="p">);</span><span class="w">        </span><span class="c1">// 创建函数自己的副本/移动结果</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">accept_temporary</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;&amp;</span><span class="w"> </span><span class="n">values</span><span class="p">);</span><span class="w"> </span><span class="c1">// 只接右值引用</span>
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>推荐参数</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>只读现有容器</td>
+<td><code>const Container&amp;</code></td>
+<td>无 O(n) 复制，不能修改元素</td>
+</tr>
+<tr>
+<td>修改调用者容器</td>
+<td><code>Container&amp;</code></td>
+<td>修改对调用者可见</td>
+</tr>
+<tr>
+<td>函数需要一份自己的值</td>
+<td><code>Container</code></td>
+<td>左值调用时复制，右值调用时可移动</td>
+</tr>
+<tr>
+<td>参数很小或本来就要复制</td>
+<td>按值</td>
+<td>接口简单，便于在函数内移动</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">store</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">member_values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">values</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">store</span><span class="p">(</span><span class="n">existing</span><span class="p">);</span><span class="w">                  </span><span class="c1">// existing 被复制到 values</span>
+<span class="n">store</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">existing</span><span class="p">));</span><span class="w">       </span><span class="c1">// existing 被移动到 values</span>
+<span class="n">store</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">});</span><span class="w">    </span><span class="c1">// 临时对象直接用于构造 values</span>
+</code></pre></div>
+
+<h2 id="6-返回容器通常直接按值返回">6. 返回容器通常直接按值返回</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">make_values</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>现代 C++ 会进行 copy elision/NRVO，或者在无法消除时移动返回值。不要为了“避免复制”返回局部变量的引用：</p>
+<div class="codehilite"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">broken</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">local</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">local</span><span class="p">;</span><span class="w"> </span><span class="c1">// 错误：函数结束后引用悬空</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="7-访问表达式常常返回引用">7. 访问表达式常常返回引用</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s">"Ada"</span><span class="p">};</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span><span class="w">   </span><span class="c1">// 复制一个 string</span>
+<span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span><span class="w">    </span><span class="c1">// 引用容器中的 string</span>
+<span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">cref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span><span class="w"> </span><span class="c1">// 只读引用</span>
+
+<span class="n">ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Grace"</span><span class="p">;</span><span class="w">          </span><span class="c1">// names[0] 也变为 "Grace"</span>
+</code></pre></div>
+
+<p><code>operator[]</code>、<code>at</code>、<code>front</code>、<code>back</code> 和迭代器解引用通常返回元素引用。是否写 <code>&amp;</code> 会直接决定你在修改原元素还是修改副本。</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">names</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">"!"</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// 修改副本</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">names</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">"!"</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="c1">// 修改容器元素</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">names</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* 只读且不复制 */</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<h2 id="8-const-会沿访问传播">8. <code>const</code> 会沿访问传播</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">print</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">names</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// names[0] 的类型效果是 const std::string&amp;</span>
+<span class="w">    </span><span class="c1">// names[0] = "x"; // 编译错误</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>一个 <code>const</code> 容器不允许通过自身接口修改元素，即使元素实际存放在堆上。注意：如果元素是裸指针，<code>const vector&lt;T*&gt;</code> 只禁止修改指针值，并不自动让 <code>*pointer</code> 变成 const。</p>
+<h2 id="9-结构化绑定也有复制与引用之分">9. 结构化绑定也有复制与引用之分</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">counts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{{</span><span class="s">"a"</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">}};</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">]</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">counts</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="o">++</span><span class="n">value</span><span class="p">;</span><span class="w"> </span><span class="c1">// 修改副本</span>
+<span class="p">}</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="p">[</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">]</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">counts</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="o">++</span><span class="n">value</span><span class="p">;</span><span class="w"> </span><span class="c1">// 修改 map 中的 value；key 本身仍是 const</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="10-引用有效性取决于容器是否移动了元素">10. 引用有效性取决于容器是否移动了元素</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
+<span class="kt">int</span><span class="o">&amp;</span><span class="w"> </span><span class="n">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="n">values</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span><span class="w"> </span><span class="c1">// 如果触发扩容，first 立即失效</span>
+<span class="c1">// 使用 first 可能成为未定义行为</span>
+</code></pre></div>
+
+<p>引用、指针和迭代器只是指向容器内部位置的观察者，不拥有元素。容器重新分配、移动节点或删除元素后，它们可能悬空。具体规则必须结合容器底层结构判断，后续页面会逐类展开。</p>
+<h2 id="11-一页决策表">11. 一页决策表</h2>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>是否复制元素</th>
+<th>能否修改原容器</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Container b = a</code></td>
+<td>是</td>
+<td>否，b 独立</td>
+</tr>
+<tr>
+<td><code>Container&amp; b = a</code></td>
+<td>否</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>const Container&amp; b = a</code></td>
+<td>否</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>auto x = container[i]</code></td>
+<td>复制一个元素</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>auto&amp; x = container[i]</code></td>
+<td>否</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>auto x = std::move(a)</code></td>
+<td>通常接管资源</td>
+<td>a 的旧值不可再假设</td>
+</tr>
+</tbody>
+</table>
+<p><strong>掌握标准：</strong>看到一次容器构造、赋值、传参、返回或访问时，能明确指出是否产生 O(n) 复制、得到的是值还是引用、以及对象的所有权和生命周期在哪里。</p></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-容器默认拥有元素">1. 容器默认拥有元素</a><a class="level-2" href="#2-构造语法可能只差一对括号">2. 构造语法可能只差一对括号</a><a class="level-2" href="#3-复制容器是深度逐元素复制">3. 复制容器是深度逐元素复制</a><a class="level-2" href="#4-移动后对象仍有效-但值未指定">4. 移动后对象仍有效，但值未指定</a><a class="level-2" href="#5-传参方式决定是否复制">5. 传参方式决定是否复制</a><a class="level-2" href="#6-返回容器通常直接按值返回">6. 返回容器通常直接按值返回</a><a class="level-2" href="#7-访问表达式常常返回引用">7. 访问表达式常常返回引用</a><a class="level-2" href="#8-const-会沿访问传播">8. const 会沿访问传播</a><a class="level-2" href="#9-结构化绑定也有复制与引用之分">9. 结构化绑定也有复制与引用之分</a><a class="level-2" href="#10-引用有效性取决于容器是否移动了元素">10. 引用有效性取决于容器是否移动了元素</a><a class="level-2" href="#11-一页决策表">11. 一页决策表</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与 STL</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、priority_queue" autocomplete="off"><p id="search-status" role="status">输入题号、题目或 STL 用法</p><div id="search-results"></div></dialog>
+</body></html>

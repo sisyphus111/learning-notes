@@ -15,7 +15,7 @@
 
 回溯算法模板框架如下：
 
-```c++
+```cpp
 void backtracking(参数) {
     if (终止条件) {
         存放结果;
@@ -65,7 +65,7 @@ void backtracking(参数) {
 
 因为是回溯专题的第一题，所以解法写的详细一点。
 
-```c++
+```cpp
 class Solution {
 public:
     const string map[10] = {"", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
@@ -93,7 +93,7 @@ public:
 
 上面的写法很规整，很符合回溯算法模板。或者我们可以直接把`s`改成局部变量，通过作用域自动实现`pop_back`。关键是理解回溯的思想，**先处理，后递归，再撤销。**
 
-```c++
+```cpp
     vector<string> letterCombinations(string digits) {
         vector<string> res;
         function<void(int)> dfs = [&](int index, const string& s) {
@@ -114,7 +114,7 @@ public:
 
 这么写性能其实不会太好，考虑到`s`的长度就是`digits`的长度，我们可以一开始就固定好`s`的内存大小，处理过程也只需要修改里面字符即可。
 
-```c++
+```cpp
     vector<string> letterCombinations(string digits) {
         vector<string> res;
         int n = digits.size();
@@ -151,7 +151,7 @@ public:
 
 **示例 1：**
 
-```
+```text
 输入：n = 4, k = 2
 输出：
 [
@@ -170,7 +170,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> combine(int n, int k) {
@@ -203,7 +203,7 @@ public:
 2. 还需要的元素个数为: `k - path.size()`;
 3. 在集合n中至多要从该起始位置 : `n - (k - path.size()) + 1`，开始遍历
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> combine(int n, int k) {
@@ -244,7 +244,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> combinationSum3(int k, int n) {
@@ -278,7 +278,7 @@ public:
 + 剩余数字全部选最小的，和也超过n了。`n < sum + start_index + ... + (start_index + d - 1) = sum + (2 * start_index + d - 1) *d / 2`
 + 剩余数字即使全部选最大的，和也不够。`n > sum + 9 + ... + (10 - d) = sum + (19 - d) * d / 2`
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> combinationSum3(int k, int n) {
@@ -319,7 +319,7 @@ public:
 
 **示例 1：**
 
-```
+```text
 输入：n = 3
 输出：["((()))","(()())","(())()","()(())","()()()"]
 ```
@@ -330,7 +330,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     vector<string> generateParenthesis(int n) {
@@ -378,26 +378,30 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def combinationSum(self, candidates: List[int], target: int) -> List[List[int]]:
-        res = []
-        path = []
-        n = len(candidates)
-        def dfs(i, s):
-            if s > target:
-                return
-            elif s == target:
-                res.append(path.copy())
-                return
-            
-            for j in range(i, n):
-                path.append(candidates[j])
-                dfs(j, s + candidates[j])
-                path.pop()
-
-        dfs(0, 0)
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> combinationSum(vector<int> &candidates, int target) {
+        vector<vector<int>> res;
+        vector<int> path;
+        int n = candidates.size();
+        auto dfs = [&](auto &&self, int i, int sum) -> void {
+            if (sum > target)
+                return;
+            if (sum == target) {
+                res.push_back(path);
+                return;
+            }
+            for (int j = i; j < n; ++j) {
+                path.push_back(candidates[j]);
+                self(self, j, sum + candidates[j]);
+                path.pop_back();
+            }
+        };
+        dfs(dfs, 0, 0);
+        return res;
+    }
+};
 ```
 
 
@@ -419,7 +423,7 @@ class Solution:
 
 **示例 1：**
 
-```
+```text
 输入：nums = [1,2,3]
 输出：[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]
 ```
@@ -436,7 +440,7 @@ class Solution:
 
 <img src="./figures/78-analysis.png" width="80%">
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> subsets(vector<int>& nums) {
@@ -468,7 +472,7 @@ public:
 
 对于子集问题，我们还可以有另一种视角，对于每个元素，我们都有选和不选两种选择。一共会递归$O(2^N)$次，再加上`push_back`会有$O(N)$的拷贝开销。
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> subsets(vector<int>& nums) {
@@ -520,7 +524,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     bool isPalindrome(const string& s, int start, int end) {
@@ -572,7 +576,7 @@ public:
 
 **示例 1：**
 
-```
+```text
 输入：nums = [1,2,3]
 输出：[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
 ```
@@ -581,69 +585,89 @@ public:
 
 求排列，典型的回溯问题。组合、子集、分割三类问题本质都是组合型问题，排列型问题不同之处在于输出的集合是有序的。如果第一个位置选了某个元素，其他结果集中仍然可以在其他位置选该元素，而在组合型问题中则需要排除掉之前结果集中选过的元素。因此，对于这道题，我们可以从每个位置可以选哪些入手。对于第一个位置，自然`nums`中的元素都可以选，对于第二个位置，就要排除掉刚刚选过的第一个元素，再剩下的集合中随便选，以此类推。**注意，这里排除元素是因为在求一个结果集时不能重复使用一个元素，而多个结果集是可以选择一个元素放在不同位置上的。**
 
-因此实现起来也可以有多种方法，一种则直接把可选的集合当做参数传递（当然每次递归都要复制集合，性能并不高，不过用python写起来轻松），另一种是用一个`used`数组记录使用过的元素。
+因此实现起来也可以有多种方法，一种则直接把可选的集合当做参数传递（当然每次递归都要复制集合，性能并不高，下面的 C++ 版本用集合按值传参来展示这个思路），另一种是用一个`used`数组记录使用过的元素。
 
 ### 解法1
 
-```python
-class Solution:
-    def permute(self, nums: List[int]) -> List[List[int]]:
-        n = len(nums)
-        res = []
-        path = [0] * n 
-        def dfs(i, s):
-            if i == n:
-                res.append(path.copy())
-                return
-            for x in s:
-                path[i] = x
-                dfs(i + 1, s - {x})
-        dfs(0, set(nums))
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> permute(vector<int> &nums) {
+        int n = nums.size();
+        vector<vector<int>> res;
+        vector<int> path(n);
+        auto dfs = [&](auto &&self, int i, unordered_set<int> remaining) -> void {
+            if (i == n) {
+                res.push_back(path);
+                return;
+            }
+            for (int x : remaining) {
+                path[i] = x;
+                auto next = remaining;
+                next.erase(x);
+                self(self, i + 1, std::move(next));
+            }
+        };
+        dfs(dfs, 0, unordered_set<int>(nums.begin(), nums.end()));
+        return res;
+    }
+};
 ```
 
 ### 解法2
 
-```python
-class Solution:
-    def permute(self, nums: List[int]) -> List[List[int]]:
-        n = len(nums)
-        res = []
-        path = [0] * n
-        used = [False] * n
-        def dfs(i):
-            if i == n:
-                res.append(path.copy())
-                return
-            for j in range(n):
-                if not used[j]:
-                    path[i] = nums[j]
-                    used[j] = True
-                    dfs(i + 1)
-                    used[j] = False
-        dfs(0)
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> permute(vector<int> &nums) {
+        int n = nums.size();
+        vector<vector<int>> res;
+        vector<int> path(n);
+        vector<bool> used(n);
+        auto dfs = [&](auto &&self, int i) -> void {
+            if (i == n) {
+                res.push_back(path);
+                return;
+            }
+            for (int j = 0; j < n; ++j)
+                if (!used[j]) {
+                    path[i] = nums[j];
+                    used[j] = true;
+                    self(self, i + 1);
+                    used[j] = false;
+                }
+        };
+        dfs(dfs, 0);
+        return res;
+    }
+};
 ```
 
 ### 优化
 
 上面两种解法都需要$O(N)$的额外空间，实际上我们可以原地修改`nums`数组，来实现$O(1)$的空间复杂度。排列的本质就是把所有数放到不同的位置上，如果当前递归负责位置`i`，我们可以用`swap`把剩余集合中所有数字放到第`i`位去。
 
-```python
-class Solution:
-    def permute(self, nums: List[int]) -> List[List[int]]:
-        n = len(nums)
-        res = []
-        def dfs(i):
-            if i == n:
-                res.append(nums.copy())
-                return
-            for j in range(i, n):
-                nums[i], nums[j] = nums[j], nums[i]
-                dfs(i + 1)
-                nums[i], nums[j] = nums[j], nums[i]
-        dfs(0)
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> permute(vector<int> &nums) {
+        int n = nums.size();
+        vector<vector<int>> res;
+        auto dfs = [&](auto &&self, int i) -> void {
+            if (i == n) {
+                res.push_back(nums);
+                return;
+            }
+            for (int j = i; j < n; ++j) {
+                swap(nums[i], nums[j]);
+                self(self, i + 1);
+                swap(nums[i], nums[j]);
+            }
+        };
+        dfs(dfs, 0);
+        return res;
+    }
+};
 ```
 
 # 棋盘
@@ -669,7 +693,7 @@ class Solution:
 
 ![img](https://assets.leetcode.com/uploads/2020/11/13/queens.jpg)
 
-```
+```text
 输入：n = 4
 输出：[[".Q..","...Q","Q...","..Q."],["..Q.","Q...","...Q",".Q.."]]
 解释：如上图所示，4 皇后问题存在两个不同的解法。
@@ -681,7 +705,7 @@ class Solution:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     bool isValid(vector<string>& chessboard, int row, int col, int n) {

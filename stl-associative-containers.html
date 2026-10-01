@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>关联容器 · C++ 刷题笔记</title><meta name="description" content="map / set · unordered 系列">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><span class="brand-mark">C++</span><span>刷题笔记<small>思路 · 实现 · STL</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html" aria-current="page">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">C++ 刷题笔记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" aria-label="切换深浅色">深色</button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">STL 参考</p><h1>关联容器</h1><p class="subtitle">map / set · unordered 系列</p></div>
+<article><p><code>map/set</code> 与 <code>unordered_map/unordered_set</code> 都按 key 组织元素，但一个维护有序树，一个维护哈希桶。选择它们时必须同时考虑顺序需求、复杂度保证、访问副作用和引用稳定性。</p>
+<h2 id="1-两个家族的底层模型">1. 两个家族的底层模型</h2>
+<table>
+<thead>
+<tr>
+<th>家族</th>
+<th>典型实现</th>
+<th>顺序</th>
+<th>查找复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>map/set</code></td>
+<td>平衡二叉搜索树，常见为红黑树</td>
+<td>按比较器排序</td>
+<td>最坏 O(log n)</td>
+</tr>
+<tr>
+<td><code>unordered_*</code></td>
+<td>bucket 数组与哈希组织</td>
+<td>无稳定遍历顺序</td>
+<td>平均 O(1)，最坏 O(n)</td>
+</tr>
+</tbody>
+</table>
+<p>标准规定可观察行为和复杂度，不强制某一种内部实现。代码可以依赖“map 有序、操作 O(log n)”，不能依赖具体树颜色或 unordered 的桶链表布局。</p>
+<h2 id="2-map-元素的真实类型">2. map 元素的真实类型</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">counts</span><span class="p">;</span>
+<span class="c1">// 元素效果上是：pair&lt;const std::string, int&gt;</span>
+</code></pre></div>
+
+<p>key 是 <code>const</code>，因为原地修改 key 会破坏树顺序或哈希桶位置；mapped value 可以修改。</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="p">[</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">]</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">counts</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// key = "new"; // 编译错误</span>
+<span class="w">    </span><span class="o">++</span><span class="n">value</span><span class="p">;</span><span class="w">         </span><span class="c1">// 合法</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="3-operator-是-查找或插入">3. <code>operator[]</code> 是“查找或插入”</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">counts</span><span class="p">;</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">counts</span><span class="p">[</span><span class="s">"missing"</span><span class="p">];</span><span class="w"> </span><span class="c1">// 插入 {"missing", 0}</span>
+</code></pre></div>
+
+<p><code>operator[]</code> 找不到 key 时会默认构造 mapped value，所以只能用于 map，不能用于 set，也不能用于 const map。</p>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>C++17 写法</th>
+<th>副作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>只判断存在</td>
+<td><code>find(key) != end()</code> 或 <code>count(key)</code></td>
+<td>不插入</td>
+</tr>
+<tr>
+<td>读取且不存在时报错</td>
+<td><code>at(key)</code></td>
+<td>抛 <code>out_of_range</code></td>
+</tr>
+<tr>
+<td>计数/不存在时创建默认值</td>
+<td><code>operator[]</code></td>
+<td>可能插入</td>
+</tr>
+<tr>
+<td>构造并得知是否新插入</td>
+<td><code>emplace/try_emplace</code></td>
+<td>按需插入</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">it</span><span class="p">,</span><span class="w"> </span><span class="n">inserted</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">counts</span><span class="p">.</span><span class="n">try_emplace</span><span class="p">(</span><span class="s">"alice"</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="o">++</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+</code></pre></div>
+
+<h2 id="4-访问得到的是节点中-value-的引用">4. 访问得到的是节点中 value 的引用</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="o">&amp;</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">counts</span><span class="p">[</span><span class="s">"alice"</span><span class="p">];</span>
+<span class="n">count</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="c1">// 直接修改 map 中的值</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">counts</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="s">"alice"</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">counts</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>同样要区分 <code>auto value = it-&gt;second</code> 的复制与 <code>auto&amp; value = it-&gt;second</code> 的引用。</p>
+<h2 id="5-map-set-的引用为什么稳定">5. map/set 的引用为什么稳定</h2>
+<p>树容器通常每个元素一个独立节点。插入新节点不需要搬动旧节点，因此插入不会使已有元素的引用、指针和迭代器失效。删除只让被删除元素的观察者失效。</p>
+<div class="codehilite"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">counts</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="s">"alice"</span><span class="p">);</span>
+<span class="n">counts</span><span class="p">[</span><span class="s">"bob"</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w"> </span><span class="c1">// it 仍有效</span>
+<span class="n">counts</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="s">"alice"</span><span class="p">);</span><span class="w"> </span><span class="c1">// it 立即失效</span>
+</code></pre></div>
+
+<p>这种节点稳定性适合保存长期引用，但节点分配和指针跳转会增加内存与缓存成本。</p>
+<h2 id="6-比较器必须形成-strict-weak-ordering">6. 比较器必须形成 strict weak ordering</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">ByLengthThenText</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="nf">operator</span><span class="p">()(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">                    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">set</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">ByLengthThenText</span><span class="o">&gt;</span><span class="w"> </span><span class="n">words</span><span class="p">;</span>
+</code></pre></div>
+
+<p>比较器表达“a 是否严格排在 b 前面”，相等时必须返回 false。不要写 <code>&lt;=</code>；比较规则不一致会破坏容器不变量，行为可能未定义。</p>
+<p>对 set/map 而言，若 <code>!comp(a,b) &amp;&amp; !comp(b,a)</code>，两个 key 就被视为等价，即使 <code>operator==</code> 认为它们不同。</p>
+<h2 id="7-unordered-容器的-bucket-负载因子与-rehash">7. unordered 容器的 bucket、负载因子与 rehash</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">counts</span><span class="p">;</span>
+<span class="n">counts</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="mi">1000</span><span class="p">);</span><span class="w">       </span><span class="c1">// 为预计元素数准备桶</span>
+<span class="n">counts</span><span class="p">.</span><span class="n">max_load_factor</span><span class="p">(</span><span class="mf">0.8f</span><span class="p">);</span>
+</code></pre></div>
+
+<p>负载因子大致是 <code>size / bucket_count</code>。元素增多超过阈值时会 rehash：重新分配 bucket 并把元素归入新桶。</p>
+<ul>
+<li>rehash 会使所有迭代器失效。</li>
+<li>对元素的引用和指针通常仍有效，因为节点本身不必搬迁；被 erase 的元素除外。</li>
+<li>遍历顺序可能在插入或 rehash 后改变，绝不能依赖。</li>
+</ul>
+<h2 id="8-哈希函数与相等判断必须一致">8. 哈希函数与相等判断必须一致</h2>
+<p>若两个 key 按相等谓词相等，它们必须产生相同哈希值。否则查找可能进入错误桶。</p>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">Point</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Point</span><span class="o">&amp;</span><span class="w"> </span><span class="n">other</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w">  </span><span class="n">other</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">y</span><span class="w">  </span><span class="n">other</span><span class="p">.</span><span class="n">y</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">PointHash</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="nf">operator</span><span class="p">()(</span><span class="k">const</span><span class="w"> </span><span class="n">Point</span><span class="o">&amp;</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">h1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">hash</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">{}(</span><span class="n">p</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">h2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">hash</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">{}(</span><span class="n">p</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">h1</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="p">(</span><span class="n">h2</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">unordered_set</span><span class="o">&lt;</span><span class="n">Point</span><span class="p">,</span><span class="w"> </span><span class="n">PointHash</span><span class="o">&gt;</span><span class="w"> </span><span class="n">points</span><span class="p">;</span>
+</code></pre></div>
+
+<h2 id="9-复制-移动与传参">9. 复制、移动与传参</h2>
+<ul>
+<li>复制 map/unordered_map 会复制全部 key-value 元素，通常 O(n)。</li>
+<li>移动通常接管内部节点和桶，但移动后源容器只保证有效、值未指定。</li>
+<li>只读查询函数应接受 <code>const Map&amp;</code>，不要无意中按值复制整张表。</li>
+<li>返回新构建的 map 可以按值返回，依赖 copy elision/move。</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">lookup</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">table</span><span class="p">,</span>
+<span class="w">           </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">key</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">table</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">it</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">table</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="10-如何选择">10. 如何选择</h2>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>选择</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>需要有序遍历、lower_bound 或稳定最坏复杂度</td>
+<td><code>map/set</code></td>
+</tr>
+<tr>
+<td>只需按 key 查找，追求平均常数时间</td>
+<td><code>unordered_map/set</code></td>
+</tr>
+<tr>
+<td>key 范围小且连续</td>
+<td>优先考虑 vector/array 直接索引</td>
+</tr>
+<tr>
+<td>需要保存指向元素的长期引用</td>
+<td>两家族节点引用通常都较稳定，但必须避开 erase</td>
+</tr>
+<tr>
+<td>输入可能恶意构造哈希冲突</td>
+<td>考虑 map 或安全自定义哈希</td>
+</tr>
+</tbody>
+</table>
+<p><strong>掌握标准：</strong>能够解释 <code>mp[key]</code> 为什么会插入、map 的 key 为什么是 const、unordered rehash 到底使什么失效，并根据是否需要顺序和复杂度保证选择容器。</p></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-两个家族的底层模型">1. 两个家族的底层模型</a><a class="level-2" href="#2-map-元素的真实类型">2. map 元素的真实类型</a><a class="level-2" href="#3-operator-是-查找或插入">3. operator[] 是“查找或插入”</a><a class="level-2" href="#4-访问得到的是节点中-value-的引用">4. 访问得到的是节点中 value 的引用</a><a class="level-2" href="#5-map-set-的引用为什么稳定">5. map/set 的引用为什么稳定</a><a class="level-2" href="#6-比较器必须形成-strict-weak-ordering">6. 比较器必须形成 strict weak ordering</a><a class="level-2" href="#7-unordered-容器的-bucket-负载因子与-rehash">7. unordered 容器的 bucket、负载因子与 rehash</a><a class="level-2" href="#8-哈希函数与相等判断必须一致">8. 哈希函数与相等判断必须一致</a><a class="level-2" href="#9-复制-移动与传参">9. 复制、移动与传参</a><a class="level-2" href="#10-如何选择">10. 如何选择</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与 STL</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、priority_queue" autocomplete="off"><p id="search-status" role="status">输入题号、题目或 STL 用法</p><div id="search-results"></div></dialog>
+</body></html>

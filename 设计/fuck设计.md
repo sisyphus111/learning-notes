@@ -38,7 +38,7 @@
 
 ### 解法
 
-```c++
+```cpp
 class MinStack {
     stack<int> x_stack;
     stack<int> min_stack;
@@ -101,65 +101,39 @@ public:
 
 ### 解法
 
-```python
-class DLinkNode:
-    def __init__(self, key=0, value=0):
-        self.key = key
-        self.value = value
-        self.prev = None
-        self.next = None
+C++ 用 `std::list` 管理双向链表节点，用哈希表保存迭代器。`splice` 把已有节点移到表头，既不复制元素，也不使指向该节点的迭代器失效。
 
-class LRUCache:
-    def __init__(self, capacity: int):
-        # 两个虚拟节点
-        self.head = DLinkNode()
-        self.tail = DLinkNode()
-        self.head.next = self.tail
-        self.tail.prev = self.head
-        self.cache = dict()
-        self.capacity = capacity
-        self.size = 0
-        
-    def get(self, key: int) -> int:
-        if key not in self.cache:
-            return -1
-        node = self.cache[key]
-        self.moveToHead(node)
-        return node.value       
+```cpp
+class LRUCache {
+    int capacity;
+    // list 拥有节点；哈希表保存稳定的迭代器，最前面是最近访问的元素。
+    list<pair<int, int>> items;
+    unordered_map<int, list<pair<int, int>>::iterator> cache;
 
-    def put(self, key: int, value: int) -> None:
-        if key not in self.cache:
-            node = DLinkNode(key, value)
-            self.cache[key] = node
-            self.addToHead(node)
-            self.size += 1
-            if self.size > self.capacity:
-                removed = self.removeTail()
-                self.cache.pop(removed.key)
-                self.size -= 1
-        else:
-            node = self.cache[key]
-            node.value = value
-            self.moveToHead(node)
-
-    def addToHead(self, node):
-        node.next = self.head.next
-        node.prev = self.head
-        self.head.next.prev = node
-        self.head.next = node
-
-    def removeNode(self, node):
-        node.prev.next = node.next
-        node.next.prev = node.prev
-
-    def moveToHead(self, node):
-        self.removeNode(node)
-        self.addToHead(node)
-    
-    def removeTail(self):
-        node = self.tail.prev
-        self.removeNode(node)
-        return node
+  public:
+    explicit LRUCache(int capacity) : capacity(capacity) {}
+    int get(int key) {
+        auto it = cache.find(key);
+        if (it == cache.end())
+            return -1;
+        items.splice(items.begin(), items, it->second);
+        return it->second->second;
+    }
+    void put(int key, int value) {
+        auto it = cache.find(key);
+        if (it != cache.end()) {
+            it->second->second = value;
+            items.splice(items.begin(), items, it->second);
+            return;
+        }
+        items.emplace_front(key, value);
+        cache[key] = items.begin();
+        if ((int)items.size() > capacity) {
+            cache.erase(items.back().first);
+            items.pop_back();
+        }
+    }
+};
 ```
 
 

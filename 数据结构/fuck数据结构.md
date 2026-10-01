@@ -19,7 +19,7 @@ C++的`priority_queue`默认是大顶堆，使用`priority_queue<int, vector<int
 | `priority_queue` | 大顶堆（`less<T>`） | ``[](int a, int b){ return a < b;}``             | 右边的在前面/堆顶    |
 | `lower_bound`等  | 升序（`less<T>`）   | `[](int item,int target){return item < target;}` | 元素是否在target左边 |
 
-python轻量级使用可以结合列表和`heapq`工具，或者使用线程安全的`PriorityQueue`类。（默认都是小顶堆）
+C++ 使用 `priority_queue`，默认大顶堆；传入 `greater<int>` 后得到小顶堆。取堆顶用 `top()`，删除堆顶用 `pop()`，后者不返回元素。
 
 
 
@@ -43,7 +43,7 @@ python轻量级使用可以结合列表和`heapq`工具，或者使用线程安�
 
 直接排序，然后取倒数第k个元素。
 
-```c++
+```cpp
 class Solution {
 public:
     int findKthLargest(vector<int>& nums, int k) {
@@ -60,7 +60,7 @@ public:
 
 原地建一个**大顶堆**，然后再pop k - 1 次去掉前 k - 1 大的元素，然后堆顶就是第 k 大的元素。原地建堆的时间复杂度为$O(N)$，pop的时间复杂度为$O(\log N)$，因此总的时间复杂度为$O(N + k\log N)=O(N\log N)$（因为k < N）
 
-```c++
+```cpp
 class Solution {
 public:
     int findKthLargest(vector<int>& nums, int k) {
@@ -80,7 +80,7 @@ public:
 
 使用一个大小为 k 的**小顶堆**，**保留当前遇到的最大的 k 个元素**，每次新元素进来时，只有比小顶堆里最小的元素更大才换进去。
 
-```c++
+```cpp
 class Solution {
 public:
     int findKthLargest(vector<int>& nums, int k) {
@@ -96,7 +96,7 @@ public:
 
 或者这样写，可能逻辑更加清楚一点。
 
-```c++
+```cpp
 class Solution {
 public:
     int findKthLargest(vector<int>& nums, int k) {
@@ -126,7 +126,7 @@ ADS课都教过，作为算法题，就记住快选就行了，还有最坏时�
 
 如果它的下标比 k - 1 小，那么就递归右边，否则递归左边。（**快排需要两边都递归，快选只要递归一边！**）
 
-```c++
+```cpp
 class Solution {
 public:
     int quickselect(vector<int> &nums, int l, int r, int k) {
@@ -155,40 +155,40 @@ public:
 
 注意如果用下面的写法会超时，主要是因为测试用例中有一些case，数组中间会有非常多和pivot一样的元素，会导致`i`或者`j`不断往数组两侧逼近，导致每次递归去掉的部分很少。
 
-```c++
+```cpp
 while(i < j && nums[j] >= pivot) --j;
 nums[i] = nums[j];
 while(i < j && nums[i] <= pivot) ++i;
 nums[j] = nums[i]; 
 ```
 
-或者牺牲一点空间，就有更易读的python版本。
+或者牺牲一点空间，使用三个 `vector` 分别保存比 pivot 大、相等、比 pivot 小的元素，写法更直观。
 
-```python
-class Solution:
-    def findKthLargest(self, nums: List[int], k: int) -> int:
-        def quick_select(nums, k):
-            # 随机选择基准数
-            pivot = random.choice(nums)
-            big, equal, small = [], [], []
-            # 将大于、小于、等于 pivot 的元素划分至 big, small, equal 中
-            for num in nums:
-                if num > pivot:
-                    big.append(num)
-                elif num < pivot:
-                    small.append(num)
-                else:
-                    equal.append(num)
-            if k <= len(big):
-                # 第 k 大元素在 big 中，递归划分
-                return quick_select(big, k)
-            if len(nums) - len(small) < k:
-                # 第 k 大元素在 small 中，递归划分
-                return quick_select(small, k - len(nums) + len(small))
-            # 第 k 大元素在 equal 中，直接返回 pivot
-            return pivot
-        
-        return quick_select(nums, k)
+```cpp
+class Solution {
+  public:
+    int findKthLargest(vector<int> &nums, int k) {
+        mt19937 rng(random_device{}());
+        auto quick_select = [&](auto &&self, const vector<int> &a, int rank) -> int {
+            int pivot = a[uniform_int_distribution<int>(0, (int)a.size() - 1)(rng)];
+            vector<int> big, equal, small;
+            for (int x : a) {
+                if (x > pivot)
+                    big.push_back(x);
+                else if (x < pivot)
+                    small.push_back(x);
+                else
+                    equal.push_back(x);
+            }
+            if (rank <= (int)big.size())
+                return self(self, big, rank);
+            if (rank > (int)(big.size() + equal.size()))
+                return self(self, small, rank - big.size() - equal.size());
+            return pivot;
+        };
+        return quick_select(quick_select, nums, k);
+    }
+};
 ```
 
 ## 23.合并 K 个升序链表[困难]
@@ -205,7 +205,7 @@ class Solution:
 
 **示例 1：**
 
-```
+```text
 输入：lists = [[1,4,5],[1,3,4],[2,6]]
 输出：[1,1,2,3,4,4,5,6]
 解释：链表数组如下：
@@ -226,7 +226,7 @@ class Solution:
 
 `priority_queue`默认的比较器是`less<T>`，所以我们要重载`<`运算符，**千万记得最后那个`const`**。或者定义时用`priority_queue<poi, vector<poi>, cmppoi>`，其中`cmppoi`是自定义的一个比较器重载函数调用运算符 `operator(const T&, const T&)`。
 
-```c++
+```cpp
 struct poi{
     int val;
     ListNode* ptr;
@@ -275,7 +275,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 struct cmp{
     bool operator()(pair<int, int>&lhs, pair<int, int>&rhs){
         return lhs.second > rhs.second;
@@ -332,7 +332,7 @@ public:
 
 ### 解法1：堆
 
-```c++
+```cpp
 class MedianFinder {
     priority_queue<int, vector<int>, less<int>> maxHeap;
     priority_queue<int, vector<int>, greater<int>> minHeap;
@@ -374,7 +374,7 @@ public:
 
 使用`multiset`维护一个有序集合，然后用`left`和`right`指向中间的元素，每次新添加元素时，根据新元素和中间元素的大小关系调整指针位置。特别注意的是，**对于重复的key，`multiset`会将其插入到已有等值元素的末尾**。以`[1,2]`为例，再插入一个`1`，变成`[1(old),1(new),2]`，那么`left`指向`1(old)`，`right`指向`2`，二者没有相邻了，所以要`left=right`。同样的理由，`num >= *right`只能换成`num < *left`，不能写成`num > *right`或`num <= *left`。
 
-```c++
+```cpp
 class MedianFinder {
     multiset<int> nums;
     multiset<int>::iterator left, right;
@@ -437,21 +437,28 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def kSmallestPairs(self, nums1: List[int], nums2: List[int], k: int) -> List[List[int]]:
-        pq = []
-        m, n = len(nums1), len(nums2)
-        for i in range(min(k, m)):
-            heapq.heappush(pq, (nums1[i] + nums2[0], i, 0))
-        res = []
-        while k:
-            _, i, j = heapq.heappop(pq)
-            res.append([nums1[i], nums2[j]])
-            if j + 1 < n:
-                heapq.heappush(pq, (nums1[i] + nums2[j + 1], i, j + 1))
-            k -= 1
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> kSmallestPairs(vector<int> &nums1, vector<int> &nums2, int k) {
+        int m = nums1.size(), n = nums2.size();
+        if (m == 0 || n == 0)
+            return {};
+        using Entry = tuple<long long, int, int>;
+        priority_queue<Entry, vector<Entry>, greater<Entry>> pq;
+        for (int i = 0; i < min(k, m); ++i)
+            pq.push({(long long)nums1[i] + nums2[0], i, 0});
+        vector<vector<int>> res;
+        while (k-- && !pq.empty()) {
+            auto [sum, i, j] = pq.top();
+            pq.pop();
+            res.push_back({nums1[i], nums2[j]});
+            if (j + 1 < n)
+                pq.push({(long long)nums1[i] + nums2[j + 1], i, j + 1});
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$(O(k\log k))$，堆中最多有k个元素
@@ -498,40 +505,45 @@ class Solution:
 
 栈中记录**下一个更大元素的“候选项”的下标**，此时要倒序遍历。假设栈中有一些元素了，现在往前再遍历一个元素，如果发现温度比栈顶高，说明后一天温度下降了，那么要一直pop直到找到下一个更大的元素，此时如果栈不为空，那么`i`这个位置的下一个更高温度就是栈顶了；如果前一个元素比栈顶低，说明后一天温度就比前一天高了，根据下面的代码，用栈顶（也就是后一天）减去当前天结果就是1。
 
-```python
-class Solution:
-    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
-        n = len(temperatures)
-        res = [0] * n
-        st = []
-        for i in range(n - 1, -1, -1):
-            t = temperatures[i]
-			# 当栈不为空且当前温度比栈顶温度高时，弹出栈顶元素
-            while st and t >= temperatures[st[-1]]:
-                st.pop()
-            if st:
-				# 计算从栈顶元素到当前元素之间的天数
-                res[i] = st[-1] - i # 遍历是倒序的
-            st.append(i)
-        return res
+```cpp
+class Solution {
+  public:
+    vector<int> dailyTemperatures(vector<int> &temperatures) {
+        int n = temperatures.size();
+        vector<int> res(n), st;
+        for (int i = n - 1; i >= 0; --i) {
+            while (!st.empty() && temperatures[i] >= temperatures[st.back()])
+                st.pop_back();
+            if (!st.empty())
+                res[i] = st.back() - i;
+            st.push_back(i);
+        }
+        return res;
+    }
+};
 ```
 
 ### 解法2：从左到右
 
 栈中记录**还没算出下一个更大元素的那些数的下标**。假设栈中已经有一些元素了，根据单调栈的特性，说明这些天的温度都是在单调下降的，如果下一天温度比栈顶低，说明依旧满足递减特性，直接入栈，无法确定栈中任何元素的下一个更高温度；如果下一天温度比栈顶高，那么栈中某些元素的下一个更高温度可能就是下一天这个温度，所以要一直pop，同时把这些比下一天温度低的元素的结果确定下来，最后把下一天入栈，继续维持单调性（初始时栈中有一些天温度比下一天高，有一些比下一天低，经过处理后，比下一天低的都会确定结果，大于等于下一天的继续留在栈中待处理，如果遍历完数组还没有处理，那么就会保留默认值0）
 
-```python
-class Solution:
-    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
-        n = len(temperatures)
-        ans = [0] * n
-        st = []  # todolist
-        for i, t in enumerate(temperatures):
-            while st and t > temperatures[st[-1]]:
-                j = st.pop()
-                ans[j] = i - j
-            st.append(i)
-        return ans
+```cpp
+class Solution {
+  public:
+    vector<int> dailyTemperatures(vector<int> &temperatures) {
+        int n = temperatures.size();
+        vector<int> res(n), st;
+        for (int i = 0; i < n; ++i) {
+            while (!st.empty() && temperatures[i] > temperatures[st.back()]) {
+                int j = st.back();
+                st.pop_back();
+                res[j] = i - j;
+            }
+            st.push_back(i);
+        }
+        return res;
+    }
+};
 ```
 
 ## 42.接雨水[困难]*
@@ -553,21 +565,26 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def trap(self, height: List[int]) -> int:
-        res = 0
-        st = []
-        for i, h in enumerate(height):
-            while st and height[st[-1]] <= h:
-                bottom_h = height[st.pop()]
-                if not st:  # 栈是空的
-                    break
-                left = st[-1]
-                dh = min(height[left], h) - bottom_h  # 面积的高
-                res += dh * (i - left - 1)
-            st.append(i)
-        return res
+```cpp
+class Solution {
+  public:
+    int trap(vector<int> &height) {
+        int res = 0;
+        vector<int> st;
+        for (int i = 0; i < (int)height.size(); ++i) {
+            while (!st.empty() && height[st.back()] <= height[i]) {
+                int bottom = height[st.back()];
+                st.pop_back();
+                if (st.empty())
+                    break;
+                int left = st.back();
+                res += (min(height[left], height[i]) - bottom) * (i - left - 1);
+            }
+            st.push_back(i);
+        }
+        return res;
+    }
+};
 ```
 
 ## 84.柱状图中最大的矩形[困难]
@@ -586,7 +603,7 @@ class Solution:
 
 ![img](https://assets.leetcode.com/uploads/2021/01/04/histogram.jpg)
 
-```
+```text
 输入：heights = [2,1,5,6,2,3]
 输出：10
 解释：最大的矩形为图中红色区域，面积为 10
@@ -604,29 +621,33 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def largestRectangleArea(self, heights: List[int]) -> int:
-        n = len(heights)
-        # left[i]表示从i往左找第一个比heights[i]小的元素的下标
-        left, right = [-1] * n, [n] * n
-        mono_stack = [] # 单调递增队列
-        for i in range(n):
-            while mono_stack and heights[i] < heights[mono_stack[-1]]:
-                prev = mono_stack.pop()
-                right[prev] = i
-            mono_stack.append(i)
-        mono_stack.clear()
-        for i in range(n - 1, -1, -1):
-            while mono_stack and heights[i] < heights[mono_stack[-1]]:
-                prev = mono_stack.pop()
-                left[prev] = i
-            mono_stack.append(i)
-
-        res = 0
-        for i, height in enumerate(heights):
-            res = max(res, (right[i] - left[i] - 1) * height)
-        return res
+```cpp
+class Solution {
+  public:
+    int largestRectangleArea(vector<int> &heights) {
+        int n = heights.size();
+        vector<int> left(n, -1), right(n, n), st;
+        for (int i = 0; i < n; ++i) {
+            while (!st.empty() && heights[i] < heights[st.back()]) {
+                right[st.back()] = i;
+                st.pop_back();
+            }
+            st.push_back(i);
+        }
+        st.clear();
+        for (int i = n - 1; i >= 0; --i) {
+            while (!st.empty() && heights[i] < heights[st.back()]) {
+                left[st.back()] = i;
+                st.pop_back();
+            }
+            st.push_back(i);
+        }
+        int res = 0;
+        for (int i = 0; i < n; ++i)
+            res = max(res, (right[i] - left[i] - 1) * heights[i]);
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -666,41 +687,41 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    class MyQueue:  # 单调递减队列
-        def __init__(self):
-            self.que = deque()
+```cpp
+class Solution {
+    class MyQueue {
+        deque<int> que;
 
-        def pop(self, value: int) -> None:
-            if self.que and value == self.que[0]:
-                self.que.popleft()
+      public:
+        void pop(int value) {
+            if (!que.empty() && value == que.front())
+                que.pop_front();
+        }
+        void push(int value) {
+            while (!que.empty() && value > que.back())
+                que.pop_back();
+            que.push_back(value);
+        }
+        int front() const {
+            return que.front();
+        }
+    };
 
-        def push(self, value: int) -> None:
-            # 从队尾移除所有比当前值小的元素
-            while self.que and value > self.que[-1]:
-                self.que.pop()
-            # 把当前值放入队尾
-            self.que.append(value)
-        
-        def front(self) -> int:
-            return self.que[0]
-
-    def maxSlidingWindow(self, nums: List[int], k: int) -> List[int]:
-        que = self.MyQueue()
-        res = []
-        
-        # 初始化队列，将前 k 个元素加入队列
-        for i in range(k):
-            que.push(nums[i])
-        res.append(que.front())  # 记录第一个窗口的最大值
-
-        for i in range(k, len(nums)):
-            que.pop(nums[i - k])  # 移除窗口最前面元素(如果是区间最大元素,那么就被pop掉了,队列的单调性保证了下一个元素是第二大的;如果不是区间最大元素,那么无事发生)
-            que.push(nums[i])  # 加入当前元素
-            res.append(que.front())  # 记录当前窗口的最大值
-
-        return res
+  public:
+    vector<int> maxSlidingWindow(vector<int> &nums, int k) {
+        MyQueue que;
+        vector<int> res;
+        for (int i = 0; i < k; ++i)
+            que.push(nums[i]);
+        res.push_back(que.front());
+        for (int i = k; i < (int)nums.size(); ++i) {
+            que.pop(nums[i - k]);
+            que.push(nums[i]);
+            res.push_back(que.front());
+        }
+        return res;
+    }
+};
 ```
 
 
@@ -739,47 +760,49 @@ class Solution:
 + 指向子节点的指针数组。对于本题而言，只有26个字母。
 + `isEnd`标识是否是一个`word`的结尾。
 
-`search`就是从根往下找，直到找到`word`的最后一个字符，如果所在节点`isEnd=True`，说明`word`在前缀树中；而`startsWith`不需要看`isEnd`。
+`search`就是从根往下找，直到找到`word`的最后一个字符，如果所在节点`isEnd == true`，说明`word`在前缀树中；而`startsWith`不需要看`isEnd`。
 
 ### 解法
 
 官解直接把`Trie`当做节点类，也不是不行，但感觉不符合一般树数据结构的写法，所以我还是特意定义了一个节点类。另外`searchPrefix`也可以写成递归形式，但是用`for`直接遍历`prefix`会更简单。
 
-```python
-class TrieNode:
-    def __init__(self):
-        self.children = [None] * 26
-        self.isEnd = False
+```cpp
+class Trie {
+    struct TrieNode {
+        array<unique_ptr<TrieNode>, 26> children{};
+        bool isEnd = false;
+    };
+    TrieNode root; // 树拥有所有节点，unique_ptr 随树析构释放子节点。
+    const TrieNode *searchPrefix(const string &prefix) const {
+        const TrieNode *node = &root;
+        for (char c : prefix) {
+            int ch = c - 'a';
+            if (!node->children[ch])
+                return nullptr;
+            node = node->children[ch].get();
+        }
+        return node;
+    }
 
-class Trie:
-    def __init__(self):
-        self.root = TrieNode()
-
-    def searchPrefix(self, prefix: str) -> TrieNode:
-        node = self.root
-        for c in prefix:
-            ch = ord(c) - ord('a')
-            if not node.children[ch]:
-                return None
-            node = node.children[ch]
-        return node
-
-    def insert(self, word: str) -> None:
-        node = self.root
-        for c in word:
-            ch = ord(c) - ord('a')
-            if not node.children[ch]:
-                node.children[ch] = TrieNode()
-            node = node.children[ch]
-        node.isEnd = True
-
-    def search(self, word: str) -> bool:
-        node = self.searchPrefix(word)
-        return node is not None and node.isEnd
-
-    def startsWith(self, prefix: str) -> bool:
-        node = self.searchPrefix(prefix)
-        return True if node else False	
+  public:
+    void insert(string word) {
+        TrieNode *node = &root;
+        for (char c : word) {
+            int ch = c - 'a';
+            if (!node->children[ch])
+                node->children[ch] = make_unique<TrieNode>();
+            node = node->children[ch].get();
+        }
+        node->isEnd = true;
+    }
+    bool search(string word) const {
+        auto node = searchPrefix(word);
+        return node && node->isEnd;
+    }
+    bool startsWith(string prefix) const {
+        return searchPrefix(prefix) != nullptr;
+    }
+};
 ```
 
 ## 212.单词搜索 II[困难]
@@ -800,66 +823,55 @@ class Trie:
 
 ### 解法
 
-```python
-class TrieNode:
-    def __init__(self):
-        self.children = {}
-        self.is_end_of_word = False
-
-class Trie:
-    def __init__(self):
-        self.root = TrieNode()
-
-    def insert(self, word):
-        cur = self.root
-        for ch in word:
-            if ch not in cur.children:
-                cur.children[ch] = TrieNode()
-            cur = cur.children[ch]
-
-        cur.is_end_of_word = True
-
-    def search(self, word):
-        cur = self.root
-        for ch in word:
-            if ch in cur.children:
-                cur = cur.children[ch]
-            else:
-                return False
-        found = cur.is_end_of_word
-        return found
-
-class Solution:
-    def findWords(self, board: List[List[str]], words: List[str]) -> List[str]:
-        def dfs(x, y, node, path):
-            if board[x][y] not in node.children:
-                return
-            ch = board[x][y]
-            path.append(ch)
-            if node.children[ch].is_end_of_word:
-                result.add(''.join(path))
-            board[x][y] = '#' # 特殊标记,表示节点已访问
-            for dx, dy in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
-                next_x = x + dx
-                next_y = y + dy
-                if 0 <= next_x < m and 0 <= next_y < n:
-                    dfs(next_x, next_y, node.children[ch], path)
-            board[x][y] = ch
-            path.pop()
-
-        trie = Trie()
-        for word in words:
-            trie.insert(word)
-
-        result = set()
-
-        m = len(board)
-        n = len(board[0])
-        for i in range(m):
-            for j in range(n):
-                dfs(i, j, trie.root, [])
-
-        return list(result)
+```cpp
+class Solution {
+  public:
+    vector<string> findWords(vector<vector<char>> &board, vector<string> &words) {
+        struct TrieNode {
+            array<int, 26> children{};
+            int word = -1;
+        };
+        vector<TrieNode> trie(1);
+        for (int i = 0; i < (int)words.size(); ++i) {
+            int node = 0;
+            for (char c : words[i]) {
+                int ch = c - 'a';
+                if (trie[node].children[ch] == 0) {
+                    trie[node].children[ch] = trie.size();
+                    trie.emplace_back();
+                }
+                node = trie[node].children[ch];
+            }
+            trie[node].word = i;
+        }
+        int m = board.size(), n = board[0].size();
+        vector<string> result;
+        int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
+        auto dfs = [&](auto &&self, int x, int y, int node) -> void {
+            char ch = board[x][y];
+            if (ch == '#')
+                return;
+            int next = trie[node].children[ch - 'a'];
+            if (next == 0)
+                return;
+            if (trie[next].word >= 0) {
+                result.push_back(words[trie[next].word]);
+                trie[next].word = -1;
+            } // 去重。
+            board[x][y] = '#';
+            for (int d = 0; d < 4; ++d) {
+                int nx = x + dx[d], ny = y + dy[d];
+                if (nx >= 0 && nx < m && ny >= 0 && ny < n)
+                    self(self, nx, ny, next);
+            }
+            board[x][y] = ch;
+        };
+        for (int i = 0; i < m; ++i)
+            for (int j = 0; j < n; ++j)
+                dfs(dfs, i, j, 0);
+        return result;
+    }
+};
 ```
 
 
@@ -933,33 +945,33 @@ class Solution:
 
 ### 解法：树状数组
 
-```python
-class NumArray:
+```cpp
+class NumArray {
+    vector<int> nums, tree;
+    int prefixSum(int i) const {
+        int s = 0;
+        while (i > 0) {
+            s += tree[i];
+            i &= i - 1;
+        }
+        return s;
+    }
 
-    def __init__(self, nums: List[int]):
-        n = len(nums)
-        self.nums = [0] * n  # 使 update 中算出的 delta = nums[i]
-        self.tree = [0] * (n + 1) # tree就代表关键区间数组(0号索引无用)
-        for i, x in enumerate(nums):
-            self.update(i, x)
-
-    def update(self, index: int, val: int) -> None:
-        delta = val - self.nums[index]
-        self.nums[index] = val
-        i = index + 1 # 把i的索引对齐到从1开始
-        while i < len(self.tree):
-            self.tree[i] += delta # 包含这个元素的所有关键区间都更新
-            i += i & -i # lowbit
-
-    def prefixSum(self, i: int) -> int:
-        s = 0
-        while i:
-            s += self.tree[i]
-            i &= i - 1  # Brian Kernighan 算法,抹去lowbit,等价于 i -= i & -i
-        return s
-
-    def sumRange(self, left: int, right: int) -> int:
-        return self.prefixSum(right + 1) - self.prefixSum(left)
+  public:
+    NumArray(vector<int> &input) : nums(input.size()), tree(input.size() + 1) {
+        for (int i = 0; i < (int)input.size(); ++i)
+            update(i, input[i]);
+    }
+    void update(int index, int val) {
+        int delta = val - nums[index];
+        nums[index] = val;
+        for (int i = index + 1; i < (int)tree.size(); i += i & -i)
+            tree[i] += delta;
+    }
+    int sumRange(int left, int right) {
+        return prefixSum(right + 1) - prefixSum(left);
+    }
+};
 ```
 
 + 时间复杂度：
@@ -970,17 +982,17 @@ class NumArray:
 
 其实可以把这些 `update `操作合并到一起。从 1 开始枚举 `i`，把 `nums[i−1]` 加到 `tree[i] `后，`tree[i]` 就算好了，直接把 `tree[i]` 加到下一个关键区间的元素和中，也就是加到` tree[i+lowbit(i)]` 中。下下一个关键区间的元素和由` tree[i+lowbit(i)]` 来更新，我们只需要继续往后枚举 `i` 就行。
 
-```python
-	def __init__(self, nums: List[int]):
-        n = len(nums)
-        tree = [0] * (n + 1)
-        for i, x in enumerate(nums, 1):  # i 从 1 开始
-            tree[i] += x
-            nxt = i + (i & -i)  # 下一个关键区间的右端点
-            if nxt <= n:
-                tree[nxt] += tree[i]
-        self.nums = nums
-        self.tree = tree
+```cpp
+// 用这份构造函数替换上面 NumArray 的构造函数，其他成员保持不变。
+NumArray(vector<int> &input) : nums(input), tree(input.size() + 1) {
+    int n = input.size();
+    for (int i = 1; i <= n; ++i) {
+        tree[i] += input[i - 1];
+        int next = i + (i & -i);
+        if (next <= n)
+            tree[next] += tree[i];
+    }
+}
 ```
 
 这样构造的时间就为$O(N)$了。
@@ -995,7 +1007,7 @@ class NumArray:
 
 ## 线段树(无区间更新)
 
-### 3479.水果成篮 III[中等]
+## 3479.水果成篮 III[中等]
 
 #### 链接
 
@@ -1018,75 +1030,76 @@ class NumArray:
 
 在无序数组中求第一个`>=x`的数，由于数组无序，没法直接用二分。但如果硬要二分呢？把数组划成两半，假设第一次查找`>=6`，发现左半区间都小于6，那么下一次查找`>=7`，不就也没必要去查左半区间了。那么我们怎么知道左边或右边区间是否都小于查询的`x`呢？答案就是维护**区间最大值**。如果`x`大于左边区间的最大值，且小于右边区间的最大值，那么二分就可以去右边区间查找，同理我们可以对右边区间递归地二分，最终把整个数组抽象成一棵二叉树，这就是线段树。
 
-```python
-# [l,r]:segement_max
-    			   [0,7]:9
-                 /        \
-           [0,3]:5          [4,7]:9
-          /      \          /       \
-     [0,1]:5    [2,3]:4   [4,5]:9   [6,7]:7
-     /    \     /    \    /    \    /    \
-[0,0]:2 [1,1]:5 [2,2]:1 [3,3]:4 [4,4]:9 [5,5]:3 [6,6]:7 [7,7]:6
+```cpp
+// 线段树中的区间最大值（示意）：
+//                  [0,7]:9
+//                /         \
+//          [0,3]:5          [4,7]:9
+//         /       \         /       \
+//     [0,1]:5  [2,3]:4   [4,5]:9   [6,7]:7
+//     /    \    /    \    /    \    /    \
+//     2     5   1     4   9     3   7     6
 ```
 
 #### 解法
 
-```python
-class SegmentTree:
-    def __init__(self, a: List[int]):
-        n = len(a)
-        self.max = [0] * (2 << (n - 1).bit_length())
-        self.build(a, 1, 0, n - 1)
+```cpp
+class SegmentTree {
+    vector<int> tree;
+    void maintain(int o) {
+        tree[o] = max(tree[o * 2], tree[o * 2 + 1]);
+    }
+    void build(const vector<int> &a, int o, int l, int r) {
+        if (l == r) {
+            tree[o] = a[l];
+            return;
+        }
+        int m = (l + r) / 2;
+        build(a, o * 2, l, m);
+        build(a, o * 2 + 1, m + 1, r);
+        maintain(o);
+    }
 
-    def maintain(self, o: int):
-        self.max[o] = max(self.max[o * 2], self.max[o * 2 + 1])
-
-    # 初始化线段树
-    def build(self, a: List[int], o: int, l: int, r: int):
-        if l == r:
-            self.max[o] = a[l]
-            return
-        m = (l + r) // 2
-        self.build(a, o * 2, l, m) # 左孩子
-        self.build(a, o * 2 + 1, m + 1, r) # 右孩子
-        self.maintain(o)
-
-    # 单点更新
-    def update(self, o: int, l: int, r: int, i: int, x: int) -> int:
-        if l == r:
-            self.max[o] = x
-            return
-        m = (l + r) // 2
-        if i <= m:
-            self.update(o * 2, l, m, i, x)
-        else:
-            self.update(o * 2 + 1, m + 1, r, i, x)
-        self.maintain(o)
-        return i
-
-    def find_first(self, o: int, l: int, r: int, x: int) -> int:
-        if self.max[o] < x: # 区间没有 >= x 的数
-            return -1
-        if l == r:
-            return l
-        m = (l + r) // 2
-        i = self.find_first(o * 2, l, m, x) # 先递归左子树
-        if i < 0:
-            i = self.find_first(o * 2 + 1, m + 1, r, x) # 再递归右子树
-        return i
-
-
-class Solution:
-    def numOfUnplacedFruits(self, fruits: List[int], baskets: List[int]) -> int:
-        t = SegmentTree(baskets)
-        n = len(baskets)
-        res = 0
-        for x in fruits:
-            i = t.find_first(1, 0, n - 1, x)
-            if i < 0:
-                res += 1
-            else: # 可以放得下
-                t.update(1, 0, n - 1, i, -1) # 把容量改成-1
-        return res
+  public:
+    explicit SegmentTree(const vector<int> &a) : tree(4 * a.size()) {
+        build(a, 1, 0, (int)a.size() - 1);
+    }
+    void update(int o, int l, int r, int i, int x) {
+        if (l == r) {
+            tree[o] = x;
+            return;
+        }
+        int m = (l + r) / 2;
+        if (i <= m)
+            update(o * 2, l, m, i, x);
+        else
+            update(o * 2 + 1, m + 1, r, i, x);
+        maintain(o);
+    }
+    int find_first(int o, int l, int r, int x) const {
+        if (tree[o] < x)
+            return -1;
+        if (l == r)
+            return l;
+        int m = (l + r) / 2;
+        int i = find_first(o * 2, l, m, x);
+        return i >= 0 ? i : find_first(o * 2 + 1, m + 1, r, x);
+    }
+};
+class Solution {
+  public:
+    int numOfUnplacedFruits(vector<int> &fruits, vector<int> &baskets) {
+        SegmentTree tree(baskets);
+        int n = baskets.size(), res = 0;
+        for (int x : fruits) {
+            int i = tree.find_first(1, 0, n - 1, x);
+            if (i < 0)
+                ++res;
+            else
+                tree.update(1, 0, n - 1, i, -1);
+        }
+        return res;
+    }
+};
 ```
 

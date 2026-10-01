@@ -10,7 +10,7 @@ ICS位运算都介绍过了，对于位操作，下面是我总结的一下技�
 
 + 将x的第n个bit的值设为v（也就是先将x的第n位清除，然后保留v）
 
-```c++
+```cpp
 void set_bit(unsigned * x, unsigned n, unsigned v) {
     unsigned mask = ~(1 << n); // 这个mask与*x做与运算就可以把第n位变成0，其余位不变
     *x = (*x & mask) | (v << n); // 0与任何数做或运算还是这个数
@@ -19,7 +19,7 @@ void set_bit(unsigned * x, unsigned n, unsigned v) {
 
 + 获取x的第n个bit
 
-```c++
+```cpp
 unsigned get_bit(unsigned x, unsigned n) {
     return x >> n & 1;
 }
@@ -63,10 +63,16 @@ $$
 
 ### 解法
 
-```python
-class Solution:
-    def singleNumber(self, nums: List[int]) -> int:
-        return reduce(xor, nums)
+```cpp
+class Solution {
+  public:
+    int singleNumber(vector<int> &nums) {
+        int res = 0;
+        for (int x : nums)
+            res ^= x;
+        return res;
+    }
+};
 ```
 
 ## 137.只出现一次的数字 II[中等]
@@ -74,7 +80,7 @@ class Solution:
 ### 链接
 
 + [137. 只出现一次的数字 II - 力扣（LeetCode）](https://leetcode.cn/problems/single-number-ii/description/)
-+ [教你一步步推导出位运算公式！]([137. 只出现一次的数字 II - 力扣（LeetCode）](https://leetcode.cn/problems/single-number-ii/solutions/2482832/dai-ni-yi-bu-bu-tui-dao-chu-wei-yun-suan-wnwy/))
++ [教你一步步推导出位运算公式！](https://leetcode.cn/problems/single-number-ii/solutions/2482832/dai-ni-yi-bu-bu-tui-dao-chu-wei-yun-suan-wnwy/)
 
 ### 题目
 
@@ -99,7 +105,7 @@ class Solution:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     int singleNumber(vector<int>& nums) {
@@ -140,27 +146,34 @@ public:
 
 ### 解法1：位移
 
-```python
-class Solution:
-    def rangeBitwiseAnd(self, left: int, right: int) -> int:
-        shift = 0
-        while left < right:
-            left = left >> 1
-            right = right >> 1
-            shift += 1
-        return left << shift
+```cpp
+class Solution {
+  public:
+    int rangeBitwiseAnd(int left, int right) {
+        int shift = 0;
+        while (left < right) {
+            left >>= 1;
+            right >>= 1;
+            ++shift;
+        }
+        return left << shift;
+    }
+};
 ```
 
 ### 解法2：Brian Kernighan 算法
 
 Brian Kernighan 算法的关键在于把`number`和`number - 1`按位与运算之后，`number`的二进制表示中**最右边的1(lowbit)会被抹去变成0**，利用这个，也可以快速计算公共前缀。
 
-```python
-class Solution:
-    def rangeBitwiseAnd(self, left: int, right: int) -> int:
-        while left < right:
-            right &= right - 1
-        return right
+```cpp
+class Solution {
+  public:
+    int rangeBitwiseAnd(int left, int right) {
+        while (left < right)
+            right &= right - 1;
+        return right;
+    }
+};
 ```
 
 

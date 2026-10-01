@@ -35,16 +35,20 @@
 
 ### 解法
 
-```python
-class Solution:
-    def twoSum(self, nums: List[int], target: int) -> List[int]:
-        hashtable = {}
-        for i, num in enumerate(nums):
-            complement = target - num
-            if complement in hashtable:
-                return [hashtable[complement], i]
-            hashtable[num] = i
-        return [] 
+```cpp
+class Solution {
+  public:
+    vector<int> twoSum(vector<int> &nums, int target) {
+        unordered_map<int, int> hashtable;
+        for (int i = 0; i < (int)nums.size(); ++i) {
+            int complement = target - nums[i];
+            if (hashtable.count(complement))
+                return {hashtable[complement], i};
+            hashtable[nums[i]] = i;
+        }
+        return {};
+    }
+};
 ```
 
 时间复杂度：$O(N)$
@@ -67,19 +71,27 @@ class Solution:
 
 一个比较简单的思路是对两个字符串排序，然后依次比较每个字符，时间复杂度为$O(N\log N)$。
 
-或者换个思路，两个字符串是字母异位词，等价于两个字符串中字符出现的种类和次数均相等，属于**判断两个哈希表是否相等**。和判断某个元素是否存在略有不同，我们不仅要保证`s`的哈希表中的每个键值对在`t`的哈希表中都存在，还要保证`t`没有多的键值对，即二者的key集合的大小是一样的。或者高贵的Python，直接使用`Counter`类即可秒杀。
+或者换个思路，两个字符串是字母异位词，等价于两个字符串中字符出现的种类和次数均相等，属于**判断两个哈希表是否相等**。和判断某个元素是否存在略有不同，我们不仅要保证`s`的哈希表中的每个键值对在`t`的哈希表中都存在，还要保证`t`没有多的键值对，即二者的key集合的大小是一样的。C++ 可以用两个 `array<int, 26>` 分别计数，再直接比较两个数组。
 
 ### 解法
 
-```python
-class Solution:
-    def isAnagram(self, s: str, t: str) -> bool:
-        return Counter(s) == Counter(t)
+```cpp
+class Solution {
+  public:
+    bool isAnagram(string s, string t) {
+        array<int, 26> left{}, right{};
+        for (char c : s)
+            ++left[c - 'a'];
+        for (char c : t)
+            ++right[c - 'a'];
+        return left == right;
+    }
+};
 ```
 
 纯手搓其实也不复杂，下面的写法用减法省略了一个哈希表。
 
-```c++
+```cpp
 class Solution {
 public:
     bool isAnagram(string s, string t) {
@@ -116,19 +128,26 @@ public:
 
 ### 思路
 
-如果刚做完[242.有效的字母异位词](#242.有效的字母异位词[简单])这道题来做这道题，可能还会想到使用`Counter`，但是情况又不同了，如果对每个字符串构造了一个`Counter`，要判断他们是否是一个组的，需要挨个比较其他的`Counter`是否和自己相等，这不又是一个哈希表问题吗？我们要把`Counter`作为第二个哈希表的key，既然如此，不如一开始就排序。
+如果刚做完[242.有效的字母异位词](#242.有效的字母异位词[简单])这道题来做这道题，可能还会想到先构造字符计数数组，但是情况又不同了，如果对每个字符串构造了一个计数数组，要判断他们是否是一个组的，需要挨个比较其他计数数组是否和自己相等，这不又是一个哈希表问题吗？我们要把字符计数结果作为分组的 key，既然如此，不如一开始就排序。
 
 ### 解法
 
-```python
-class Solution:
-    def groupAnagrams(self, strs: List[str]) -> List[List[str]]:
-        res = []
-        cnt = defaultdict(list)
-        for word in strs:
-            key = tuple(sorted(word))
-            cnt[key].append(word)
-        return list(cnt.values())
+```cpp
+class Solution {
+  public:
+    vector<vector<string>> groupAnagrams(vector<string> &strs) {
+        unordered_map<string, vector<string>> cnt;
+        for (const string &word : strs) {
+            string key = word;
+            sort(key.begin(), key.end());
+            cnt[key].push_back(word);
+        }
+        vector<vector<string>> res;
+        for (auto &[key, group] : cnt)
+            res.push_back(std::move(group));
+        return res;
+    }
+};
 ```
 
 ## 128.最长连续序列[中等]
@@ -151,29 +170,31 @@ class Solution:
 
 注意第二次遍历时，**遍历对象必须是去重后的元素集合**；计算最长连续序列时也必须从序列的第一个元素开始，否则会超时！！！
 
-```python
-class Solution:
-    def longestConsecutive(self, nums: List[int]) -> int:
-        st = set(nums)
-        res = 0
-        for num in st:
-            if num - 1 not in st: # 只有当 num - 1 不在集合中时，才考虑以 num 开头的序列
-                k = 1
-                while (num + k) in st:
-                    k += 1
-                res = max(res, k)
-        return res
+```cpp
+class Solution {
+  public:
+    int longestConsecutive(vector<int> &nums) {
+        unordered_set<int> st(nums.begin(), nums.end());
+        int res = 0;
+        for (int num : st) {
+            if (num != INT_MIN && st.count(num - 1))
+                continue;
+            int length = 1;
+            long long next = (long long)num + 1;
+            while (next <= INT_MAX && st.count((int)next)) {
+                ++length;
+                ++next;
+            }
+            res = max(res, length);
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
 + 空间复杂度：$O(N)$
 
-> 小trick：在算法本身不超时的情况下，在开头加入下列Python代码，可以让统计的运行时间变成0，直接击败100%，嘿嘿（前人在这道题偷懒耍滑，被我抓到了吧）
->
-> ```python
-> import atexit
-> atexit.register(lambda: open("display_runtime.txt", "w").write("0"))
-> ```
 
 ## 41.缺失的第一个正数[困难]
 
@@ -197,21 +218,25 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def firstMissingPositive(self, nums: List[int]) -> int:
-        N = len(nums)
-        for i, num in enumerate(nums):
-            if num <= 0:
-                nums[i] = N + 1
-        for i in range(N):
-            num = abs(nums[i])
-            if num <= N:
-                nums[num - 1] = -abs(nums[num - 1])
-        for i, num in enumerate(nums):
-            if num > 0:
-                return i + 1
-        return N + 1
+```cpp
+class Solution {
+  public:
+    int firstMissingPositive(vector<int> &nums) {
+        int n = nums.size();
+        for (int &x : nums)
+            if (x <= 0)
+                x = n + 1;
+        for (int i = 0; i < n; ++i) {
+            int x = abs(nums[i]);
+            if (x <= n)
+                nums[x - 1] = -abs(nums[x - 1]);
+        }
+        for (int i = 0; i < n; ++i)
+            if (nums[i] > 0)
+                return i + 1;
+        return n + 1;
+    }
+};
 ```
 
 
@@ -267,21 +292,23 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def twoSum(self, numbers: List[int], target: int) -> List[int]:
-        left, right = 0, len(numbers) - 1
-        
-        while left < right:
-            total = numbers[left] + numbers[right]
-            if total > target:
-                right -= 1
-            elif total < target:
-                left += 1
-            else:
-                return [left + 1, right + 1]
-        
-        return []
+```cpp
+class Solution {
+  public:
+    vector<int> twoSum(vector<int> &numbers, int target) {
+        int left = 0, right = (int)numbers.size() - 1;
+        while (left < right) {
+            int total = numbers[left] + numbers[right];
+            if (total > target)
+                --right;
+            else if (total < target)
+                ++left;
+            else
+                return {left + 1, right + 1};
+        }
+        return {};
+    }
+};
 ```
 
 时间复杂度：$O(N)$
@@ -307,35 +334,39 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def threeSum(self, nums: list[int]) -> list[list[int]]:
-        nums.sort()
-        n = len(nums)
-        res = []
-        
-        for left in range(n - 2):
-            num = nums[left]
-            if left > 0 and num == nums[left - 1]:
-                continue
-            
-            mid, right = left + 1, n - 1
-            while mid < right:
-                total = num + nums[mid] + nums[right]
-                if total < 0:
-                    mid += 1
-                elif total > 0:
-                    right -= 1
-                else:
-                    res.append([num, nums[mid], nums[right]])
-                    mid += 1
-                    while mid < right and nums[mid] == nums[mid - 1]:
-                        mid += 1
-                    right -= 1
-                    while mid < right and nums[right] == nums[right + 1]:
-                        right -= 1
-        
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> threeSum(vector<int> &nums) {
+        sort(nums.begin(), nums.end());
+        int n = nums.size();
+        vector<vector<int>> res;
+        for (int left = 0; left < n - 2; ++left) {
+            int num = nums[left];
+            if (left > 0 && num == nums[left - 1])
+                continue;
+
+            int mid = left + 1, right = n - 1;
+            while (mid < right) {
+                int total = num + nums[mid] + nums[right];
+                if (total < 0)
+                    ++mid;
+                else if (total > 0)
+                    --right;
+                else {
+                    res.push_back({num, nums[mid], nums[right]});
+                    ++mid;
+                    while (mid < right && nums[mid] == nums[mid - 1])
+                        ++mid;
+                    --right;
+                    while (mid < right && nums[right] == nums[right + 1])
+                        --right;
+                }
+            }
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N^2)$
@@ -345,38 +376,42 @@ class Solution:
 
 注意到，对于第一个元素`x`，如果它和它后面**最小**的两个元素之和大于0，那么它与之后任意两个元素之和都会大于0；如果`x`和它后面**最大**的两个元素之和小于0，那么它与它之后任意两个元素之和都会小于0。
 
-```python
-class Solution:
-    def threeSum(self, nums: list[int]) -> list[list[int]]:
-        nums.sort()
-        n = len(nums)
-        res = []
-        
-        for left in range(n - 2):
-            num = nums[left]
-            if left > 0 and num == nums[left - 1]:
-                continue
-            if num + nums[left + 1] + nums[left + 2] > 0:
-                break # 下一个num只会更大,已经没有其他结果了
-            if num + nums[n - 2] + nums[n - 1] < 0:
-                continue # 现在的num太小了,但是下一个可能够大,所以是continue而不是break
-            mid, right = left + 1, n - 1
-            while mid < right:
-                total = num + nums[mid] + nums[right]
-                if total < 0:
-                    mid += 1
-                elif total > 0:
-                    right -= 1
-                else:
-                    res.append([num, nums[mid], nums[right]])
-                    mid += 1
-                    while mid < right and nums[mid] == nums[mid - 1]:
-                        mid += 1
-                    right -= 1
-                    while mid < right and nums[right] == nums[right + 1]:
-                        right -= 1
-        
-        return res
+```cpp
+class Solution {
+  public:
+    vector<vector<int>> threeSum(vector<int> &nums) {
+        sort(nums.begin(), nums.end());
+        int n = nums.size();
+        vector<vector<int>> res;
+        for (int left = 0; left < n - 2; ++left) {
+            int num = nums[left];
+            if (left > 0 && num == nums[left - 1])
+                continue;
+            if (num + nums[left + 1] + nums[left + 2] > 0)
+                break;
+            if (num + nums[n - 2] + nums[n - 1] < 0)
+                continue;
+            int mid = left + 1, right = n - 1;
+            while (mid < right) {
+                int total = num + nums[mid] + nums[right];
+                if (total < 0)
+                    ++mid;
+                else if (total > 0)
+                    --right;
+                else {
+                    res.push_back({num, nums[mid], nums[right]});
+                    ++mid;
+                    while (mid < right && nums[mid] == nums[mid - 1])
+                        ++mid;
+                    --right;
+                    while (mid < right && nums[right] == nums[right + 1])
+                        --right;
+                }
+            }
+        }
+        return res;
+    }
+};
 ```
 
 ## 11.盛最多水的容器[中等]*
@@ -400,7 +435,7 @@ class Solution:
 
 ![img](https://aliyun-lc-upload.oss-cn-hangzhou.aliyuncs.com/aliyun-lc-upload/uploads/2018/07/25/question_11.jpg)
 
-```
+```text
 输入：[1,8,6,2,5,4,8,3,7]
 输出：49 
 解释：图中垂直线代表输入数组 [1,8,6,2,5,4,8,3,7]。在此情况下，容器能够容纳水（表示为蓝色部分）的最大值为 49。
@@ -412,21 +447,21 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def maxArea(self, height: List[int]) -> int:
-        left, right = 0, len(height) - 1
-        res = 0
-        
-        while left < right:
-            tmp = (right - left) * min(height[left], height[right])
-            res = max(res, tmp)
-            if height[left] < height[right]:
-                left += 1
-            else:
-                right -= 1
-        
-        return res 
+```cpp
+class Solution {
+  public:
+    int maxArea(vector<int> &height) {
+        int left = 0, right = (int)height.size() - 1, res = 0;
+        while (left < right) {
+            res = max(res, (right - left) * min(height[left], height[right]));
+            if (height[left] < height[right])
+                ++left;
+            else
+                --right;
+        }
+        return res;
+    }
+};
 ```
 
 ## 42.接雨水[困难]*
@@ -446,7 +481,7 @@ class Solution:
 
 ![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/22/rainwatertrap.png)
 
-```
+```text
 输入：height = [0,1,0,2,1,0,1,3,2,1,2,1]
 输出：6
 解释：上面是由数组 [0,1,0,2,1,0,1,3,2,1,2,1] 表示的高度图，在这种情况下，可以接 6 个单位的雨水（蓝色部分表示雨水）。
@@ -454,32 +489,30 @@ class Solution:
 
 ### 思路
 
-我们可以把每个位置看作一个宽度为1的桶，桶左边的高度为左边所有柱子高度的最大值，桶右边的高度为右边所有柱子高度的最大值。因此可以使用前缀最大值和后缀最大值来记录，注意这里写法和我们后面前缀和的数组略有不同，这里`prefix_max[i]`代表`nums[0:i+1]`中的最大值。
+我们可以把每个位置看作一个宽度为1的桶，桶左边的高度为左边所有柱子高度的最大值，桶右边的高度为右边所有柱子高度的最大值。因此可以使用前缀最大值和后缀最大值来记录，注意这里写法和我们后面前缀和的数组略有不同，这里`prefix_max[i]`代表闭区间 `[0, i]`中的最大值。
 
 ### 解法
 
-```python
-class Solution:
-    def trap(self, height: List[int]) -> int:
-        n = len(height)
-        if n <= 2:
-            return 0
-        
-        prefix_max = [0] * n
-        prefix_max[0] = height[0]
-        for i in range(1, n):
-            prefix_max[i] = max(height[i], prefix_max[i - 1])
-        
-        suffix_max = [0] * n
-        suffix_max[n - 1] = height[n - 1]
-        for i in range(n - 2, -1, -1):
-            suffix_max[i] = max(height[i], suffix_max[i + 1])
-        
-        res = 0
-        for i in range(n):
-            res += min(prefix_max[i], suffix_max[i]) - height[i]
-        
-        return res
+```cpp
+class Solution {
+  public:
+    int trap(vector<int> &height) {
+        int n = height.size();
+        if (n <= 2)
+            return 0;
+        vector<int> prefix_max(n), suffix_max(n);
+        prefix_max[0] = height[0];
+        suffix_max[n - 1] = height[n - 1];
+        for (int i = 1; i < n; ++i)
+            prefix_max[i] = max(height[i], prefix_max[i - 1]);
+        for (int i = n - 2; i >= 0; --i)
+            suffix_max[i] = max(height[i], suffix_max[i + 1]);
+        int res = 0;
+        for (int i = 0; i < n; ++i)
+            res += min(prefix_max[i], suffix_max[i]) - height[i];
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -489,25 +522,22 @@ class Solution:
 
 像这个题目也是有明显的**两端**特点的，所以可以考虑使用双指针优化空间。现在使用单个变量记录前缀最大值和后缀最大值，然后使用两个指针同时从前后开始遍历，如果前缀最大值比后缀最大值小，那么左指针位置的接水高度就应该由前缀最大值决定（右边缘不可能比左边缘更矮了），而右指针位置的左边缘高度尚不清楚（因为中间可能有更高的柱子），因此我们累加左指针位置的接水容量并且左移左指针；如果前缀最大值比后缀最大值大，那么左指针位置的右边缘高度是不清楚的，但是右指针位置的左边缘高度肯定比右边缘高，后续同理。
 
-```python
-class Solution:
-    def trap(self, height: List[int]) -> int:
-        left, right = 0, len(height) - 1
-        prefix_max, suffix_max = 0, 0
-        res = 0
-        
-        while left < right:
-            prefix_max = max(prefix_max, height[left])
-            suffix_max = max(suffix_max, height[right])
-            
-            if prefix_max < suffix_max:
-                res += prefix_max - height[left]
-                left += 1
-            else:
-                res += suffix_max - height[right]
-                right -= 1
-        
-        return res
+```cpp
+class Solution {
+  public:
+    int trap(vector<int> &height) {
+        int left = 0, right = (int)height.size() - 1, prefix_max = 0, suffix_max = 0, res = 0;
+        while (left < right) {
+            prefix_max = max(prefix_max, height[left]);
+            suffix_max = max(suffix_max, height[right]);
+            if (prefix_max < suffix_max)
+                res += prefix_max - height[left++];
+            else
+                res += suffix_max - height[right--];
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -533,21 +563,22 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def sortColors(self, nums: List[int]) -> None:
-        n = len(nums)
-        left, right = 0, n - 1
-        i = 0
-        while i <= right:
-            while i <= right and nums[i] == 2:
-                nums[i], nums[right] = nums[right], nums[i]
-                right -= 1
-            if nums[i] == 0:
-                nums[i], nums[left] = nums[left], nums[i]
-                left += 1
-            i += 1
-            
+```cpp
+class Solution {
+  public:
+    void sortColors(vector<int> &nums) {
+        int left = 0, right = (int)nums.size() - 1, i = 0;
+        while (i <= right) {
+            if (nums[i] == 2)
+                swap(nums[i], nums[right--]); // 换来的元素还没检查，i 保持不动。
+            else {
+                if (nums[i] == 0)
+                    swap(nums[i], nums[left++]);
+                ++i;
+            }
+        }
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -581,26 +612,22 @@ man，what can i say？`nums[i] < nums[i+1]`是我们从右边向左找到的第
 
 ### 解法
 
-```python
-class Solution:
-    def nextPermutation(self, nums: List[int]) -> None:
-        n = len(nums)
-        i = n - 2
-        # 步骤1：从后往前找升序对
-        while i >= 0 and nums[i] >= nums[i+1]:
-            i -= 1
-        if i >= 0:
-            # 步骤2：找右边比 nums[i] 大的最小数字
-            j = n - 1
-            while nums[j] <= nums[i]:
-                j -= 1
-            nums[i], nums[j] = nums[j], nums[i]
-        # 步骤3：反转 i+1 之后的子数组
-        left, right = i + 1, n - 1
-        while left < right:
-            nums[left], nums[right] = nums[right], nums[left]
-            left += 1
-            right -= 1
+```cpp
+class Solution {
+  public:
+    void nextPermutation(vector<int> &nums) {
+        int n = nums.size(), i = n - 2;
+        while (i >= 0 && nums[i] >= nums[i + 1])
+            --i;
+        if (i >= 0) {
+            int j = n - 1;
+            while (nums[j] <= nums[i])
+                --j;
+            swap(nums[i], nums[j]);
+        }
+        reverse(nums.begin() + i + 1, nums.end());
+    }
+};
 ```
 
 
@@ -648,37 +675,38 @@ class Solution:
 
 一个优化就是使用快慢双指针，只要快指针指向的元素不是待删除的元素，就将其赋给慢指针，二者一起往后挪（相当于什么都不做）。如果快指针的元素是待删除的元素，那么快指针会一直往后走，直到碰到有效元素，此时慢指针指向的元素就是待删除元素，通过将快指针的元素赋给慢指针，就覆盖掉了这个待删除元素。
 
-```python
-def erase(nums: List[int], x: int) -> None:
-    slow = 0
-    n = len(nums)
-    for fast in range(n):
-        if nums[fast] != x:
-            nums[slow] = nums[fast]
-            slow += 1
+```cpp
+int erase(vector<int> &nums, int x) {
+    int slow = 0;
+    for (int fast = 0; fast < (int)nums.size(); ++fast)
+        if (nums[fast] != x)
+            nums[slow++] = nums[fast];
+    return slow; // 有效前缀长度；尚未缩短 vector。
+}
 ```
 
 假设待删除的元素一共有k个，那么最后数组的前n-k的元素就是删除后数组的样子了，后k个元素保持不变，STL的vector.remove用的就是这种方法，最后缩容一下即可。例如
 
-```python
-nums = [0,1,0,3,12]
-# 删除0之后
-nums = [1,3,12,3,12]
+```cpp
+vector<int> nums = {0, 1, 0, 3, 12};
+// 覆盖非零元素后的状态（尾部仍有旧值）：
+nums = {1, 3, 12, 3, 12};
 ```
 
 这个题要求把0放到数组末尾，那么我们只要把上面的覆盖操作改成交换就行了，因为每一次处理时，慢指针指向的就是待删除元素，快指针指向的是下一个有效的元素。
 
 ### 解法
 
-```python
-class Solution:
-    def moveZeroes(self, nums: List[int]) -> None:
-        slow = 0
-        n = len(nums)
-        for fast in range(n):
-            if nums[fast] != 0:
-                nums[slow], nums[fast] = nums[fast], nums[slow]
-                slow += 1
+```cpp
+class Solution {
+  public:
+    void moveZeroes(vector<int> &nums) {
+        int slow = 0;
+        for (int fast = 0; fast < (int)nums.size(); ++fast)
+            if (nums[fast] != 0)
+                swap(nums[slow++], nums[fast]);
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -708,20 +736,23 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def findDuplicate(self, nums: List[int]) -> int:
-        slow, fast = 0, 0
-        while True:
-            slow = nums[slow]
-            fast = nums[nums[fast]]
-            if slow == fast:
-                break
-        slow = 0 # 从0开始走,再次碰面就在环入口
-        while slow != fast:
-            slow = nums[slow]
-            fast = nums[fast]
-        return slow
+```cpp
+class Solution {
+  public:
+    int findDuplicate(vector<int> &nums) {
+        int slow = 0, fast = 0;
+        do {
+            slow = nums[slow];
+            fast = nums[nums[fast]];
+        } while (slow != fast);
+        slow = 0;
+        while (slow != fast) {
+            slow = nums[slow];
+            fast = nums[fast];
+        }
+        return slow;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -773,22 +804,21 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def minSubArrayLen(self, target: int, nums: List[int]) -> int:
-        n = len(nums)
-        left = 0
-        res = inf
-        sum = 0
-
-        for right in range(n):
-            sum += nums[right]
-            while sum >= target:
-                res = min(res, right - left + 1)
-                sum -= nums[left]
-                left += 1
-        
-        return res if res != inf else 0
+```cpp
+class Solution {
+  public:
+    int minSubArrayLen(int target, vector<int> &nums) {
+        int n = nums.size(), left = 0, res = n + 1, sum = 0;
+        for (int right = 0; right < n; ++right) {
+            sum += nums[right];
+            while (sum >= target) {
+                res = min(res, right - left + 1);
+                sum -= nums[left++];
+            }
+        }
+        return res == n + 1 ? 0 : res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$，虽然有两重循环，但是内层的循环的总次数是$O(N)$次
@@ -811,24 +841,23 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def numSubarrayProductLessThanK(self, nums: List[int], k: int) -> int:
-        if k <= 1:
-            return 0
-        
-        left = 0
-        res = 0
-        prod = 1
-        
-        for right, num in enumerate(nums):
-            prod *= num
-            while prod >= k:
-                prod //= nums[left]
-                left += 1
-            res += right - left + 1
-        
-        return res
+```cpp
+class Solution {
+  public:
+    int numSubarrayProductLessThanK(vector<int> &nums, int k) {
+        if (k <= 1)
+            return 0;
+        int left = 0, res = 0;
+        long long prod = 1;
+        for (int right = 0; right < (int)nums.size(); ++right) {
+            prod *= nums[right];
+            while (prod >= k)
+                prod /= nums[left++];
+            res += right - left + 1;
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -853,21 +882,22 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def lengthOfLongestSubstring(self, s: str) -> int:
-        hashtable = [0] * 128  # Since the string contains only ASCII characters
-        left = 0
-        res = 0
-        
-        for right, c in enumerate(s):
-            hashtable[ord(c)] += 1
-            while hashtable[ord(c)] > 1:
-                hashtable[ord(s[left])] -= 1
-                left += 1
-            res = max(res, right - left + 1)
-        
-        return res
+```cpp
+class Solution {
+  public:
+    int lengthOfLongestSubstring(string s) {
+        array<int, 256> cnt{};
+        int left = 0, res = 0;
+        for (int right = 0; right < (int)s.size(); ++right) {
+            unsigned char c = s[right];
+            ++cnt[c];
+            while (cnt[c] > 1)
+                --cnt[(unsigned char)s[left++]];
+            res = max(res, right - left + 1);
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -886,28 +916,34 @@ class Solution:
 
 ### 思路
 
-涉及**连续子串**，要想到使用滑动窗口，另外需要求异位词，参考[242.有效的字母异位词](#242.有效的字母异位词[简单])，要用哈希表。至于滑动窗口的写法，对于这种有很明显的定长滑动窗口的题目，我喜欢**先创建一个滑动窗口，然后在遍历时直接从窗口的后一个位置开始遍历**。而直接从0开始遍历，需要多次判断窗口是否达到了要求的大小，即使后续达到了定长的大小，也会无效地判断。**在遍历时，先加入右边的新元素，再弹出左边第一个旧元素，再判断**。（`Counter`中value为0的key不会参与比较）
+涉及**连续子串**，要想到使用滑动窗口，另外需要求异位词，参考[242.有效的字母异位词](#242.有效的字母异位词[简单])，要用哈希表。至于滑动窗口的写法，对于这种有很明显的定长滑动窗口的题目，我喜欢**先创建一个滑动窗口，然后在遍历时直接从窗口的后一个位置开始遍历**。而直接从0开始遍历，需要多次判断窗口是否达到了要求的大小，即使后续达到了定长的大小，也会无效地判断。**在遍历时，先加入右边的新元素，再弹出左边第一个旧元素，再判断**。（这里使用定长计数数组，直接比较每个字母的次数）
 
 ### 解法：定长滑窗
 
-```python
-class Solution:
-    def findAnagrams(self, s: str, p: str) -> List[int]:
-        n = len(s)
-        res = []
-        k = len(p) # 确定滑动窗口大小
-        cnt_p = Counter(p)
-        cnt_s = Counter(s[:k])
-        if cnt_p == cnt_s:
-            res.append(0)
-        left = 0 # left是冗余的,但是我觉得这样更清楚一点,也可以通过right减去滑窗大小计算出来
-        for right in range(k, n):
-            cnt_s[s[left]] -= 1
-            cnt_s[s[right]] += 1
-            left += 1 # left指向新窗口第一个字符
-            if cnt_s == cnt_p:
-                res.append(left)
-        return res
+```cpp
+class Solution {
+  public:
+    vector<int> findAnagrams(string s, string p) {
+        int n = s.size(), k = p.size();
+        if (k > n)
+            return {};
+        array<int, 26> cnt_p{}, cnt_s{};
+        vector<int> res;
+        for (char c : p)
+            ++cnt_p[c - 'a'];
+        for (int i = 0; i < k; ++i)
+            ++cnt_s[s[i] - 'a'];
+        if (cnt_p == cnt_s)
+            res.push_back(0);
+        for (int right = k; right < n; ++right) {
+            --cnt_s[s[right - k] - 'a'];
+            ++cnt_s[s[right] - 'a'];
+            if (cnt_p == cnt_s)
+                res.push_back(right - k + 1);
+        }
+        return res;
+    }
+};
 ```
 
 ### 优化：不定长滑窗
@@ -916,20 +952,26 @@ class Solution:
 
 枚举子串 s ′ 的右端点，**如果发现 s ′ 其中一种字母的出现次数大于 p 的这种字母的出现次数，则右移 s ′ 的左端点（缩小窗口）**。如果发现 s ′ 的长度等于 p 的长度，则说明 s ′ 的每种字母的出现次数，等于 p 的每种字母的出现次数，即 s ′ 是 p 的异位词。（归纳法可以知道s ′ 右端点前面的字母出现次数也是等于p中的出现次数的，且因为二者长度相等，所以不会多字母也不会少字母）
 
-```python
-class Solution:
-    def findAnagrams(self, s: str, p: str) -> List[int]:
-        res = []
-        cnt = Counter(p)  # 统计 p 的每种字母的出现次数
-        left = 0
-        for right, c in enumerate(s):
-            cnt[c] -= 1  # 右端点字母进入窗口
-            while cnt[c] < 0:  # 字母 c 太多了
-                cnt[s[left]] += 1  # 左端点字母离开窗口
-                left += 1
-            if right - left + 1 == len(p):  # s' 和 p 的每种字母的出现次数都相同（证明见上）
-                res.append(left)  # s' 左端点下标加入答案
-        return res
+```cpp
+class Solution {
+  public:
+    vector<int> findAnagrams(string s, string p) {
+        array<int, 26> cnt{};
+        for (char c : p)
+            ++cnt[c - 'a'];
+        int left = 0;
+        vector<int> res;
+        for (int right = 0; right < (int)s.size(); ++right) {
+            int c = s[right] - 'a';
+            --cnt[c];
+            while (cnt[c] < 0)
+                ++cnt[s[left++] - 'a'];
+            if (right - left + 1 == (int)p.size())
+                res.push_back(left);
+        }
+        return res;
+    }
+};
 ```
 
 ## 76.最小覆盖子串[困难]
@@ -947,26 +989,39 @@ class Solution:
 
 ### 思路
 
-涉及**连续子串**，要想到使用滑动窗口，另外需要**判断字符是否存在**，要用哈希表。依旧是枚举右端点，如果窗口子串包含`t`了，就一直右移左端点直到不包含为止，在移动过程中因为满足包含关系，所以不停更新最短子串的左右端点。高贵的Python可以直接用`Counter`的重载`>=`来判断包含关系，其他语言可以手写一个辅助函数，遍历所有可能的key（大小写字母），看是否都满足`cnt_s[i]>cnt_t[i]`。
+涉及**连续子串**，要想到使用滑动窗口，另外需要**判断字符是否存在**，要用哈希表。依旧是枚举右端点，如果窗口子串包含`t`了，就一直右移左端点直到不包含为止，在移动过程中因为满足包含关系，所以不停更新最短子串的左右端点。C++ 可以写一个 `covers` 函数，遍历字符计数数组，检查是否每个字符都满足 `cnt_s[i] >= cnt_t[i]`。注意 `array` 自身的大小比较是字典序，不能用来判断这种逐元素包含关系。
 
 ### 解法
 
-```python
-class Solution:
-    def minWindow(self, s: str, t: str) -> str:
-        cnt_s = Counter()
-        cnt_t = Counter(t)
-        res_left = -1
-        res_right = len(s)
-        left = 0
-        for right, c in enumerate(s):
-            cnt_s[c] += 1
-            while cnt_s >= cnt_t:
-                if right - left < res_right - res_left:
-                    res_left, res_right = left, right
-                cnt_s[s[left]] -= 1
-                left += 1
-        return "" if res_left < 0 else s[res_left : res_right + 1]
+```cpp
+class Solution {
+  public:
+    string minWindow(string s, string t) {
+        if (t.empty())
+            return "";
+        array<int, 256> cnt_s{}, cnt_t{};
+        for (unsigned char c : t)
+            ++cnt_t[c];
+        auto covers = [&]() {
+            for (int i = 0; i < 256; ++i)
+                if (cnt_s[i] < cnt_t[i])
+                    return false;
+            return true;
+        };
+        int res_left = -1, res_length = INT_MAX, left = 0;
+        for (int right = 0; right < (int)s.size(); ++right) {
+            ++cnt_s[(unsigned char)s[right]];
+            while (covers()) {
+                if (right - left + 1 < res_length) {
+                    res_left = left;
+                    res_length = right - left + 1;
+                }
+                --cnt_s[(unsigned char)s[left++]];
+            }
+        }
+        return res_left < 0 ? "" : s.substr(res_left, res_length);
+    }
+};
 ```
 
 + 时间复杂度：$O(C|s|+|t|)$，$C$为字符集大小，这里是52。注意窗口左端点 left 只会增加不会减少，left 每增加一次，我们就花费 $O(C)$ 的时间。因为 left 至多增加 $|s|$ 次，所以二重循环的时间复杂度为 $O(C|s|+|t|)$，再算上统计 t 字母出现次数的时间 $O(|t|)$，总的时间复杂度为 $O(C|s|+|t|)$。
@@ -1031,7 +1086,7 @@ class Solution:
 
 <img src="./figures/3859-analysis.png" width="50%">
 
-我们题目要求的搜索空间是图中√部分的区域，如果搜的是(k, k) - (k+1, k+1)，那么会多出来☆的部分，所以下面代码14行`len(cnt)`比较的传入的参数，而`ge_m`是和固定的k比较。
+我们题目要求的搜索空间是图中√部分的区域，如果搜的是(k, k) - (k+1, k+1)，那么会多出来☆的部分，所以下面代码中 `cnt.size()`比较的传入的参数，而`ge_m`是和固定的k比较。
 
 另一个值得注意的就是统计词频，我们没有用哈希表去记录每个词的词频，然后再遍历哈希表看是否每个词的词频都大于等于`m`，这样做的时间复杂度是$O(N)$，很低效。我们可以用一个变量记录词频大于等于`m`的元素个数，这样在累加词频时一旦发现某个词满足条件就加一，减少词频时发现某个词不满足条件了就减一，相当于均摊了遍历的开销。
 
@@ -1039,34 +1094,31 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def countSubarrays(self, nums: list[int], k: int, m: int) -> int:
-        def calc(distinct_limit: int) -> int:
-            cnt = defaultdict(int)
-            ge_m = 0  # 窗口中的出现次数 >= m 的元素个数
-            ans = left = 0
-            for x in nums:
-                # 1. 入
-                cnt[x] += 1
-                if cnt[x] == m:
-                    ge_m += 1
-
-                # 2. 出
-                while len(cnt) >= distinct_limit and ge_m >= k:
-                    out = nums[left]
-                    if cnt[out] == m:
-                        ge_m -= 1
-                    cnt[out] -= 1
-                    if cnt[out] == 0:
-                        del cnt[out]
-                    left += 1
-
-                # 3. 更新答案
-                ans += left
-            return ans
-
-        return calc(k) - calc(k + 1)
+```cpp
+class Solution {
+  public:
+    long long countSubarrays(vector<int> &nums, int k, int m) {
+        auto calc = [&](int distinct_limit) {
+            unordered_map<int, int> cnt;
+            int ge_m = 0, left = 0;
+            long long ans = 0;
+            for (int x : nums) {
+                if (++cnt[x] == m)
+                    ++ge_m;
+                while ((int)cnt.size() >= distinct_limit && ge_m >= k) {
+                    int out = nums[left++];
+                    if (cnt[out] == m)
+                        --ge_m;
+                    if (--cnt[out] == 0)
+                        cnt.erase(out);
+                }
+                ans += left;
+            }
+            return ans;
+        };
+        return calc(k) - calc(k + 1);
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -1092,41 +1144,40 @@ class Solution:
 
 涉及**连续子串且有哈希表条件**，要想到使用滑动窗口。这道题其实和 [438.找到字符串中所有字母异位词](#438.找到字符串中所有字母异位词[中等]) 很像，所谓的串联子串，不就是字母异位词嘛，不过现在每个字母变成了一个字符串。但这道题也有一点技巧，不然就不是困难题了。题目固定了字符串的长度，所以属于**定长滑窗**题目。
 
-比较朴素的一个思想就是，滑窗大小就是`len(words)*len(words[0])`，例如`s="barfoothefoobarman",words=["foo","bar"]`，第一个窗口是`{bar:1,foo:1}`，但是移动一个位置后，窗口内字符串应该是`arfoot`，前一个窗口内的元素就全失效了，应该变成`{arf:1,oot:1}`，所以这种写法会频繁的创建和销毁哈希表，开销很大。
+比较朴素的一个思想就是，滑窗大小就是`words.size() * words[0].size()`，例如`s="barfoothefoobarman",words=["foo","bar"]`，第一个窗口是`{bar:1,foo:1}`，但是移动一个位置后，窗口内字符串应该是`arfoot`，前一个窗口内的元素就全失效了，应该变成`{arf:1,oot:1}`，所以这种写法会频繁的创建和销毁哈希表，开销很大。
 
 优化的思路也不难想，就是把**每次切进出一个字符**改成**每次只切进出一个单词**，我们把串联子串中的每个小子串当成之前那些滑窗题目中的单个字符，每次窗口切出一个单词，再切入一个单词。然后**外层要遍历多个起点**（从0到`l_w-1`，即每个单词的长度），这样就可以不重复地遍历所有可能的窗口了。
 
 ### 解法
 
-```python
-class Solution:
-    def findSubstring(self, s: str, words: List[str]) -> List[int]:
-        n = len(s)
-        l_w = len(words[0])
-        n_w = len(words)
-        w = n_w * l_w
-        cnt_words = Counter(words)
-        res = []
-        for i in range(l_w):
-            if i + w > n:
-                continue
-            cnt_s = Counter()
-            # 定长滑窗
-            for j in range(n_w):
-                cnt_s[s[i + j * l_w : i + (j + 1) * l_w]] += 1
-            if cnt_s == cnt_words:
-                res.append(i)
-            left = i
-            for right in range(i + w, n, l_w):
-                left_word = s[left: left + l_w]
-                right_word = s[right : right + l_w]
-                cnt_s[right_word] += 1
-                cnt_s[left_word] -= 1
-                left += l_w
-                if cnt_s == cnt_words:
-                    res.append(left)
-                
-        return res 
+```cpp
+class Solution {
+  public:
+    vector<int> findSubstring(string s, vector<string> &words) {
+        int n = s.size(), len = words[0].size(), total = words.size() * len;
+        unordered_map<string, int> want;
+        for (const auto &w : words)
+            ++want[w];
+        vector<int> res;
+        for (int offset = 0; offset < len && offset + total <= n; ++offset) {
+            unordered_map<string, int> cnt;
+            for (int j = offset; j < offset + total; j += len)
+                ++cnt[s.substr(j, len)];
+            if (cnt == want)
+                res.push_back(offset);
+            for (int right = offset + total; right + len <= n; right += len) {
+                int left = right - total;
+                string out = s.substr(left, len);
+                if (--cnt[out] == 0)
+                    cnt.erase(out);
+                ++cnt[s.substr(right, len)];
+                if (cnt == want)
+                    res.push_back(left + len);
+            }
+        }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(N \times l_w)$，$N$是`s`的长度，$l_w$是单个word的长度
@@ -1148,7 +1199,7 @@ class Solution:
 
 + **频繁查询区间和**
   + 这里频繁指的是要利用前缀和$O(1)$的查找性能，如果就查一两次，那$O(N)$的预处理开销其实就没有均摊多少。如果题目涉及了**多个区间和**就可以用了。
-  + `sum(arr[l:r]) = prefix[r]-prefix[l]`
+  + 半开区间 `[l, r)` 的元素和为 `prefix[r] - prefix[l]`
 
 + **静态数组，不涉及元素修改**
   + 如果频繁修改，考虑线段树或树状数组（见 [fuck数据结构.md](..\数据结构\fuck数据结构.md) ）
@@ -1179,39 +1230,43 @@ class Solution:
 
 ### 解法：两次遍历
 
-```python
-class Solution:
-    def subarraySum(self, nums: List[int], k: int) -> int:
-        n = len(nums)
-        prefix_sum = [0] * (n + 1)
-        for i in range(n):
-            prefix_sum[i + 1] = prefix_sum[i] + nums[i]
-
-        cnt = defaultdict(int)
-        res = 0
-        for x in prefix_sum:
-            # x - y = k => y = x - k
-            res += cnt[x - k]
-            cnt[x] += 1 
-        return res
+```cpp
+class Solution {
+  public:
+    int subarraySum(vector<int> &nums, int k) {
+        int n = nums.size();
+        vector<int> prefix_sum(n + 1);
+        for (int i = 0; i < n; ++i)
+            prefix_sum[i + 1] = prefix_sum[i] + nums[i];
+        unordered_map<int, int> cnt;
+        int res = 0;
+        for (int x : prefix_sum) {
+            res += cnt[x - k];
+            ++cnt[x];
+        }
+        return res;
+    }
+};
 ```
 
 ### 优化：一次遍历
 
 注意到，我们在遍历前缀和数组的某个元素时，是不会使用这个元素后面的元素的，所以把两个遍历合并也不会影响结果。
 
-```python
-class Solution:
-    def subarraySum(self, nums: List[int], k: int) -> int:
-        cnt = defaultdict(int)
-        cnt[0] = 1 # 前缀和为0的元素出现一次
-        current_sum = 0
-        res = 0
-        for num in nums:
-            current_sum += num           
-            res += cnt[current_sum - k]
-            cnt[current_sum] += 1 
-        return res
+```cpp
+class Solution {
+  public:
+    int subarraySum(vector<int> &nums, int k) {
+        unordered_map<int, int> cnt{{0, 1}};
+        int current_sum = 0, res = 0;
+        for (int num : nums) {
+            current_sum += num;
+            res += cnt[current_sum - k];
+            ++cnt[current_sum];
+        }
+        return res;
+    }
+};
 ```
 
 
@@ -1236,19 +1291,21 @@ class Solution:
 
 ### ==解法==
 
-```python
-class Solution:
-    def productExceptSelf(self, nums: List[int]) -> List[int]:
-        n = len(nums)
-        pre = [1] * n
-        for i in range(1, n):
-            pre[i] = pre[i - 1] * nums[i - 1]
-
-        suf = [1] * n
-        for i in range(n - 2, -1, -1):
-            suf[i] = suf[i + 1] * nums[i + 1]
-
-        return [p * s for p, s in zip(pre, suf)]
+```cpp
+class Solution {
+  public:
+    vector<int> productExceptSelf(vector<int> &nums) {
+        int n = nums.size();
+        vector<int> pre(n, 1), suf(n, 1), res(n);
+        for (int i = 1; i < n; ++i)
+            pre[i] = pre[i - 1] * nums[i - 1];
+        for (int i = n - 2; i >= 0; --i)
+            suf[i] = suf[i + 1] * nums[i + 1];
+        for (int i = 0; i < n; ++i)
+            res[i] = pre[i] * suf[i];
+        return res;
+    }
+};
 ```
 
 唯一要注意的就是前后缀数组的大小以及遍历的下标了。一般`pre[i]`代表的都是前`i`个元素的累积操作，如果把长度定为`n`，是没法知道整个数组的累积的，如果把长度设为`n+1`，那么`pre[n]`就是整个数组的累积。这个题不需要整个数组的乘积，所以长度就定为`n`了。
@@ -1257,19 +1314,21 @@ class Solution:
 
 或者酱紫写
 
-```python
-class Solution:
-    def productExceptSelf(self, nums: List[int]) -> List[int]:
-        n = len(nums)
-        pre = [1] * n
-        for i in range(n - 1):
-            pre[i + 1] = pre[i] * nums[i]
-
-        suf = [1] * n
-        for i in range(n - 1, 0, -1):
-            suf[i - 1] = suf[i] * nums[i]
-
-        return [p * s for p, s in zip(pre, suf)]
+```cpp
+class Solution {
+  public:
+    vector<int> productExceptSelf(vector<int> &nums) {
+        int n = nums.size();
+        vector<int> pre(n, 1), suf(n, 1), res(n);
+        for (int i = 1; i < n; ++i)
+            pre[i] = pre[i - 1] * nums[i - 1];
+        for (int i = n - 2; i >= 0; --i)
+            suf[i] = suf[i + 1] * nums[i + 1];
+        for (int i = 0; i < n; ++i)
+            res[i] = pre[i] * suf[i];
+        return res;
+    }
+};
 ```
 
 
@@ -1315,44 +1374,44 @@ class Solution:
 
 ### 解法1：左闭右闭(一般用这个)
 
-```python
-class Solution:
-    def search(self, nums: List[int], target: int) -> int:
-        left = 0
-        right = len(nums) - 1  # 定义target在左闭右闭的区间里，即: [left, right]
-        
-        while left <= right:  # 当left == right，区间[left, right]依然有效，所以用 <=
-            middle = left + ((right - left) // 2)  # 防止溢出 等同于 (left + right) // 2
-            if nums[middle] > target:
-                right = middle - 1  # target 在左区间，所以 [left, middle - 1]
-            elif nums[middle] < target:
-                left = middle + 1  # target 在右区间，所以 [middle + 1, right]
-            else:  # nums[middle] == target
-                return middle  # 数组中找到目标值，直接返回下标
-        
-        # 未找到目标值
-        return -1
+```cpp
+class Solution {
+  public:
+    int search(vector<int> &nums, int target) {
+        int left = 0, right = (int)nums.size() - 1; // [left,right]
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] > target)
+                right = mid - 1;
+            else if (nums[mid] < target)
+                left = mid + 1;
+            else
+                return mid;
+        }
+        return -1;
+    }
+};
 ```
 
 ### 解法2：左闭右开
 
-```python
-class Solution:
-     def search(self, nums: List[int], target: int) -> int:
-        left = 0
-        right = len(nums)  # 定义target在左闭右开的区间里，即：[left, right)
-        
-        while left < right:  # 因为left == right的时候，在[left, right)是无效的空间，所以使用 <
-            middle = left + ((right - left) >> 1)  # 使用右移操作代替除法
-            if nums[middle] > target:
-                right = middle  # target 在左区间，在 [left, middle) 中
-            elif nums[middle] < target:
-                left = middle + 1  # target 在右区间，在 [middle + 1, right) 中
-            else:  # nums[middle] == target
-                return middle  # 数组中找到目标值，直接返回下标
-        
-        # 未找到目标值
-        return -1
+```cpp
+class Solution {
+  public:
+    int search(vector<int> &nums, int target) {
+        int left = 0, right = nums.size(); // [left,right)
+        while (left < right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] > target)
+                right = mid;
+            else if (nums[mid] < target)
+                left = mid + 1;
+            else
+                return mid;
+        }
+        return -1;
+    }
+};
 ```
 
 ## 34.在排序数组中查找元素的第一个和最后一个位置[中等]*
@@ -1388,29 +1447,27 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def lower_bound(self, nums: List[int], target: int) -> int:
-        # 在nums中找到第一个>=target的位置
-        left, right = 0, len(nums) - 1
-        
-        while left <= right:
-            mid = left + (right - left) // 2
-            if nums[mid] >= target: # 更新前[mid, right]为蓝色,检查左边
-                right = mid - 1
-            else: 
-                left = mid + 1
-        
-        return left
-
-    def searchRange(self, nums: List[int], target: int) -> List[int]:
-        start = self.lower_bound(nums, target)
-        
-        if start == len(nums) or nums[start] != target:
-            return [-1, -1]
-        
-        end = self.lower_bound(nums, target + 1) - 1
-        return [start, end]
+```cpp
+class Solution {
+  public:
+    vector<int> searchRange(vector<int> &nums, int target) {
+        auto lower = [&](long long x) {
+            int left = 0, right = (int)nums.size() - 1;
+            while (left <= right) {
+                int mid = left + (right - left) / 2;
+                if (nums[mid] >= x)
+                    right = mid - 1;
+                else
+                    left = mid + 1;
+            }
+            return left;
+        };
+        int start = lower(target);
+        if (start == (int)nums.size() || nums[start] != target)
+            return {-1, -1};
+        return {start, lower((long long)target + 1) - 1};
+    }
+};
 ```
 
 + 时间复杂度：$O(\log N)$
@@ -1429,7 +1486,7 @@ class Solution:
 
 给你一个整数数组 `nums`，找到峰值元素并返回其索引。数组可能包含多个峰值，在这种情况下，返回 **任何一个峰值** 所在位置即可。
 
-你可以假设 `nums[-1] = nums[n] = -∞` 。
+你可以假设 数组两侧有虚拟的负无穷边界（C++ 不实际访问越界下标） 。
 
 你必须实现时间复杂度为 `O(log n)` 的算法来解决此问题。
 
@@ -1441,19 +1498,21 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def findPeakElement(self, nums: List[int]) -> int:
-        left, right = 0, len(nums) - 2 # 最后一个元素一定是蓝色
-        
-        while left <= right:
-            mid = left + (right - left) // 2
-            if nums[mid] > nums[mid + 1]:
-                right = mid - 1
-            else:
-                left = mid + 1
-        
-        return left
+```cpp
+class Solution {
+  public:
+    int findPeakElement(vector<int> &nums) {
+        int left = 0, right = (int)nums.size() - 2;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] > nums[mid + 1])
+                right = mid - 1;
+            else
+                left = mid + 1;
+        }
+        return left;
+    }
+};
 ```
 
 + 时间复杂度：$O(\log N)$
@@ -1481,23 +1540,25 @@ class Solution:
 
 ### 思路
 
-**数组局部有序**、**查找元素要求时间复杂度$O(\log N)$**，要想到使用二分查找。定义搜索区间为`[L, R]`，**红色代表最小值左侧**，**蓝色代表最小值及其右侧**，最后一个元素要么是最小值，要么在最小值右侧，所以必然是蓝色。因此我们想找最小值，也是和最后一个元素比大小。如果`nums[M] < nums[-1]`，说明`[M, -1]`是递增的，那么最小值肯定在`[L, M - 1]`内；如果`nums[M] > nums[-1]`，说明`[M, -1]`之间有一个转折，最小值在`[M + 1, -1]`内。根据循环不变量，最终答案为`L=R+1`。
+**数组局部有序**、**查找元素要求时间复杂度$O(\log N)$**，要想到使用二分查找。定义搜索区间为`[L, R]`，**红色代表最小值左侧**，**蓝色代表最小值及其右侧**，最后一个元素要么是最小值，要么在最小值右侧，所以必然是蓝色。因此我们想找最小值，也是和最后一个元素比大小。如果`nums[M] < nums.back()`，说明`[M, n - 1]`是递增的，那么最小值肯定在`[L, M - 1]`内；如果`nums[M] > nums.back()`，说明`[M, n - 1]`之间有一个转折，最小值在`[M + 1, n - 1]`内。根据循环不变量，最终答案为`L=R+1`。
 
 ### 解法
 
-```python
-class Solution:
-    def findMin(self, nums: List[int]) -> int:
-        left, right = 0, len(nums) - 2
-        
-        while left <= right:
-            mid = left + (right - left) // 2
-            if nums[mid] < nums[-1]:
-                right = mid - 1
-            else:
-                left = mid + 1
-        
-        return nums[left]
+```cpp
+class Solution {
+  public:
+    int findMin(vector<int> &nums) {
+        int left = 0, right = (int)nums.size() - 2;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] < nums.back())
+                right = mid - 1;
+            else
+                left = mid + 1;
+        }
+        return nums[left];
+    }
+};
 ```
 
 + 时间复杂度：$O(\log N)$
@@ -1522,34 +1583,31 @@ class Solution:
 
 ### 思路
 
-**数组局部有序**，**查找元素要求时间复杂度$O(\log N)$**符合使用二分查找的特征。与普通的二分查找不同的是，这里数组是局部有序，而非全局有序，如果`nums[M] > target`，我们是没法确定到底是往左搜还是往右搜的，但是参照153题的思路，我们再比较一下和最后一个元素的大小（第一个元素也可以）。如果`nums[M] > nums[-1]`，说明`[M, -1]`这段区间是有转折的，这部分的值要么大于`nums[M]`，要么小于`nums[-1]`，接下里我们只需要根据`nums[M]`、`nums[-1]`、`target`的大小关系即可确定`target`的可能位置了；如果`nums[M] < nums[-1]`，说明`[M, -1]`这段区间的值大于`nums[M]`小于`nums[-1]`。为了简化代码复杂度，**红色代表`target`左侧**，**蓝色代表`targget`及其右侧**，我们不直接分类所有情况来决定到底是往左搜还是往右搜，我们抽象一个`is_blue`函数来判断所有往左搜的情况。（`M`为蓝色了，那么`[M, R]`均为蓝色，下一个要判断的区间在`[L, M - 1]`）
+**数组局部有序**，**查找元素要求时间复杂度$O(\log N)$**符合使用二分查找的特征。与普通的二分查找不同的是，这里数组是局部有序，而非全局有序，如果`nums[M] > target`，我们是没法确定到底是往左搜还是往右搜的，但是参照153题的思路，我们再比较一下和最后一个元素的大小（第一个元素也可以）。如果`nums[M] > nums.back()`，说明`[M, n - 1]`这段区间是有转折的，这部分的值要么大于`nums[M]`，要么小于`nums.back()`，接下里我们只需要根据`nums[M]`、`nums.back()`、`target`的大小关系即可确定`target`的可能位置了；如果`nums[M] < nums.back()`，说明`[M, n - 1]`这段区间的值大于`nums[M]`小于`nums.back()`。为了简化代码复杂度，**红色代表`target`左侧**，**蓝色代表`target`及其右侧**，我们不直接分类所有情况来决定到底是往左搜还是往右搜，我们抽象一个`is_blue`函数来判断所有往左搜的情况。（`M`为蓝色了，那么`[M, R]`均为蓝色，下一个要判断的区间在`[L, M - 1]`）
 
 ### 解法
 
-```python
-class Solution:
-    def search(self, nums: List[int], target: int) -> int:
-        n = len(nums)
-
-        def is_blue(i):
-            end = nums[-1]
-            if nums[i] > end:
-                return target > end and nums[i] >= target
-            else:
-                return target > end or nums[i] >= target
-
-        left, right = 0, n - 1
-
-        while left <= right:
-            mid = left + (right - left) // 2
-            if is_blue(mid):
-                right = mid - 1
-            else:
-                left = mid + 1
-
-        if left == n or nums[left] != target:
-            return -1
-        return left
+```cpp
+class Solution {
+  public:
+    int search(vector<int> &nums, int target) {
+        auto is_blue = [&](int i) {
+            int end = nums.back();
+            if (nums[i] > end)
+                return target > end && nums[i] >= target;
+            return target > end || nums[i] >= target;
+        };
+        int n = nums.size(), left = 0, right = n - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (is_blue(mid))
+                right = mid - 1;
+            else
+                left = mid + 1;
+        }
+        return left == n || nums[left] != target ? -1 : left;
+    }
+};
 ```
 
 + 时间复杂度：$O(\log N)$
@@ -1571,7 +1629,7 @@ class Solution:
 
 ### 思路
 
-所谓合格元素，其实比第k大的元素还要小的元素。如果这道题是求第k大的元素是谁，那么用小顶堆（或者原地建堆的大顶堆）是更好的，但这里需要求元素的数量（无论是**求第k大的元素有多少个，还是比它小的元素有多少个**），那么就要回归到传统的排序+二分查找了。排完序后，第k大的元素就位于`nums[-k]`的位置，但是因为数组可能有重复元素，所以不能通过计算位置的方式来求解。使用`lowerbound`来找出`nums[-k]`第一次出现的位置，比这个位置的元素还小的元素就是合格元素（关键：比`nums[-k]`这个元素要小的元素，而不是`[0,-k]`这个范围内所有的元素，因为`nums[-k-1]`可能和`nums[-k]`是一样的）。
+所谓合格元素，其实比第k大的元素还要小的元素。如果这道题是求第k大的元素是谁，那么用小顶堆（或者原地建堆的大顶堆）是更好的，但这里需要求元素的数量（无论是**求第k大的元素有多少个，还是比它小的元素有多少个**），那么就要回归到传统的排序+二分查找了。排完序后，第k大的元素就位于`nums[n-k]`的位置，但是因为数组可能有重复元素，所以不能通过计算位置的方式来求解。使用`lowerbound`来找出`nums[n-k]`第一次出现的位置，比这个位置的元素还小的元素就是合格元素（关键：比`nums[n-k]`这个元素要小的元素，而不是`[0,n-k]`这个范围内所有的元素，因为`nums[n-k-1]`可能和`nums[n-k]`是一样的）。
 
 | 需求              | 写法                     |
 | ----------------- | ------------------------ |
@@ -1582,14 +1640,17 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def countElements(self, nums: List[int], k: int) -> int:
-        n = len(nums)
-        if k == 0:
-            return n
-        nums.sort()
-        return bisect_left(nums, nums[-k])
+```cpp
+class Solution {
+  public:
+    int countElements(vector<int> &nums, int k) {
+        int n = nums.size();
+        if (k == 0)
+            return n;
+        sort(nums.begin(), nums.end());
+        return lower_bound(nums.begin(), nums.end(), nums[n - k]) - nums.begin();
+    }
+};
 ```
 
 + 时间复杂度：$O(N\log N)$
@@ -1630,33 +1691,30 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def findMedianSortedArrays(self, nums1: List[int], nums2: List[int]) -> float:
-        if len(nums1) > len(nums2):
-            nums1, nums2 = nums2, nums1
-
-        m, n = len(nums1), len(nums2)
-        left, right = 0, m
-
-        while left <= right:
-            i = (left + right) // 2
-            j = (m + n + 1) // 2 - i
-
-            # 临界点: nums1_left <= nums2_right and nums2_left <= nums1_right
-            nums1_left = float('-inf') if i == 0 else nums1[i - 1]
-            nums1_right = float('inf') if i == m else nums1[i]
-            nums2_left = float('-inf') if j == 0 else nums2[j - 1]
-            nums2_right = float('inf') if j == n else nums2[j]
-
-            if nums1_left > nums2_right:  # i 偏右，需要左移
-                right = i - 1
-            elif nums2_left > nums1_right:  # i 偏左，需要右移
-                left = i + 1
-            else:  # 找到正确分割
-                max_left = max(nums1_left, nums2_left)
-                min_right = min(nums1_right, nums2_right)
-                return max_left if (m + n) % 2 == 1 else (max_left + min_right) / 2
+```cpp
+class Solution {
+  public:
+    double findMedianSortedArrays(vector<int> &nums1, vector<int> &nums2) {
+        if (nums1.size() > nums2.size())
+            return findMedianSortedArrays(nums2, nums1);
+        int m = nums1.size(), n = nums2.size(), left = 0, right = m;
+        while (left <= right) {
+            int i = (left + right) / 2, j = (m + n + 1) / 2 - i;
+            int a = i == 0 ? INT_MIN : nums1[i - 1], b = i == m ? INT_MAX : nums1[i];
+            int c = j == 0 ? INT_MIN : nums2[j - 1], d = j == n ? INT_MAX : nums2[j];
+            if (a > d)
+                right = i - 1;
+            else if (c > b)
+                left = i + 1;
+            else {
+                if ((m + n) % 2)
+                    return max(a, c);
+                return ((double)max(a, c) + min(b, d)) / 2;
+            }
+        }
+        throw logic_error("输入数组必须有序且不能同时为空");
+    }
+};
 ```
 
 + 时间复杂度：$O(\log(\min(M, N)))$，在**短的数组上二分**

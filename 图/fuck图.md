@@ -39,26 +39,30 @@
 
 ### 解法：DFS
 
-```python
-class Solution:
-    def numIslands(self, grid: List[List[str]]) -> int:
-        res = 0
-        m = len(grid)
-        n = len(grid[0])
-        dir = [[0, 1], [0, -1], [1, 0], [-1, 0]]
-        def dfs(x, y):
-            grid[x][y] = '0'
-            for dx, dy in dir:
-                next_x, next_y = x + dx, y + dy
-                if 0 <= next_x < m and 0 <= next_y < n and grid[next_x][next_y] == '1':
-                    dfs(next_x, next_y)
-
-        for i in range(m):
-            for j in range(n):
-                if grid[i][j] == '1':
-                    dfs(i, j)
-                    res += 1
-        return res
+```cpp
+class Solution {
+  public:
+    int numIslands(vector<vector<char>> &grid) {
+        int m = grid.size(), n = grid[0].size();
+        int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
+        auto dfs = [&](auto &&self, int x, int y) -> void {
+            grid[x][y] = '0';
+            for (int d = 0; d < 4; ++d) {
+                int nx = x + dx[d], ny = y + dy[d];
+                if (nx >= 0 && nx < m && ny >= 0 && ny < n && grid[nx][ny] == '1')
+                    self(self, nx, ny);
+            }
+        };
+        int res = 0;
+        for (int i = 0; i < m; ++i)
+            for (int j = 0; j < n; ++j)
+                if (grid[i][j] == '1') {
+                    ++res;
+                    dfs(dfs, i, j);
+                }
+        return res;
+    }
+};
 ```
 
 + 时间复杂度：$O(MN)$
@@ -88,38 +92,39 @@ class Solution:
 
 ### 解法：BFS
 
-```python
-class Solution:
-    def orangesRotting(self, grid: List[List[int]]) -> int:
-        fresh = 0
-        que = collections.deque()
-        res = -1
-        m = len(grid)
-        n = len(grid[0])
-        dir = [[0,1], [0,-1], [1,0], [-1,0]]
-        
-        for i, row in enumerate(grid):
-            for j, val in enumerate(row):
-                if val == 1:
-                    fresh += 1
-                elif val == 2:
-                    que.append((i,j))
-        
-        while que:
-            res += 1
-            for _ in range(len(queue)):
-                x, y = que.popleft()
-                for dx, dy in dir:
-                    next_x, next_y = x + dx, y + dy
-                    if 0 <= next_x < m and 0 <= next_y < n and grid[next_x][next_y] == 1:
-                        fresh -= 1
-                        grid[next_x][next_y] = 2
-                        que.append((next_x, next_y))
-
-        if not fresh and res == -1:
-            return 0
-            
-        return -1 if fresh else res
+```cpp
+class Solution {
+  public:
+    int orangesRotting(vector<vector<int>> &grid) {
+        int m = grid.size(), n = grid[0].size(), fresh = 0, res = 0;
+        queue<pair<int, int>> que;
+        int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
+        for (int i = 0; i < m; ++i)
+            for (int j = 0; j < n; ++j) {
+                if (grid[i][j] == 1)
+                    ++fresh;
+                else if (grid[i][j] == 2)
+                    que.push({i, j});
+            }
+        while (fresh > 0 && !que.empty()) {
+            ++res;
+            int size = que.size();
+            while (size--) {
+                auto [x, y] = que.front();
+                que.pop();
+                for (int d = 0; d < 4; ++d) {
+                    int nx = x + dx[d], ny = y + dy[d];
+                    if (nx >= 0 && nx < m && ny >= 0 && ny < n && grid[nx][ny] == 1) {
+                        --fresh;
+                        grid[nx][ny] = 2;
+                        que.push({nx, ny});
+                    }
+                }
+            }
+        }
+        return fresh ? -1 : res;
+    }
+};
 ```
 
 + 时间复杂度：$O(MN)$
@@ -151,31 +156,41 @@ class Solution:
 
 ### 解法
 
-```python
-class Solution:
-    def minMutation(self, startGene: str, endGene: str, bank: List[str]) -> int:
-        if startGene == endGene:
-            return 0
-        bank = set(bank)
-        if endGene not in bank:
-            return -1
-        queue = deque()
-        queue.append(startGene)
-        step = 0
-        while queue:
-            for _ in range(len(queue)):
-                gene = queue.popleft()
-                if gene == endGene:
-                    return step
-                for i, x in enumerate(gene):
-                    for y in "ACGT":
-                        if x != y:
-                            nxt = gene[:i] + y + gene[i + 1:]
-                            if nxt in bank:
-                                bank.remove(nxt) # 从某条路径可以直接到达bank中的一个中间状态，显然会比有环更短
-                                queue.append(nxt) 
-            step += 1
-        return -1
+```cpp
+class Solution {
+  public:
+    int minMutation(string startGene, string endGene, vector<string> &bank) {
+        if (startGene == endGene)
+            return 0;
+        unordered_set<string> remaining(bank.begin(), bank.end());
+        if (!remaining.count(endGene))
+            return -1;
+        queue<string> que;
+        que.push(startGene);
+        remaining.erase(startGene);
+        int step = 0;
+        while (!que.empty()) {
+            int size = que.size();
+            while (size--) {
+                string gene = que.front();
+                que.pop();
+                if (gene == endGene)
+                    return step;
+                for (int i = 0; i < (int)gene.size(); ++i) {
+                    char old = gene[i];
+                    for (char c : string("ACGT")) {
+                        gene[i] = c;
+                        if (remaining.erase(gene))
+                            que.push(gene);
+                    }
+                    gene[i] = old;
+                }
+            }
+            ++step;
+        }
+        return -1;
+    }
+};
 ```
 
 + 时间复杂度：$O(C\times n\times m)$，其中$n$是基因序列长度，$m$是数组`bank`的长度。对于队列中的每个合法的基因序列每次都需要计算 $C\times n$ 种变化，在这里 $C=4$；队列中最多有 $m$ 个元素，因此时间复杂度为 $O(C\times n\times m)$。
@@ -209,47 +224,61 @@ class Solution:
 
 ### 解法：双向BFS
 
-```python
-class Solution:
-    def ladderLength(self, beginWord: str, endWord: str, wordList: list[str]) -> int:
-        if endWord not in wordList:
-            return 0
-        
-        L = len(beginWord)
-        all_combo_dict = defaultdict(list)
-        for word in wordList + [beginWord]:
-            for i in range(L):
-                # 预处理：构建通用 pattern 映射，比如 "h*t" -> ["hot", "hit"]
-                pattern = word[:i] + '*' + word[i+1:]
-                all_combo_dict[pattern].append(word)
-        
-        begin_queue = deque([(beginWord, 1)])
-        end_queue = deque([(endWord, 1)])
-        begin_visited = {beginWord: 1}
-        end_visited = {endWord: 1}
-
-        while begin_queue and end_queue:
-            # 总是扩展队列短的那一边
-            if len(begin_queue) <= len(end_queue):
-                queue, visited, other_visited = begin_queue, begin_visited, end_visited
-            else:
-                queue, visited, other_visited = end_queue, end_visited, begin_visited
-            
-            ans = inf
-            # 按层处理
-            for _ in range(len(queue)):
-                word, level = queue.popleft()
-                for i in range(L):
-                    pattern = word[:i] + '*' + word[i+1:]
-                    for next_word in all_combo_dict.get(pattern, []):
-                        if next_word in other_visited:
-                            ans = min(ans, level + other_visited[next_word])
-                        if next_word not in visited:
-                            visited[next_word] = level + 1
-                            queue.append((next_word, level + 1))
-            if ans != inf:
-                return ans
-        return 0
+```cpp
+class Solution {
+  public:
+    int ladderLength(string beginWord, string endWord, vector<string> &wordList) {
+        unordered_set<string> words(wordList.begin(), wordList.end());
+        if (!words.count(endWord))
+            return 0;
+        if (beginWord == endWord)
+            return 1;
+        unordered_map<string, vector<string>> patterns;
+        vector<string> all = wordList;
+        all.push_back(beginWord);
+        for (const string &word : all)
+            for (int i = 0; i < (int)word.size(); ++i) {
+                string pattern = word;
+                pattern[i] = '*';
+                patterns[pattern].push_back(word);
+            }
+        queue<string> begin_queue, end_queue;
+        begin_queue.push(beginWord);
+        end_queue.push(endWord);
+        unordered_map<string, int> begin_visited{{beginWord, 1}}, end_visited{{endWord, 1}};
+        auto expand = [&](queue<string> &que, unordered_map<string, int> &visited,
+                          const unordered_map<string, int> &other) {
+            int ans = INT_MAX, size = que.size();
+            while (size--) {
+                string word = que.front();
+                que.pop();
+                int level = visited.at(word);
+                for (int i = 0; i < (int)word.size(); ++i) {
+                    string pattern = word;
+                    pattern[i] = '*';
+                    for (const string &next : patterns.at(pattern)) {
+                        auto it = other.find(next);
+                        if (it != other.end())
+                            ans = min(ans, level + it->second);
+                        if (!visited.count(next)) {
+                            visited[next] = level + 1;
+                            que.push(next);
+                        }
+                    }
+                }
+            }
+            return ans;
+        };
+        while (!begin_queue.empty() && !end_queue.empty()) {
+            int ans = begin_queue.size() <= end_queue.size()
+                          ? expand(begin_queue, begin_visited, end_visited)
+                          : expand(end_queue, end_visited, begin_visited);
+            if (ans != INT_MAX)
+                return ans;
+        }
+        return 0;
+    }
+};
 ```
 
 + 时间复杂度：$O(N\times L^2)$，其中$N$是`wordList`的长度，$L$是单词的长度。双向BFS最坏时间复杂度是$O(N\times L)$，一个单词可以扩展出$O(L)$个`next_word`。
@@ -309,58 +338,64 @@ DFS 中的节点通常分三种状态：
 + 指向 `0` → 树边 → 继续 DFS
 + 指向 `2` → 前向边/横向边 → 不影响环检测（相当于有一个节点已经访问过了，现在有一条新边指向旧的这个节点，显然这不算环，因为当前节点的父结点不可能是这个节点）
 
-```python
-class Solution:
-    def canFinish(self, numCourses: int, prerequisites: List[List[int]]) -> bool:
-        graph = [[] for _ in range(numCourses)] # 邻接表
-        for to_, from_ in prerequisites:
-            graph[from_].append(to_)
-
-        visited = [0] * numCourses
-        def dfs(i):
-            visited[i] = 1
-            for j in graph[i]:
-                if visited[j] == 1:
-                    return False # 有环
-                elif visited[j] == 0:
-                    if not dfs(j):
-                        return False
-            visited[i] = 2
-            return True
-        
-        for i in range(numCourses):
-            if not visited[i]:
-                if not dfs(i): # dfs为False表示有环
-                    return False
-        return True
+```cpp
+class Solution {
+  public:
+    bool canFinish(int numCourses, vector<vector<int>> &prerequisites) {
+        vector<vector<int>> graph(numCourses);
+        for (const auto &e : prerequisites)
+            graph[e[1]].push_back(e[0]);
+        vector<int> visited(numCourses);
+        auto dfs = [&](auto &&self, int i) -> bool {
+            visited[i] = 1;
+            for (int j : graph[i]) {
+                if (visited[j] == 1)
+                    return false;
+                if (visited[j] == 0 && !self(self, j))
+                    return false;
+            }
+            visited[i] = 2;
+            return true;
+        };
+        for (int i = 0; i < numCourses; ++i)
+            if (visited[i] == 0 && !dfs(dfs, i))
+                return false;
+        return true;
+    }
+};
 ```
 
 ### 解法2：BFS
 
-```python
-class Solution:
-    def canFinish(self, numCourses: int, prerequisites: List[List[int]]) -> bool:
-        graph = [[] for _ in range(numCourses)]
-        indegree = [0] * numCourses
-        for to_, from_ in prerequisites:
-            graph[from_].append(to_)
-            indegree[to_] += 1
-
-        que = collections.deque([i for i in range(numCourses) if indegree[i] == 0])
-
-        visited = 0
-        while que:
-            visited += 1
-            i = que.popleft()
-            for j in graph[i]:
-                indegree[j] -= 1
-                if indegree[j] == 0:
-                    que.append(i)
-
-        return visited == numCourses
+```cpp
+class Solution {
+  public:
+    bool canFinish(int numCourses, vector<vector<int>> &prerequisites) {
+        vector<vector<int>> graph(numCourses);
+        vector<int> indegree(numCourses);
+        for (const auto &e : prerequisites) {
+            graph[e[1]].push_back(e[0]);
+            ++indegree[e[0]];
+        }
+        queue<int> que;
+        for (int i = 0; i < numCourses; ++i)
+            if (indegree[i] == 0)
+                que.push(i);
+        int visited = 0;
+        while (!que.empty()) {
+            int i = que.front();
+            que.pop();
+            ++visited;
+            for (int j : graph[i])
+                if (--indegree[j] == 0)
+                    que.push(j);
+        }
+        return visited == numCourses;
+    }
+};
 ```
 
-## 208.课程表 II[中等]
+## 210.课程表 II[中等]
 
 ### 链接
 
@@ -380,31 +415,33 @@ class Solution:
 
 ### 解法：DFS
 
-```python
-class Solution:
-    def findOrder(self, numCourses: int, prerequisites: List[List[int]]) -> List[int]:
-        graph = [[] for _ in range(numCourses)]
-        for u, v in prerequisites:
-            graph[v].append(u)
-        visited = [0] * numCourses
-        stack = []
-        def dfs(u):
-            visited[u] = 1
-            for v in graph[u]:
-                if visited[v] == 1:
-                    return False
-                elif visited[v] == 0:
-                    if not dfs(v):
-                        return False
-            stack.append(u)
-            visited[u] = 2
-            return True
-
-        for i in range(numCourses):
-            if visited[i] == 0:
-                if not dfs(i):
-                    return []
-        return list(reversed(stack))
+```cpp
+class Solution {
+  public:
+    vector<int> findOrder(int numCourses, vector<vector<int>> &prerequisites) {
+        vector<vector<int>> graph(numCourses);
+        for (const auto &e : prerequisites)
+            graph[e[1]].push_back(e[0]);
+        vector<int> visited(numCourses), order;
+        auto dfs = [&](auto &&self, int u) -> bool {
+            visited[u] = 1;
+            for (int v : graph[u]) {
+                if (visited[v] == 1)
+                    return false;
+                if (visited[v] == 0 && !self(self, v))
+                    return false;
+            }
+            order.push_back(u);
+            visited[u] = 2;
+            return true;
+        };
+        for (int i = 0; i < numCourses; ++i)
+            if (visited[i] == 0 && !dfs(dfs, i))
+                return {};
+        reverse(order.begin(), order.end());
+        return order;
+    }
+};
 ```
 
 # 最小生成树
@@ -438,7 +475,7 @@ class Solution:
 
 ### 解法1：Kruskal算法
 
-```c++
+```cpp
 class DSU{
 private:
     vector<int> parent, rank;
@@ -505,7 +542,7 @@ public:
 
 ### 解法2：Prim算法
 
-```c++
+```cpp
 class Solution {
 public:
     int minCostConnectPoints(vector<vector<int>>& points) {
@@ -565,7 +602,7 @@ DFS只能解决无权图的最短路径问题，DFS改进其实就是Dijkstra。
 | 适合规模       | 大图                           | 中小图              | 小图               |
 | 典型应用       | 路由、导航                     | 负权边问题          | 任意两点距离       |
 
-## 734.网络延迟时间[中等]
+## 743.网络延迟时间[中等]
 
 ### 链接
 
@@ -583,7 +620,7 @@ DFS只能解决无权图的最短路径问题，DFS改进其实就是Dijkstra。
 
 ### 解法1：朴素Dijkstra（适用于稠密图）
 
-```c++
+```cpp
 class Solution {
 public:
     int networkDelayTime(vector<vector<int>> &times, int n, int k) {
@@ -620,7 +657,7 @@ public:
 
 注意，我们用堆来维护所有节点到起点的最短路径长度，堆中可能存在一些旧的节点的距离信息，我们不会主动去删除它，而是通过加入一个新的路径更短的节点来解决，这个新路径一定会先于旧路径处理，当旧路径再次弹出时，由于`time > dist[x]`就会被跳过。
 
-```c++
+```cpp
 class Solution {
 public:
     int networkDelayTime(vector<vector<int>>& times, int n, int k) {

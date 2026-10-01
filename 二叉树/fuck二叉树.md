@@ -31,7 +31,7 @@
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     int maxDepth(TreeNode* root) {
@@ -64,7 +64,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     bool isSameTree(TreeNode* p, TreeNode* q) {
@@ -93,7 +93,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
    bool isSameTree(TreeNode* p, TreeNode* q) {
@@ -128,7 +128,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     int getHeight(TreeNode* root){
@@ -169,7 +169,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     vector<int> rightSideView(TreeNode* root) {
@@ -183,7 +183,7 @@ public:
             dfs(node->left, depth + 1);
         };
         dfs(root, 0);
-        return ans;
+        return res;
     }
 };
 ```
@@ -218,7 +218,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
@@ -257,21 +257,25 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def flatten(self, root: Optional[TreeNode]) -> None:
-        if root is None:
-            return
-        tmp = root.right
-        self.flatten(root.left)
-        if root.left is not None:
-            root.right = root.left
-            root.left = None
-            node = root.right
-            while node.right: # 找到右边这条链的最右下角的节点
-                node = node.right
-            node.right = tmp
-        self.flatten(tmp)
+```cpp
+class Solution {
+  public:
+    void flatten(TreeNode *root) {
+        if (!root)
+            return;
+        TreeNode *right = root->right;
+        flatten(root->left);
+        if (root->left) {
+            root->right = root->left;
+            root->left = nullptr;
+            TreeNode *node = root->right;
+            while (node->right)
+                node = node->right;
+            node->right = right;
+        }
+        flatten(right);
+    }
+};
 ```
 
 ## 437.路径总和 III[中等]
@@ -292,23 +296,22 @@ class Solution:
 
 ### 解法1：DFS
 
-```python
-class Solution:
-    def pathSum(self, root: Optional[TreeNode], targetSum: int) -> int:
-        if not root:
-            return 0
-        
-        # 以当前节点为起点的路径数量
-        def dfs(node, tsum):
-            if not node:
-                return 0
-            count = 1 if node.val == tsum else 0
-            count += dfs(node.left, tsum - node.val)
-            count += dfs(node.right, tsum - node.val)
-            return count
-        
-        # 当前节点为起点 + 左子树起点 + 右子树起点
-        return dfs(root, targetSum) + self.pathSum(root.left, targetSum) + self.pathSum(root.right, targetSum)
+```cpp
+class Solution {
+  public:
+    int pathSum(TreeNode *root, int targetSum) {
+        if (!root)
+            return 0;
+        auto dfs = [&](auto &&self, TreeNode *node, long long remaining) -> int {
+            if (!node)
+                return 0;
+            return (node->val == remaining) + self(self, node->left, remaining - node->val) +
+                   self(self, node->right, remaining - node->val);
+        };
+        return dfs(dfs, root, targetSum) + pathSum(root->left, targetSum) +
+               pathSum(root->right, targetSum);
+    }
+};
 ```
 
 + 时间复杂度：$O(N^2)$，每个节点都要做一次DFS，每次DFS都是$O(N)$
@@ -316,29 +319,26 @@ class Solution:
 
 ### 解法2：前缀和
 
-因为路径方向必须是向下的，我们其实可以把树的分叉看成多条不同的链，那么这个问题就简化为在这些链上去找一个区间和为`targetSum`的数目。看到求区间和，要想到前缀和数组。下面的代码相当于 [560.和为 K 的子数组[中等]](..\数组\fuck数组.md#560.和为 K 的子数组[中等]) 的一次遍历写法的二叉树版本。使用哈希表缓存前缀和，可以避免遍历前缀和数组来两两匹配找区间和。
+因为路径方向必须是向下的，我们其实可以把树的分叉看成多条不同的链，那么这个问题就简化为在这些链上去找一个区间和为`targetSum`的数目。看到求区间和，要想到前缀和数组。下面的代码相当于 [560.和为 K 的子数组[中等]](../数组/fuck数组.md#560.和为 K 的子数组[中等]) 的一次遍历写法的二叉树版本。使用哈希表缓存前缀和，可以避免遍历前缀和数组来两两匹配找区间和。
 
-```python
-class Solution:
-    def pathSum(self, root: TreeNode, targetSum: int) -> int:
-        prefix = collections.defaultdict(int)
-        prefix[0] = 1
-
-        def dfs(root, curr):
-            if not root:
-                return 0
-            
-            ret = 0
-            curr += root.val
-            ret += prefix[curr - targetSum] # 后 - 前 = targetSum
-            prefix[curr] += 1
-            ret += dfs(root.left, curr)
-            ret += dfs(root.right, curr)
-            prefix[curr] -= 1 # 回溯
-
-            return ret
-
-        return dfs(root, 0)
+```cpp
+class Solution {
+  public:
+    int pathSum(TreeNode *root, int targetSum) {
+        unordered_map<long long, int> prefix{{0, 1}};
+        auto dfs = [&](auto &&self, TreeNode *node, long long curr) -> int {
+            if (!node)
+                return 0;
+            curr += node->val;
+            int ret = prefix[curr - targetSum];
+            ++prefix[curr];
+            ret += self(self, node->left, curr) + self(self, node->right, curr);
+            --prefix[curr]; // 离开当前路径时撤销，避免影响兄弟分支。
+            return ret;
+        };
+        return dfs(dfs, root, 0);
+    }
+};
 ```
 
 + 时间复杂度：$O(N)$
@@ -387,7 +387,7 @@ class Solution:
 
 如果使用前序遍历，在处理当前节点时根节点已经处理过了，那么我们可以传递一个区间`[left, right]`下来，表示当前节点的父结点的取值范围，当前节点自然要满足`left < root->val < right`的约束，然后对于左子树区间就变成了`[left, root->val]`，对于右子树区间就变成了`[root->val, right]`。
 
-```c++
+```cpp
 class Solution {
 public:
     // 因为题目的值有可能为int的最小值和最大值,所以使用long的最小值和最大值来保证初始区间的正确性
@@ -407,7 +407,7 @@ public:
 
 如果使用中序遍历，一个naive的思路就是根据BST的性质，在中序遍历时把所有节点的值记录到一个数组中，然后判断这个数组是否是升序的，缺点是空间复杂度为$O(N)$，且需要遍历两次。想要改进的话，不难想到，我们可不可以在遍历的同时就判断是否升序呢？进一步就是比较当前节点是否大于上一个节点。
 
-```c++
+```cpp
 class Solution {
 public:
     TreeNode* pre = NULL;
@@ -430,7 +430,7 @@ public:
 
 如果后序遍历，类似于前序遍历，我们需要知道左子树的最大值，和右子树的最小值，保证我们当前节点的值位于二者之间
 
-```c++
+```cpp
 class Solution {
     pair<long long, long long> dfs(TreeNode* node) {
         if (node == nullptr) {
@@ -482,7 +482,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
@@ -510,7 +510,7 @@ public:
 
 面试手搓时可能会考察自己构造二叉树，我第一次面字节时卡这上面卡了半天，我是大蠢猪，贴此代码，以示警戒！
 
-```c++
+```cpp
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -604,7 +604,7 @@ int main() {
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> levelOrder(TreeNode* root) {
@@ -645,7 +645,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     vector<vector<int>> zigzagLevelOrder(TreeNode* root) {
@@ -691,7 +691,7 @@ public:
 
 ### 解法
 
-```c++
+```cpp
 class Solution {
 public:
     int findBottomLeftValue(TreeNode* root) {
@@ -730,21 +730,30 @@ public:
 
 ### 解法
 
-```python
-class Solution:
-    def widthOfBinaryTree(self, root: Optional[TreeNode]) -> int:
-        res = 1
-        arr = [[root, 1]]
-        while arr:
-            tmp = []
-            for node, index in arr:
-                if node.left:
-                    tmp.append([node.left, index * 2])
-                if node.right:
-                    tmp.append([node.right, index * 2 + 1])
-            res = max(res, arr[-1][1] - arr[0][1] + 1)
-            arr = tmp
-        return res
+```cpp
+class Solution {
+  public:
+    int widthOfBinaryTree(TreeNode *root) {
+        if (!root)
+            return 0;
+        vector<pair<TreeNode *, unsigned long long>> arr{{root, 0}};
+        unsigned long long res = 1;
+        while (!arr.empty()) {
+            res = max(res, arr.back().second - arr.front().second + 1);
+            vector<pair<TreeNode *, unsigned long long>> next;
+            auto base = arr.front().second; // 每层归一化，深的窄树不会因编号翻倍而溢出。
+            for (auto [node, index] : arr) {
+                index -= base;
+                if (node->left)
+                    next.push_back({node->left, index * 2});
+                if (node->right)
+                    next.push_back({node->right, index * 2 + 1});
+            }
+            arr = std::move(next);
+        }
+        return (int)res;
+    }
+};
 ```
 
 
