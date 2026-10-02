@@ -1,6 +1,6 @@
-# 刷题笔记
+# 编程札记
 
-按题型整理的算法思路与 C++17 / Python 3.10+ 实现，配套 STL 与 Python 参考。
+算法 · 语言 · 系统。记录算法思路、语言与 API 用法，以及计算和系统实现。
 
 **阅读网站：[sisyphus111.github.io/code-notes](https://sisyphus111.github.io/code-notes/)**
 
