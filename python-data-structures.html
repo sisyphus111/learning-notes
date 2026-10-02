@@ -716,11 +716,94 @@
 
 
 <p>空字符串与单字符字符串的循环都执行零次，直接返回 <code>True</code>。最坏时间复杂度为 <span class="math">\(O(n)\)</span>，额外空间为 <span class="math">\(O(1)\)</span>；遇到第一对不同字符就提前返回。</p>
-<h3 id="索引-切片与常用方法">索引、切片与常用方法</h3>
+<h3 id="转成-list-修改后用-join-拼回字符串">转成 list：修改后用 join 拼回字符串</h3>
+<p>字符串不可变，所以不能直接写 <code>s[0] = 'a'</code>。可以先创建可变列表，在列表上修改，再得到拼接后的字符串结果：</p>
 <div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'stone'</span>
 <span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chars</span><span class="p">)</span>                     <span class="c1"># 输出：['s', 't', 'o', 'n', 'e']</span>
 <span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'a'</span>
-<span class="nb">print</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chars</span><span class="p">),</span> <span class="n">s</span><span class="p">)</span>          <span class="c1"># 输出：atone stone</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chars</span><span class="p">)</span>                     <span class="c1"># 输出：['a', 't', 'o', 'n', 'e']</span>
+<span class="n">result</span> <span class="o">=</span> <span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chars</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>                    <span class="c1"># 输出：atone</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>                         <span class="c1"># 输出：stone</span>
+</pre></div>
+
+
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>对象类型与行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chars = list(s)</code></td>
+<td>创建一个新的 <code>list</code>，按顺序存放 <code>s</code> 的每个字符；元素仍是 <code>str</code></td>
+</tr>
+<tr>
+<td><code>chars[0] = 'a'</code></td>
+<td>修改列表第 <code>0</code> 个位置保存的引用，不会修改原字符串</td>
+</tr>
+<tr>
+<td><code>result = ''.join(chars)</code></td>
+<td>将列表中的字符串片段拼接成一个 <code>str</code> 结果，<code>chars</code> 仍然是列表</td>
+</tr>
+</tbody>
+</table>
+<p>这不是“让同一个对象先变成 list、再变成 str”。<code>s</code>、<code>chars</code>、<code>result</code> 是三个名字，分别绑定到字符串、列表和结果字符串。</p>
+<p>如果想让变量 <code>s</code> 保存修改后的结果，需要显式赋回去。这个赋值只是改变名字 <code>s</code> 的绑定；其他已经绑定到原字符串的名字不受影响：</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'stone'</span>
+<span class="n">original</span> <span class="o">=</span> <span class="n">s</span>
+<span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'a'</span>
+<span class="n">s</span> <span class="o">=</span> <span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chars</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">original</span><span class="p">)</span>               <span class="c1"># 输出：atone stone</span>
+</pre></div>
+
+
+<p>转换后可以使用普通列表的交换、插入、删除等操作。比如交换首尾两个字符：</p>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'abcd'</span>
+<span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">chars</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">chars</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chars</span><span class="p">),</span> <span class="n">s</span><span class="p">)</span>          <span class="c1"># 输出：dbca abcd</span>
+</pre></div>
+
+
+<h4 id="为什么是-join-chars">为什么是 ''.join(chars)？</h4>
+<p><code>join</code> 是字符串的方法，<strong>点号前的字符串是分隔符</strong>：空字符串 <code>''</code> 表示片段之间不插入任何内容；<code>'-'</code> 表示在相邻片段之间插入连字符。参数是要拼接的可迭代字符串片段，不限于列表。</p>
+<div class="codehilite"><pre><span></span><span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'ab'</span><span class="p">,</span> <span class="s1">'cd'</span><span class="p">,</span> <span class="s1">'ef'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">))</span>             <span class="c1"># 输出：abcdef</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'-'</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">))</span>            <span class="c1"># 输出：ab-cd-ef</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">([])</span> <span class="o">==</span> <span class="s1">''</span><span class="p">)</span>          <span class="c1"># 输出：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">([</span><span class="s1">'a'</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">]))</span>            <span class="c1"># 输出：['a', 'b']</span>
+</pre></div>
+
+
+<p><code>str(chars)</code> 得到的是列表的文本表示，包含方括号、引号和逗号；它不会代替 <code>join</code> 把字符连起来。</p>
+<h4 id="列表元素可以是多字符片段-但必须是字符串">列表元素可以是多字符片段，但必须是字符串</h4>
+<p><code>list(s)</code> 最初得到单字符字符串，但列表并不限制每个元素只能放一个字符：</p>
+<div class="codehilite"><pre><span></span><span class="n">chars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="s1">'cat'</span><span class="p">)</span>
+<span class="n">chars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'ch'</span>
+<span class="n">chars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">'s'</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chars</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chars</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>             <span class="c1"># 输出：['ch', 'a', 't', 's'] chats</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">chars</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>   <span class="c1"># 输出：4 5</span>
+</pre></div>
+
+
+<p>因此修改后 <code>len(chars)</code> 不一定等于结果字符串的长度。<code>join</code> 要求每个元素都是字符串，不会自动把整数转成字符串：</p>
+<div class="codehilite"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">'a'</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'元素必须是字符串'</span><span class="p">)</span>     <span class="c1"># 输出：元素必须是字符串</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">''</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])))</span>  <span class="c1"># 输出：123</span>
+</pre></div>
+
+
+<p>字符列表的创建和拼接都要处理全部内容。对于长度为 <code>n</code>、修改后仍保持 <code>n</code> 个单字符元素的字符串，这套写法总体需要 <span class="math">\(O(n)\)</span> 时间与 <span class="math">\(O(n)\)</span> 额外空间；固定下标替换或交换本身是 <span class="math">\(O(1)\)</span>。需要反复修改时，通常先转换一次、完成全部修改，最后再 <code>join</code> 一次。<a href="https://docs.python.org/3.12/library/stdtypes.html#str.join">官方 str.join 文档</a></p>
+<h3 id="索引-切片与常用方法">索引、切片与常用方法</h3>
+<div class="codehilite"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="s1">'stone'</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">s</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>            <span class="c1"># 输出：ton enots</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'on'</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'x'</span><span class="p">))</span>   <span class="c1"># 输出：2 -1</span>
 </pre></div>

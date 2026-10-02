@@ -607,13 +607,92 @@ print([(i, n - 1 - i) for i in range(n // 2)])  # 输出：[(0, 4), (1, 3)]
 
 空字符串与单字符字符串的循环都执行零次，直接返回 `True`。最坏时间复杂度为 $O(n)$，额外空间为 $O(1)$；遇到第一对不同字符就提前返回。
 
-### 索引、切片与常用方法
+### 转成 list：修改后用 join 拼回字符串
+
+字符串不可变，所以不能直接写 `s[0] = 'a'`。可以先创建可变列表，在列表上修改，再得到拼接后的字符串结果：
 
 ```python
 s = 'stone'
 chars = list(s)
+print(chars)                     # 输出：['s', 't', 'o', 'n', 'e']
 chars[0] = 'a'
-print(''.join(chars), s)          # 输出：atone stone
+print(chars)                     # 输出：['a', 't', 'o', 'n', 'e']
+result = ''.join(chars)
+print(result)                    # 输出：atone
+print(s)                         # 输出：stone
+```
+
+| 步骤 | 对象类型与行为 |
+| --- | --- |
+| `chars = list(s)` | 创建一个新的 `list`，按顺序存放 `s` 的每个字符；元素仍是 `str` |
+| `chars[0] = 'a'` | 修改列表第 `0` 个位置保存的引用，不会修改原字符串 |
+| `result = ''.join(chars)` | 将列表中的字符串片段拼接成一个 `str` 结果，`chars` 仍然是列表 |
+
+这不是“让同一个对象先变成 list、再变成 str”。`s`、`chars`、`result` 是三个名字，分别绑定到字符串、列表和结果字符串。
+
+如果想让变量 `s` 保存修改后的结果，需要显式赋回去。这个赋值只是改变名字 `s` 的绑定；其他已经绑定到原字符串的名字不受影响：
+
+```python
+s = 'stone'
+original = s
+chars = list(s)
+chars[0] = 'a'
+s = ''.join(chars)
+print(s, original)               # 输出：atone stone
+```
+
+转换后可以使用普通列表的交换、插入、删除等操作。比如交换首尾两个字符：
+
+```python
+s = 'abcd'
+chars = list(s)
+chars[0], chars[-1] = chars[-1], chars[0]
+print(''.join(chars), s)          # 输出：dbca abcd
+```
+
+#### 为什么是 ''.join(chars)？
+
+`join` 是字符串的方法，**点号前的字符串是分隔符**：空字符串 `''` 表示片段之间不插入任何内容；`'-'` 表示在相邻片段之间插入连字符。参数是要拼接的可迭代字符串片段，不限于列表。
+
+```python
+parts = ['ab', 'cd', 'ef']
+print(''.join(parts))             # 输出：abcdef
+print('-'.join(parts))            # 输出：ab-cd-ef
+print(''.join([]) == '')          # 输出：True
+print(str(['a', 'b']))            # 输出：['a', 'b']
+```
+
+`str(chars)` 得到的是列表的文本表示，包含方括号、引号和逗号；它不会代替 `join` 把字符连起来。
+
+#### 列表元素可以是多字符片段，但必须是字符串
+
+`list(s)` 最初得到单字符字符串，但列表并不限制每个元素只能放一个字符：
+
+```python
+chars = list('cat')
+chars[0] = 'ch'
+chars.append('s')
+result = ''.join(chars)
+print(chars, result)             # 输出：['ch', 'a', 't', 's'] chats
+print(len(chars), len(result))   # 输出：4 5
+```
+
+因此修改后 `len(chars)` 不一定等于结果字符串的长度。`join` 要求每个元素都是字符串，不会自动把整数转成字符串：
+
+```python
+try:
+    ''.join(['a', 1])
+except TypeError:
+    print('元素必须是字符串')     # 输出：元素必须是字符串
+print(''.join(map(str, [1, 2, 3])))  # 输出：123
+```
+
+字符列表的创建和拼接都要处理全部内容。对于长度为 `n`、修改后仍保持 `n` 个单字符元素的字符串，这套写法总体需要 $O(n)$ 时间与 $O(n)$ 额外空间；固定下标替换或交换本身是 $O(1)$。需要反复修改时，通常先转换一次、完成全部修改，最后再 `join` 一次。[官方 str.join 文档](https://docs.python.org/3.12/library/stdtypes.html#str.join)
+
+### 索引、切片与常用方法
+
+```python
+s = 'stone'
 print(s[1:4], s[::-1])            # 输出：ton enots
 print(s.find('on'), s.find('x'))   # 输出：2 -1
 ```
