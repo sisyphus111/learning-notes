@@ -27,7 +27,7 @@
 ```python
 a = [10, 20, 30]
 len(a)                           # 3：元素数量
-20 in a                          # True
+20 in a                          # True：检查是否包含 20
 99 not in a                      # True
 isinstance(a, list)              # True：类型检查
 bool([])                         # False：空容器
@@ -139,20 +139,20 @@ a[100:]                          # []：切片越过边界允许
 
 ```python
 a = [1, 2]
-a[1] = 9                        # a 为 [1, 9]
-a.append(3)                     # a 为 [1, 9, 3]；返回 None
-a.extend([4, 5])                # a 为 [1, 9, 3, 4, 5]；返回 None
-a.insert(1, 8)                  # a 为 [1, 8, 9, 3, 4, 5]；返回 None
-last = a.pop()                  # last 为 5，a 为 [1, 8, 9, 3, 4]
-first = a.pop(0)                # first 为 1，a 为 [8, 9, 3, 4]
-a.remove(9)                     # a 为 [8, 3, 4]；返回 None
-del a[1:]                       # a 为 [8]；按下标删除区间
-a.clear()                       # a 为 []；返回 None
+a[1] = 9                         # 修改下标 1；a 为 [1, 9]
+a.append(3)                      # 末尾添加；a 为 [1, 9, 3]；返回 None
+a.extend([4, 5])                 # 逐个添加；a 为 [1, 9, 3, 4, 5]；返回 None
+a.insert(1, 8)                   # 在下标 1 前插入；a 为 [1, 8, 9, 3, 4, 5]；返回 None
+last = a.pop()                   # 删除末尾并返回；last 为 5，a 为 [1, 8, 9, 3, 4]
+first = a.pop(0)                 # 删除头部并返回；first 为 1，a 为 [8, 9, 3, 4]
+a.remove(9)                      # 删除首个值 9；a 为 [8, 3, 4]；返回 None
+del a[1:]                        # 删除下标 1 起的区间；a 为 [8]
+a.clear()                        # 清空；a 为 []；返回 None
 
 b = [1, 2]
-b.append([3, 4])                 # b 为 [1, 2, [3, 4]]：添加一个对象
+b.append([3, 4])                 # 末尾添加整个 list；b 为 [1, 2, [3, 4]]
 c = [1, 2]
-c.extend([3, 4])                 # c 为 [1, 2, 3, 4]：逐个添加
+c.extend([3, 4])                 # 末尾逐个添加；c 为 [1, 2, 3, 4]
 ```
 
 `pop(i)` 按下标删除并返回元素；`remove(x)` 按值删除第一个匹配项，不返回元素。`del` 是语句，不是方法。
@@ -160,10 +160,10 @@ c.extend([3, 4])                 # c 为 [1, 2, 3, 4]：逐个添加
 ```python
 a = [10, 20, 20, 30]
 a.count(20)                      # 2：出现次数
-a.count(99)                      # 0
+a.count(99)                      # 0：统计 99 的出现次数
 a.index(20)                      # 1：第一个匹配的下标
 a.index(20, 2)                   # 2：从下标 2 开始找
-20 in a                          # True
+20 in a                          # True：检查是否包含 20
 # a.index(99)                    # ValueError：不是返回 -1
 # a.remove(99)                   # ValueError
 # a.pop(100)                     # IndexError
@@ -175,9 +175,9 @@ a.index(20, 2)                   # 2：从下标 2 开始找
 
 ```python
 a = [3, 1, 2]
-b = sorted(a)                    # b 为 [1, 2, 3]，a 不变
-result = a.sort()                # a 为 [1, 2, 3]，result 为 None
-a.reverse()                      # a 为 [3, 2, 1]；返回 None
+b = sorted(a)                    # 升序排序为新 list；b 为 [1, 2, 3]，a 不变
+result = a.sort()                # 原地升序排序；a 为 [1, 2, 3]，result 为 None
+a.reverse()                      # 原地逆序；a 为 [3, 2, 1]；返回 None
 print(b, a, result)              # 输出：[1, 2, 3] [3, 2, 1] None
 
 words = ['pear', 'fig', 'banana']
@@ -285,10 +285,10 @@ print(t)                         # 输出：([1, 2], 'label')
 ```python
 d = {}                           # 空 dict，不是空 set
 d = {'name': 'Lin', 'age': 20}
-d['name']                        # 'Lin'
+d['name']                        # 'Lin'：按 key 读取 value
 'name' in d                      # True：检查 key
 'Lin' in d                       # False：不检查 value
-'Lin' in d.values()              # True
+'Lin' in d.values()              # True：检查是否存在这个 value
 d['age'] = 21                   # 修改已有 key
 d['city'] = 'Shanghai'           # 新增 key
 d.update({'age': 22})            # 更新或添加；返回 None
@@ -312,9 +312,9 @@ key 必须可哈希，常用数字、字符串、可哈希 tuple、frozenset 可
 
 ```python
 d = {}
-d.get('x', 0)                    # 0，d 仍为空
-d.setdefault('x', 0)            # 0，同时插入 'x': 0
-d.setdefault('x', 99)           # 0，不覆盖已有值
+d.get('x', 0)                    # 0：读取缺失 key 的默认值，不插入，d 仍为空
+d.setdefault('x', 0)             # 0：读取或插入默认值，此处新增 'x': 0
+d.setdefault('x', 99)            # 0：读取已有值，不覆盖它
 d['x'] += 1
 print(d)                         # 输出：{'x': 1}
 
@@ -330,15 +330,15 @@ print(counts)                    # 输出：{'a': 2, 'b': 1}
 
 ```python
 d = {'a': 1, 'b': 2, 'c': 3}
-value = d.pop('b')               # value 为 2，删除 'b'
-pair = d.popitem()               # pair 为 ('c', 3)：删除最后插入的条目
-del d['a']                      # d 为 {}
+value = d.pop('b')               # 按 key 删除并返回；value 为 2，删除 'b'
+pair = d.popitem()               # 删除并返回最后插入的条目；pair 为 ('c', 3)
+del d['a']                       # 按 key 删除；d 为 {}
 d.pop('missing', 0)              # 0：缺失时返回默认值
 # d.pop('missing')               # KeyError
 
 d = {'a': 1}
-copied = d.copy()                # 浅拷贝
-merged = d | {'a': 9, 'b': 2}     # merged 为 {'a': 9, 'b': 2}；d 不变
+copied = d.copy()                # 浅拷贝为新字典，内部对象仍可共享
+merged = d | {'a': 9, 'b': 2}    # 合并为新字典；merged 为 {'a': 9, 'b': 2}；d 不变
 d |= {'b': 2}                    # 原地合并
 d.clear()                        # 原地清空；返回 None
 ```
@@ -351,17 +351,17 @@ for key in d:                    # 与 for key in d.keys() 等价
     print(key)
 # 输出：a
 # 输出：b
-for value in d.values():
+for value in d.values():         # 遍历所有 value
     print(value)
 # 输出：1
 # 输出：2
-for key, value in d.items():      # 每轮解包 (key, value)
+for key, value in d.items():     # 遍历键值对，每轮解包 (key, value)
     print(key, value)
 # 输出：a 1
 # 输出：b 2
-list(d.keys())                   # ['a', 'b']
-list(d.values())                 # [1, 2]
-list(d.items())                  # [('a', 1), ('b', 2)]
+list(d.keys())                   # ['a', 'b']：取 key 快照
+list(d.values())                 # [1, 2]：取 value 快照
+list(d.items())                  # [('a', 1), ('b', 2)]：取键值对快照
 ```
 
 字典保留插入顺序，不自动排序。`keys/values/items` 返回动态视图，不是列表快照；视图不能用 `[0]` 访问。`values()` 保留重复值。
@@ -396,13 +396,13 @@ s = set()                        # 空集合；{} 是 dict
 s = {1, 2, 2, 3}                 # 去重，元素为 1、2、3
 2 in s                           # True
 len(s)                           # 3
-s.add(4)                         # 原地加入；返回 None
-s.update([4, 5])                 # 逐个加入；返回 None
-s.remove(2)                      # 缺失会抛出 KeyError
-s.discard(99)                    # 缺失不报错；返回 None
+s.add(4)                         # 原地加入元素 4；返回 None
+s.update([4, 5])                 # 原地逐个加入，重复值不再添加；返回 None
+s.remove(2)                      # 删除元素 2；缺失会抛出 KeyError
+s.discard(99)                    # 尝试删除元素 99；缺失不报错，返回 None
 removed = s.pop()                # 任意删除并返回，不保证最小值
 copied = s.copy()                # 浅拷贝
-s.clear()                        # 清空；返回 None
+s.clear()                        # 清空集合；返回 None
 # s[0]                           # TypeError：集合没有位置下标
 ```
 
@@ -528,14 +528,14 @@ str(['a', 'b'])                  # "['a', 'b']"：列表的展示文本，不等
 
 ```python
 s = 'banana'
-s.find('na')                     # 2
-s.rfind('na')                    # 4
-s.find('x')                      # -1：没找到
-s.index('na')                    # 2
+s.find('na')                     # 2：查找首次出现的下标
+s.rfind('na')                    # 4：从右侧查找，返回最后一次出现的下标
+s.find('x')                      # -1：查找 x，没找到
+s.index('na')                    # 2：查找首次出现的下标，缺失则报错
 # s.index('x')                    # ValueError
 s.count('an')                    # 2：非重叠出现次数
-s.startswith('ban')              # True
-s.endswith('na')                 # True
+s.startswith('ban')              # True：检查前缀
+s.endswith('na')                 # True：检查后缀
 
 '  a   b  '.split()              # ['a', 'b']：按连续空白切分
 'a,,b'.split(',')                 # ['a', '', 'b']：显式分隔符保留空项
@@ -614,7 +614,7 @@ c['a']                           # 2
 c['missing']                     # 0：不自动插入 key
 len(c)                           # 2：键数
 c.total()                        # 3：计数总和，Python 3.10+
-c.most_common(1)                 # [('a', 2)]
+c.most_common(1)                 # [('a', 2)]：取频次最高的一项
 c['a'] -= 2                     # 零计数的 key 不自动删除
 'a' in c                         # True
 dict(+c)                         # {'b': 1}：过滤零和负计数
@@ -647,8 +647,8 @@ q.append(3)                      # 原地从右端加入；返回 None
 q.appendleft(0)                  # 原地从左端加入；返回 None
 q.pop()                          # 3：从右端删除并返回
 q.popleft()                      # 0：从左端删除并返回
-q.extendleft([8, 9])             # q 为 deque([9, 8, 1, 2])：顺序反过来
-q.rotate(1)                      # q 为 deque([2, 9, 8, 1])
+q.extendleft([8, 9])             # 逐个从左端加入；q 为 deque([9, 8, 1, 2])
+q.rotate(1)                      # 向右轮转 1 位；q 为 deque([2, 9, 8, 1])
 print(list(q))                   # 输出：[2, 9, 8, 1]
 ```
 
@@ -662,9 +662,9 @@ from heapq import heapify, heappush, heappop, nlargest
 h = [7, 2, 5]
 heapify(h)                       # 原地建小顶堆；返回 None
 h[0]                             # 2：堆顶最小，其余位置不保证排序
-heappush(h, 1)                   # 入堆；返回 None
-heappop(h)                        # 1：删除并返回最小值
-nlargest(2, [3, 7, 1, 5])        # [7, 5]
+heappush(h, 1)                   # 加入元素 1 并维持堆结构；返回 None
+heappop(h)                       # 1：删除并返回堆顶最小值
+nlargest(2, [3, 7, 1, 5])        # [7, 5]：取最大的两项
 
 big = [-x for x in [7, 2, 5]]    # 跨版本大顶堆写法：取负
 heapify(big)
