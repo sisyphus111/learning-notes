@@ -88,22 +88,144 @@
 
 <p>索引越界会抛出 <code>IndexError</code>；普通切片越过两端会截到有效范围，不会因端点过大报错。列表切片是浅拷贝，长为 <code>k</code> 的切片需要处理 <code>k</code> 个元素，不能把它当作一个免费视图。</p>
 <h3 id="添加-删除与查找">添加、删除与查找</h3>
-<p><code>append(x)</code> 添加一个对象，<code>extend(xs)</code> 逐个添加可迭代对象中的元素。<code>pop(i)</code> 按位置删除并返回元素，<code>remove(x)</code> 删除第一个等于 <code>x</code> 的元素。</p>
-<div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span>
-<span class="n">nums</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                       <span class="c1"># 输出：[4, 7, [2, 3]]</span>
-<span class="n">nums</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="n">nums</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>                       <span class="c1"># 输出：[4, 7, 2, 3]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>                  <span class="c1"># 输出：3</span>
-<span class="n">nums</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">nums</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>         <span class="c1"># 输出：[4, 2] 1</span>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>含义</th>
+<th>返回值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a[i] = x</code></td>
+<td>把下标 <code>i</code> 的元素改为 <code>x</code></td>
+<td>赋值是语句，不返回值</td>
+</tr>
+<tr>
+<td><code>a.append(x)</code></td>
+<td>在末尾添加一个元素 <code>x</code></td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>a.extend(xs)</code></td>
+<td>在末尾逐个添加 <code>xs</code> 中的元素</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>a.insert(i, x)</code></td>
+<td>在下标 <code>i</code> 处插入 <code>x</code>，原元素向后移动</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>a.remove(x)</code></td>
+<td>删除第一个值等于 <code>x</code> 的元素</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>a.pop(i)</code></td>
+<td>删除下标 <code>i</code> 的元素，支持负下标</td>
+<td>被删除的元素</td>
+</tr>
+<tr>
+<td><code>a.pop()</code></td>
+<td>删除最后一个元素，等同于 <code>a.pop(-1)</code></td>
+<td>被删除的元素</td>
+</tr>
+<tr>
+<td><code>del a[i]</code></td>
+<td>删除下标 <code>i</code> 的元素</td>
+<td><code>del</code> 是语句，不返回值</td>
+</tr>
+<tr>
+<td><code>del a[l:r]</code></td>
+<td>删除下标 <code>[l, r)</code> 的一段元素</td>
+<td><code>del</code> 是语句，不返回值</td>
+</tr>
+<tr>
+<td><code>a.clear()</code></td>
+<td>清空列表</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>a.index(x)</code></td>
+<td>查找第一个值等于 <code>x</code> 的元素</td>
+<td>该元素的下标</td>
+</tr>
+<tr>
+<td><code>x in a</code></td>
+<td>判断是否存在值等于 <code>x</code> 的元素</td>
+<td><code>bool</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>pop(i)</code>、<code>del a[i]</code> 和下标赋值越界会抛出 <code>IndexError</code>；<code>remove(x)</code>、<code>index(x)</code> 找不到值会抛出 <code>ValueError</code>。<code>insert(i, x)</code> 的位置超出范围时会截到开头或末尾。<a href="https://docs.python.org/3.12/tutorial/datastructures.html#more-on-lists">官方列表方法</a></p>
+<p>依次修改同一个列表，每一步用 <code>assert</code> 检查结果：</p>
+<div class="codehilite"><pre><span></span><span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>                    <span class="c1"># 修改下标 1 的元素</span>
+<span class="k">assert</span> <span class="n">items</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">40</span><span class="p">)</span>                 <span class="c1"># 末尾添加一个元素</span>
+<span class="k">assert</span> <span class="n">items</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">]</span>
+
+<span class="n">items</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">])</span>           <span class="c1"># 末尾逐个添加元素</span>
+<span class="k">assert</span> <span class="n">items</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]</span>
+
+<span class="n">removed</span> <span class="o">=</span> <span class="n">items</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>          <span class="c1"># 删除末尾元素，并取得它</span>
+<span class="k">assert</span> <span class="n">removed</span> <span class="o">==</span> <span class="mi">60</span>
+<span class="k">assert</span> <span class="n">items</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">99</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"list 修改练习通过"</span><span class="p">)</span>         <span class="c1"># 输出：list 修改练习通过</span>
+
+<span class="n">entries</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="n">entries</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span>            <span class="c1"># 在下标 1 处插入 15</span>
+<span class="k">assert</span> <span class="n">entries</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="n">entries</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>               <span class="c1"># 只删除第一个 20</span>
+<span class="k">assert</span> <span class="n">entries</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="k">del</span> <span class="n">entries</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>                  <span class="c1"># 删除下标 1 的元素</span>
+<span class="k">assert</span> <span class="n">entries</span> <span class="o">==</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="n">removed_first</span> <span class="o">=</span> <span class="n">entries</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># 删除下标 0 的元素，并取得它</span>
+<span class="k">assert</span> <span class="n">removed_first</span> <span class="o">==</span> <span class="mi">10</span>
+<span class="k">assert</span> <span class="n">entries</span> <span class="o">==</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"list 插入与删除练习通过"</span><span class="p">)</span>    <span class="c1"># 输出：list 插入与删除练习通过</span>
 </pre></div>
 
 
-<p><code>index(x)</code>、<code>remove(x)</code> 找不到时抛出 <code>ValueError</code>。只想判断是否存在，用 <code>x in nums</code>；反复查找时，应考虑 <code>set</code> 或 <code>dict</code>。删除一段用 <code>del nums[l:r]</code>，清空用 <code>nums.clear()</code>。</p>
+<p><code>append([2, 3])</code> 添加一个列表元素；<code>extend([2, 3])</code> 添加两个整数元素。尾部 <code>pop()</code> 为 <span class="math">\(O(1)\)</span>，中间插入或删除需要移动后面的元素，最坏为 <span class="math">\(O(n)\)</span>。</p>
 <h3 id="排序-反转与栈">排序、反转与栈</h3>
-<p><code>sort()</code>、<code>reverse()</code> 修改原列表，返回 <code>None</code>；<code>sorted(...)</code> 返回一个新列表。不要把 <code>nums = nums.sort()</code> 写成获取排序结果的方式。<a href="https://docs.python.org/3.12/tutorial/datastructures.html#more-on-lists">官方列表方法说明</a></p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>含义</th>
+<th>返回值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a.sort()</code></td>
+<td>原地排序</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>a.reverse()</code></td>
+<td>原地反转</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>sorted(a)</code></td>
+<td>排序，不修改 <code>a</code></td>
+<td>新列表</td>
+</tr>
+</tbody>
+</table>
+<p>不要写 <code>a = a.sort()</code>，否则 <code>a</code> 会变成 <code>None</code>。</p>
 <div class="codehilite"><pre><span></span><span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
 <span class="n">ordered</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">ordered</span><span class="p">)</span>              <span class="c1"># 输出：[5, 2, 4] [2, 4, 5]</span>

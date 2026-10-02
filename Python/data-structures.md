@@ -39,25 +39,72 @@ print([0] * 4)                    # 输出：[0, 0, 0, 0]
 
 ### 添加、删除与查找
 
-`append(x)` 添加一个对象，`extend(xs)` 逐个添加可迭代对象中的元素。`pop(i)` 按位置删除并返回元素，`remove(x)` 删除第一个等于 `x` 的元素。
+| 写法 | 含义 | 返回值 |
+| --- | --- | --- |
+| `a[i] = x` | 把下标 `i` 的元素改为 `x` | 赋值是语句，不返回值 |
+| `a.append(x)` | 在末尾添加一个元素 `x` | `None` |
+| `a.extend(xs)` | 在末尾逐个添加 `xs` 中的元素 | `None` |
+| `a.insert(i, x)` | 在下标 `i` 处插入 `x`，原元素向后移动 | `None` |
+| `a.remove(x)` | 删除第一个值等于 `x` 的元素 | `None` |
+| `a.pop(i)` | 删除下标 `i` 的元素，支持负下标 | 被删除的元素 |
+| `a.pop()` | 删除最后一个元素，等同于 `a.pop(-1)` | 被删除的元素 |
+| `del a[i]` | 删除下标 `i` 的元素 | `del` 是语句，不返回值 |
+| `del a[l:r]` | 删除下标 `[l, r)` 的一段元素 | `del` 是语句，不返回值 |
+| `a.clear()` | 清空列表 | `None` |
+| `a.index(x)` | 查找第一个值等于 `x` 的元素 | 该元素的下标 |
+| `x in a` | 判断是否存在值等于 `x` 的元素 | `bool` |
+
+`pop(i)`、`del a[i]` 和下标赋值越界会抛出 `IndexError`；`remove(x)`、`index(x)` 找不到值会抛出 `ValueError`。`insert(i, x)` 的位置超出范围时会截到开头或末尾。[官方列表方法](https://docs.python.org/3.12/tutorial/datastructures.html#more-on-lists)
+
+依次修改同一个列表，每一步用 `assert` 检查结果：
 
 ```python
-nums = [4, 7]
-nums.append([2, 3])
-print(nums)                       # 输出：[4, 7, [2, 3]]
-nums.pop()
-nums.extend([2, 3])
-print(nums)                       # 输出：[4, 7, 2, 3]
-print(nums.pop())                  # 输出：3
-nums.remove(7)
-print(nums, nums.index(2))         # 输出：[4, 2] 1
+items = [10, 20, 30]
+
+items[1] = 99                    # 修改下标 1 的元素
+assert items == [10, 99, 30]
+
+items.append(40)                 # 末尾添加一个元素
+assert items == [10, 99, 30, 40]
+
+items.extend([50, 60])           # 末尾逐个添加元素
+assert items == [10, 99, 30, 40, 50, 60]
+
+removed = items.pop(-1)          # 删除末尾元素，并取得它
+assert removed == 60
+assert items == [10, 99, 30, 40, 50]
+
+print("list 修改练习通过")         # 输出：list 修改练习通过
+
+entries = [10, 20, 20, 30]
+
+entries.insert(1, 15)            # 在下标 1 处插入 15
+assert entries == [10, 15, 20, 20, 30]
+
+entries.remove(20)               # 只删除第一个 20
+assert entries == [10, 15, 20, 30]
+
+del entries[1]                  # 删除下标 1 的元素
+assert entries == [10, 20, 30]
+
+removed_first = entries.pop(0)   # 删除下标 0 的元素，并取得它
+assert removed_first == 10
+assert entries == [20, 30]
+
+print("list 插入与删除练习通过")    # 输出：list 插入与删除练习通过
 ```
 
-`index(x)`、`remove(x)` 找不到时抛出 `ValueError`。只想判断是否存在，用 `x in nums`；反复查找时，应考虑 `set` 或 `dict`。删除一段用 `del nums[l:r]`，清空用 `nums.clear()`。
+`append([2, 3])` 添加一个列表元素；`extend([2, 3])` 添加两个整数元素。尾部 `pop()` 为 $O(1)$，中间插入或删除需要移动后面的元素，最坏为 $O(n)$。
 
 ### 排序、反转与栈
 
-`sort()`、`reverse()` 修改原列表，返回 `None`；`sorted(...)` 返回一个新列表。不要把 `nums = nums.sort()` 写成获取排序结果的方式。[官方列表方法说明](https://docs.python.org/3.12/tutorial/datastructures.html#more-on-lists)
+| 写法 | 含义 | 返回值 |
+| --- | --- | --- |
+| `a.sort()` | 原地排序 | `None` |
+| `a.reverse()` | 原地反转 | `None` |
+| `sorted(a)` | 排序，不修改 `a` | 新列表 |
+
+不要写 `a = a.sort()`，否则 `a` 会变成 `None`。
 
 ```python
 nums = [5, 2, 4]
