@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tensor 与 GPU 内存 · 编程札记</title><meta name="description" content="shape · 广播 · 矩阵乘法 · stride · view · CUDA 执行">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>编程札记<small>算法 · 语言 · 系统</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html" aria-current="page">Tensor 与 GPU 内存</a><a href="pytorch-components.html">常见计算与组件</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">编程札记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">PyTorch 教学</p><h1>Tensor 与 GPU 内存</h1><p class="subtitle">shape · 广播 · 矩阵乘法 · stride · view · CUDA 执行</p></div>
+<article><h2 id="1-创建-tensor">1. 创建 Tensor</h2>
+<h3 id="从具体数据创建">从具体数据创建</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>                    <span class="c1"># 预期：torch.int64</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>                    <span class="c1"># 预期：torch.float32</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>             <span class="c1"># 预期：(2, 3)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                 <span class="c1"># 预期：[[1, 2, 3], [4, 5, 6]]</span>
+</pre></div>
+
+
+<p>Python 整数字面量通常推断成 int64。本文没有修改默认浮点类型；需要确定类型时显式写 <code>dtype=</code>，不要依赖程序其他位置的默认设置。</p>
+<h3 id="按-shape-创建">按 shape 创建</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">zeros</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">ones</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">full</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="mi">7</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">seq</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">seq</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">eye</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">zeros</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">full</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>              <span class="c1"># 预期：[[7, 7, 7], [7, 7, 7]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>              <span class="c1"># 预期：[[0, 1, 2], [3, 4, 5]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">eye</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[[1.0, 0.0], [0.0, 1.0]]</span>
+</pre></div>
+
+
+<p><code>torch.zeros(2, 3)</code> 和 <code>torch.zeros((2, 3))</code> 都表示两行三列。<code>arange(start, end, step)</code> 不包含 <code>end</code>；整数范围优先用整数步长，避免浮点累积使边界难以判断。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>  <span class="c1"># 标准正态随机数</span>
+<span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>                       <span class="c1"># [0, 1) 均匀随机数</span>
+<span class="n">ids</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>         <span class="c1"># 整数，0 到 9</span>
+<span class="n">blank</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>                  <span class="c1"># 分配空间，不承诺初始数值</span>
+<span class="n">same</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                              <span class="c1"># 沿用 x 的 shape/dtype/device</span>
+<span class="n">half</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>           <span class="c1"># 指定不同 dtype</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">same</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">same</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">)</span>   <span class="c1"># 预期：(2, 3) True</span>
+</pre></div>
+
+
+<p><code>empty</code> 里的数不能当作零或随机初始化使用；读取前先写满。<code>randn</code> 与 <code>rand</code> 的分布不同；固定随机 seed 方便复现，但不保证跨版本、跨设备得到完全相同的随机序列。</p>
+<h2 id="2-shape-维度与元素数量">2. shape、维度与元素数量</h2>
+<h3 id="维度是轴的数量-不是元素数量">维度是轴的数量，不是元素数量</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>             <span class="c1"># 预期：(2, 3)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">())</span>            <span class="c1"># 预期：2 2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>        <span class="c1"># 预期：2 3</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>                 <span class="c1"># 预期：3</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span>                  <span class="c1"># 预期：6</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>                     <span class="c1"># 预期：2</span>
+</pre></div>
+
+
+<p><code>dim=0</code> 是第一个轴，<code>dim=1</code> 是第二个轴；<code>dim=-1</code> 是最后一个轴。二维表可以叫“行轴、列轴”，更高维时最好直接给轴命名。</p>
+<p>例如 <code>X.shape = [B, S, D]</code>：<code>B</code> 表示 batch 数，<code>S</code> 表示每个样本的 token 数，<code>D</code> 表示每个 token 的特征数。<code>X[b, s, d]</code> 取第 <code>b</code> 个样本、第 <code>s</code> 个 token 的第 <code>d</code> 个特征。字母的含义来自你对数据的约定，Tensor 本身不会自动知道哪个轴是 batch。</p>
+<h3 id="标量-tensor-与长度为-1-的向量">标量 Tensor 与长度为 1 的向量</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">scalar</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">7</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">scalar</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">scalar</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>  <span class="c1"># 预期：() 0</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">vector</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">vector</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>  <span class="c1"># 预期：(1,) 1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">scalar</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="n">vector</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span>    <span class="c1"># 预期：1 1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">scalar</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>                     <span class="c1"># 预期：7</span>
+<span class="c1"># len(scalar)                            # 报错：0 维 Tensor 没有第一个轴</span>
+<span class="c1"># vector.reshape(2)                      # 报错：不能把 1 个元素变成 2 个</span>
+</pre></div>
+
+
+<p><code>item()</code> 要求总元素数为 1，不要求一定是 0 维。一个 GPU 标量 Tensor 仍在 GPU 上；调用 <code>item()</code> 后才得到 Python 数值。</p>
+<h2 id="3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</h2>
+<table>
+<thead>
+<tr>
+<th>常见 dtype</th>
+<th>单元素字节数</th>
+<th>常见用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torch.float32</code></td>
+<td>4</td>
+<td>浮点计算、参考结果</td>
+</tr>
+<tr>
+<td><code>torch.float16</code></td>
+<td>2</td>
+<td>低精度模型计算，范围较小</td>
+</tr>
+<tr>
+<td><code>torch.bfloat16</code></td>
+<td>2</td>
+<td>低精度模型计算，指数范围较大</td>
+</tr>
+<tr>
+<td><code>torch.int64</code> / <code>torch.long</code></td>
+<td>8</td>
+<td>索引、token ID</td>
+</tr>
+<tr>
+<td><code>torch.int32</code></td>
+<td>4</td>
+<td>整数数据，部分算子有类型要求</td>
+</tr>
+<tr>
+<td><code>torch.bool</code></td>
+<td>1</td>
+<td>mask、比较结果</td>
+</tr>
+</tbody>
+</table>
+<p>FP16 与 BF16 虽然都占 2 字节，精度和数值范围不同。用哪种类型、计算时怎样累加，取决于算子、硬件和数值要求；不能从输入 dtype 推断所有中间计算都用同一精度。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">f</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>                    <span class="c1"># 转成 float32；原 x 不变</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>     <span class="c1"># 转成 float16，仍在原 GPU</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># 预期：torch.int64 torch.float32 torch.float16</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">element_size</span><span class="p">())</span>          <span class="c1"># 预期：2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">*</span> <span class="n">h</span><span class="o">.</span><span class="n">element_size</span><span class="p">())</span>  <span class="c1"># 预期：6</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>           <span class="c1"># 预期：2.0</span>
+<span class="c1"># x.mean()                       # 报错：普通整数 Tensor 不能直接求 mean</span>
+</pre></div>
+
+
+<p><code>numel() × element_size()</code> 是<strong>逻辑元素总字节数</strong>。对于 view，它不等于独立分配的显存大小；广播 view 可能有很多逻辑元素，却共享很小的 storage。它也不是整个进程的显存占用，后者还包括 allocator 缓存和其他资源。</p>
+<h2 id="4-索引-切片与-mask">4. 索引、切片与 mask</h2>
+<h3 id="按位置读取-是否保留轴">按位置读取：是否保留轴</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>            <span class="c1"># 预期：20</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[10, 20, 30]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[20, 50]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>        <span class="c1"># 预期：[[20], [50]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>      <span class="c1"># 预期：(2,)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>    <span class="c1"># 预期：(2, 1)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>          <span class="c1"># 预期：60</span>
+</pre></div>
+
+
+<p>整数索引 <code>x[:, 1]</code> 选中一个位置，去掉对应轴；切片 <code>x[:, 1:2]</code> 选中一个区间，保留该轴。这个区别会直接影响后续广播。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">24</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>         <span class="c1"># 预期：(3, 4)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>    <span class="c1"># 预期：(2, 3)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>  <span class="c1"># 预期：(2, 1, 3, 4)</span>
+</pre></div>
+
+
+<p><code>...</code> 代表“补齐中间剩余的轴”，<code>None</code> 插入一个长度为 1 的轴。PyTorch 切片不支持 Python list 的负步长逆序写法；逆序可用 <code>torch.flip(x, dims=[某个轴])</code>。</p>
+<h3 id="布尔条件逐元素筛选">布尔条件逐元素筛选</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">6</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[[True, False, True], [False, True, False]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[1, 3, 5]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>      <span class="c1"># 新结果；原 x 不变</span>
+<span class="n">z</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>     <span class="c1"># 每个位置按条件选 x 或 0</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[[1, 0, 3], [0, 5, 0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[[1, 0, 3], [0, 5, 0]]</span>
+</pre></div>
+
+
+<p><code>x[mask]</code> 的结果是一维选中元素，不保留原矩阵结构；选中数量由数据决定。<code>masked_fill</code> / <code>where</code> 适合保留网格形状。注意动态形状的筛选与固定形状逐元素选择有不同的执行代价。</p>
+<h3 id="用索引-tensor-选择元素">用索引 Tensor 选择元素</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">index_select</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[30, 10], [60, 40]]</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[[30, 10], [50, 50]]</span>
+</pre></div>
+
+
+<p><code>index_select</code> 沿选定轴使用同一份一维索引；<code>gather</code> 允许每行选不同位置。这里 <code>gather(1, index)</code> 的关系是 <code>out[i, j] = x[i, index[i, j]]</code>，输出 shape 与 <code>index</code> 相同。索引必须在有效范围内；<code>gather</code> 的 input 与 index 维数相同，不自动按广播规则扩展它们。</p>
+<h2 id="5-逐元素计算与比较">5. 逐元素计算与比较</h2>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[11.0, 22.0, 33.0]</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[10.0, 40.0, 90.0]</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[0.5, 1.0, 1.5]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[1.0, 4.0, 9.0]</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[False, True, True]</span>
+<span class="nb">print</span><span class="p">(((</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[False, True, False]</span>
+</pre></div>
+
+
+<p><code>+ - * /</code> 是逐元素运算，可以使用广播。<code>x == y</code> 返回逐元素的 bool Tensor；Python 的 <code>and</code> / <code>or</code> 不能用于多元素 Tensor 的逐元素逻辑，用 <code>&amp;</code> / <code>|</code> 并给比较表达式加括号。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>         <span class="c1"># 预期：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>      <span class="c1"># 预期：True</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>      <span class="c1"># 预期：True</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>      <span class="c1"># 预期：False</span>
+<span class="c1"># if x &gt; 0:                     # 报错：多个元素不能直接当作一个布尔值</span>
+<span class="c1">#     pass</span>
+</pre></div>
+
+
+<p><code>equal</code> 检查 shape 和元素是否完全相同，不用于检查 dtype 是否相同；<code>allclose</code> 用容差比较数值，适合浮点结果。它的基本条件是 <code>abs(a-b) &lt;= atol + rtol * abs(b)</code>；实际容差应按 dtype 和计算需求选择，默认值不是所有算子的正确性标准。</p>
+<h2 id="6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</h2>
+<p><code>sum</code>、<code>mean</code>、<code>max</code> 等把多个元素合成较少的结果。对于二维矩阵，<code>sum(dim=0)</code> 消去行轴，把不同行的同一列相加；<code>sum(dim=1)</code> 消去列轴，把每行内部相加。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>            <span class="c1"># 预期：21.0，所有元素合成一个标量</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>     <span class="c1"># 预期：[5.0, 7.0, 9.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>     <span class="c1"># 预期：[6.0, 15.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>   <span class="c1"># 预期：[2.0, 5.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[6.0], [15.0]]</span>
+</pre></div>
+
+
+<table>
+<thead>
+<tr>
+<th>表达式</th>
+<th>输出 shape</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x.sum()</code></td>
+<td><code>[]</code>，0 维</td>
+<td>所有元素求和</td>
+</tr>
+<tr>
+<td><code>x.sum(dim=0)</code></td>
+<td><code>[3]</code></td>
+<td>每列的和</td>
+</tr>
+<tr>
+<td><code>x.sum(dim=1)</code></td>
+<td><code>[2]</code></td>
+<td>每行的和</td>
+</tr>
+<tr>
+<td><code>x.sum(dim=1, keepdim=True)</code></td>
+<td><code>[2, 1]</code></td>
+<td>每行的和，保留长度为 1 的归约轴</td>
+</tr>
+</tbody>
+</table>
+<p><code>keepdim=True</code> 主要用于让结果能沿原轴广播回去。例如 <code>[2, 3] / [2, 1]</code> 表示每行除以自己的一个数。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">values</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[7, 9]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">indices</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[1, 0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>    <span class="c1"># 预期：[7, 9]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[1, 0]</span>
+</pre></div>
+
+
+<p><code>max(dim=...)</code> 同时返回最大值及其轴内下标，<code>amax</code> 只返回值，<code>argmax</code> 只返回下标。不要把 <code>x.max(dim=1)</code> 的整个返回对象当成一张数值 Tensor。</p>
+<h2 id="7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</h2>
+<p>广播让不同 shape 的 Tensor 做逐元素运算。<strong>从右往左对齐轴</strong>：长度相同可以配对；其中一个长度为 1 可以扩展；缺少的前导轴按长度 1 理解。其他组合报错。</p>
+<p>先看“给每列加一个偏置”：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">+</span> <span class="n">bias</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[[11, 22, 33], [14, 25, 36]]</span>
+</pre></div>
+
+
+<div class="codehilite"><pre><span></span>x       [2, 3]
+bias       [3]  → 对齐成 [1, 3]
+result  [2, 3]
+</pre></div>
+
+
+<p>每一行使用同样的三个偏置。无需为了加法先用 <code>repeat</code> 复制两行；但新结果本身仍需要存储，广播不等于整次计算不分配内存。</p>
+<p>再看“给每行加一个数”：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">row_bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">x</span> <span class="o">+</span> <span class="n">row_bias</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[11, 12, 13], [24, 25, 26]]</span>
+<span class="c1"># x + row_bias                  # 报错：[2, 3] 与 [2] 的末轴 3 和 2 不兼容</span>
+</pre></div>
+
+
+<table>
+<thead>
+<tr>
+<th>两个输入 shape</th>
+<th>能否广播</th>
+<th>输出 shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[2, 3]</code> 与 <code>[3]</code></td>
+<td>能</td>
+<td><code>[2, 3]</code></td>
+</tr>
+<tr>
+<td><code>[2, 3]</code> 与 <code>[2, 1]</code></td>
+<td>能</td>
+<td><code>[2, 3]</code></td>
+</tr>
+<tr>
+<td><code>[2, 3]</code> 与 <code>[2]</code></td>
+<td>不能</td>
+<td>末轴不兼容</td>
+</tr>
+<tr>
+<td><code>[3, 1]</code> 与 <code>[1, 4]</code></td>
+<td>能</td>
+<td><code>[3, 4]</code></td>
+</tr>
+<tr>
+<td><code>[2, 4, 8, 16]</code> 与 <code>[16]</code></td>
+<td>能</td>
+<td><code>[2, 4, 8, 16]</code></td>
+</tr>
+</tbody>
+</table>
+<p>注意两个一维长度相同的数组默认按位置计算，广播不会理解你的业务意图。例如 <code>[2, 2] + [2]</code> 会给每列加数；如果你想给每行加数，仍应先变成 <code>[2, 1]</code>。</p>
+<p>规则见 <a href="https://docs.pytorch.org/docs/2.14/notes/broadcasting.html">Broadcasting semantics</a>。</p>
+<h2 id="8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</h2>
+<h3 id="与-的关系"><code>*</code> 与 <code>@</code> 的关系</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">30.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[[10.0, 40.0], [90.0, 160.0]]</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">a</span> <span class="o">@</span> <span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[[70.0, 100.0], [150.0, 220.0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[70.0, 100.0], [150.0, 220.0]]</span>
+</pre></div>
+
+
+<p><code>a * b</code> 把对应位置相乘。<code>a @ b</code> 的一个输出元素，是 a 的一行与 b 的一列做点积，例如 <code>out[0, 0] = 1×10 + 2×30 = 70</code>。</p>
+<div class="codehilite"><pre><span></span>A: [M, K]  @  B: [K, N]  →  C: [M, N]
+       内轴 K 必须相等；每个输出元素沿 K 累加
+</pre></div>
+
+
+<h3 id="向量与批量矩阵">向量与批量矩阵</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">v</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">v</span> <span class="o">@</span> <span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>            <span class="c1"># 预期：14.0，向量点积返回 0 维 Tensor</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">((</span><span class="n">a</span> <span class="o">@</span> <span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>      <span class="c1"># 预期：(2, 3, 5)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">bmm</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>  <span class="c1"># 预期：(2, 3, 5)</span>
+<span class="n">w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">((</span><span class="n">a</span> <span class="o">@</span> <span class="n">w</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>      <span class="c1"># 预期：(2, 3, 5)，各 batch 复用同一个 w</span>
+</pre></div>
+
+
+<p><code>matmul</code> 把最后两个轴当矩阵轴，前面的轴按 batch 广播；一维输入有向量的特殊规则。<code>bmm</code> 专门处理两个三维输入，不做 batch 广播；<code>mm</code> 专门处理两个二维输入。</p>
+<p>为 attention 提前认识这组 shape：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">q</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>  <span class="c1"># [batch, heads, query_tokens, head_dim]</span>
+<span class="n">k</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span> <span class="c1"># [batch, heads, key_tokens, head_dim]</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">q</span> <span class="o">@</span> <span class="n">k</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">scores</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>        <span class="c1"># 预期：(2, 4, 8, 10)</span>
+</pre></div>
+
+
+<p>对每个 batch、每个 head，做 <code>[8, 16] @ [16, 10] → [8, 10]</code>。query token 数和 key token 数可以不同；匹配的是 head 内的特征轴 16。</p>
+<h2 id="9-reshape-transpose-与增加-删除轴">9. reshape、transpose 与增加/删除轴</h2>
+<h3 id="reshape-重新分组元素">reshape：重新分组元素</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>   <span class="c1"># 预期：[[0, 1, 2], [3, 4, 5]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>   <span class="c1"># 预期：[[0, 1], [2, 3], [4, 5]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>  <span class="c1"># 预期：(2, 3)，自动推断唯一的 -1</span>
+<span class="c1"># x.reshape(4, 2)                # 报错：元素总数不匹配</span>
+<span class="c1"># x.reshape(-1, -1)              # 报错：不能同时推断两个轴</span>
+</pre></div>
+
+
+<p>reshape 保持元素数量，按当前逻辑遍历顺序重新分组。它不会把轴的含义自动交换；是否复制数据要看布局，下一节会具体说明。</p>
+<h3 id="transpose-permute-交换轴的解释">transpose / permute：交换轴的解释</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="c1"># 预期：[[0, 3], [1, 4], [2, 5]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>   <span class="c1"># 预期：[[0, 1], [2, 3], [4, 5]]</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>  <span class="c1"># 预期：(3, 2, 4)</span>
+</pre></div>
+
+
+<p>两个结果都可以是 <code>[3, 2]</code>，但对应元素完全不同。<code>transpose(i, j)</code> 交换两个轴；<code>permute(...)</code> 给出<strong>原来各轴的新排列顺序</strong>，每个轴出现一次。普通 strided Tensor 的这些操作返回 view，不直接搬动所有元素。</p>
+<h3 id="unsqueeze-squeeze-处理长度为-1-的轴">unsqueeze / squeeze：处理长度为 1 的轴</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>     <span class="c1"># 预期：(1, 3)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>     <span class="c1"># 预期：(3, 1)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>       <span class="c1"># 预期：(2, 1)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>        <span class="c1"># 预期：(2,)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>       <span class="c1"># 预期：(1, 2, 1)，该轴长度不为 1</span>
+</pre></div>
+
+
+<p><code>unsqueeze</code> 插入长度为 1 的轴；<code>squeeze(dim)</code> 只在指定轴长度为 1 时删除它。直接 <code>squeeze()</code> 会删掉所有长度为 1 的轴，batch=1 时也可能把 batch 轴删掉；需要保留哪些轴，应显式指定。</p>
+<h2 id="10-stride-与-contiguous-shape-之外的内存布局">10. stride 与 contiguous：shape 之外的内存布局</h2>
+<h3 id="shape-相同或元素相同-不代表布局相同">shape 相同或元素相同，不代表布局相同</h3>
+<p>对普通 strided Tensor，可用下面的式子找到元素在 storage 中的位置：</p>
+<div class="codehilite"><pre><span></span>元素偏移 = storage_offset + i0 * stride[0] + i1 * stride[1] + ...
+</pre></div>
+
+
+<p>这里的 stride 和偏移以<strong>元素</strong>为单位；转换成字节地址，还要乘以 <code>element_size()</code>。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">x</span><span class="o">.</span><span class="n">stride</span><span class="p">())</span>      <span class="c1"># 预期：(2, 3) (3, 1)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">t</span><span class="o">.</span><span class="n">stride</span><span class="p">())</span>      <span class="c1"># 预期：(3, 2) (1, 3)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">is_contiguous</span><span class="p">(),</span> <span class="n">t</span><span class="o">.</span><span class="n">is_contiguous</span><span class="p">())</span>  <span class="c1"># 预期：True False</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> <span class="c1"># 预期：5 5</span>
+</pre></div>
+
+
+<p>原 storage 的顺序是 <code>0, 1, 2, 3, 4, 5</code>。x 中沿行轴走一步跳 3 个元素，沿列轴走一步跳 1 个元素。t 把这两个 stride 交换：<code>t[2, 1]</code> 的偏移为 <code>2×1 + 1×3 = 5</code>，仍读同一个数。<strong>转置先改变“怎么找数据”，不等于已经重排设备内存。</strong></p>
+<p><code>is_contiguous()</code> 默认检查标准 contiguous 布局；不是单纯检查底层是否来自一块显存。其他 memory format 另有布局要求。</p>
+<h3 id="view-reshape-contiguous-各自保证什么">view、reshape、contiguous 各自保证什么</h3>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>保证</th>
+<th>是否可能复制数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>view(shape)</code></td>
+<td>布局兼容时换 shape，共享原存储；不兼容则报错</td>
+<td>不复制</td>
+</tr>
+<tr>
+<td><code>reshape(shape)</code></td>
+<td>得到指定 shape，元素数量不变</td>
+<td>可能，别依赖其是否复制</td>
+</tr>
+<tr>
+<td><code>contiguous()</code></td>
+<td>得到指定 memory format 的连续布局</td>
+<td>已符合时返回自身，否则复制</td>
+</tr>
+<tr>
+<td><code>clone()</code></td>
+<td>复制数据，得到独立存储</td>
+<td>是</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="c1"># t.view(6)                          # 报错：这份 stride 不能直接合并成一个轴</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>                     <span class="c1"># 此例需要复制，按 t 的逻辑顺序取数</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span>                   <span class="c1"># 重排成连续的 [3, 2] 数据</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>                        <span class="c1"># 此时可以仅换解释方式</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                    <span class="c1"># 预期：[0, 3, 1, 4, 2, 5]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">stride</span><span class="p">(),</span> <span class="n">c</span><span class="o">.</span><span class="n">is_contiguous</span><span class="p">())</span>  <span class="c1"># 预期：(2, 1) True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                    <span class="c1"># 预期：[0, 3, 1, 4, 2, 5]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span> <span class="ow">is</span> <span class="n">x</span><span class="p">)</span>            <span class="c1"># 预期：True</span>
+</pre></div>
+
+
+<p>并非“所有非连续 Tensor 都不能 view”；真正条件是新 shape 与原 shape/stride 兼容。<code>reshape</code> 接口允许在需要时复制，不能在性能分析中一律当成免费的元数据操作。<code>contiguous()</code> 也不该当作每个算子前的固定步骤；先看下一步是否要求连续布局。</p>
+<p>共享、索引与连续布局规则见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>，换 shape 的契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.view.html">view</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape</a>。</p>
+<h2 id="11-赋值-view-clone-与原地修改">11. 赋值、view、clone 与原地修改</h2>
+<h3 id="不同对象也可以共享一份数据">不同对象也可以共享一份数据</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">x</span>                       <span class="c1"># 同一个 Tensor 对象</span>
+<span class="n">row</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                      <span class="c1"># 基础索引：不同 Tensor 对象，共享存储</span>
+<span class="n">copied</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>              <span class="c1"># 复制数值，独立存储</span>
+<span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span> <span class="ow">is</span> <span class="n">x</span><span class="p">,</span> <span class="n">row</span> <span class="ow">is</span> <span class="n">x</span><span class="p">)</span>      <span class="c1"># 预期：True False</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[[99, 2], [3, 4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">copied</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[[1, 2], [3, 4]]</span>
+</pre></div>
+
+
+<p><code>is</code> 只能判断 Python 对象身份，不能证明存储是否共享。基础索引读取通常返回 view；高级索引读取返回副本，但直接索引赋值仍修改原 Tensor：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">selected</span> <span class="o">=</span> <span class="n">x</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span>            <span class="c1"># 高级索引读取：复制选中元素</span>
+<span class="n">selected</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[10, 20, 30]</span>
+<span class="n">x</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>                 <span class="c1"># 直接索引赋值：写回原 x</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[-1, 20, -1]</span>
+</pre></div>
+
+
+<h3 id="下划线方法常表示原地修改">下划线方法常表示原地修改</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">x</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">10</span>                     <span class="c1"># 新结果；x 不变</span>
+<span class="n">x</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>                      <span class="c1"># 原地加 3；alias 同样看到变化</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[11.0, 12.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>            <span class="c1"># 预期：[4.0, 5.0]</span>
+<span class="n">src</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>                   <span class="c1"># 把数值写进已有 x；不同于 alias = src</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>            <span class="c1"># 预期：[8.0, 9.0]</span>
+</pre></div>
+
+
+<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。原地写入节省某些新分配，也影响共享存储的 view，并受 autograd 限制；不能只按“少分配一次”选择写法。与 Python list 不同，很多 Tensor 原地方法会返回自身，不是返回 <code>None</code>。</p>
+<h2 id="12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</h2>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">expanded</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>        <span class="c1"># 将长度为 1 的轴扩展，得到共享存储的 view</span>
+<span class="n">repeated</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>        <span class="c1"># 把数据复制两份</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">expanded</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>         <span class="c1"># 预期：[[10, 20, 30], [10, 20, 30]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">expanded</span><span class="o">.</span><span class="n">stride</span><span class="p">())</span>         <span class="c1"># 预期：(0, 1)</span>
+<span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">expanded</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>         <span class="c1"># 预期：[[99, 20, 30], [99, 20, 30]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">repeated</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>         <span class="c1"># 预期：[[10, 20, 30], [10, 20, 30]]</span>
+</pre></div>
+
+
+<p>expand 的行 stride 为 0，表示“换一行仍访问同样的地址”；这不是为第二行另分配数值。不要把 expanded 的逻辑位置当作互相独立的位置来批量原地写；需要独立可写数据时先 <code>clone()</code>。</p>
+<p><code>repeat(2, 1)</code> 的数字是各轴的重复次数，不是最终 shape。对原 shape <code>[1, 3]</code>，结果是 <code>[1×2, 3×1] = [2, 3]</code>。一般只为参与逐元素广播，不必先 repeat。</p>
+<h2 id="13-cat-stack-与拆分">13. cat、stack 与拆分</h2>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>    <span class="c1"># 预期：[1, 2, 3, 4]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[1, 2], [3, 4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[1, 3], [2, 4]]</span>
+</pre></div>
+
+
+<p><code>cat</code> 沿现有轴拼接，维数不变；除拼接轴外的 shape 要一致。<code>stack</code> 增加新轴，输入 shape 必须相同。它们通常会为结果复制数据；循环里反复把旧结果 cat 到越来越长的新结果中，会重复搬运旧数据。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">parts</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>              <span class="c1"># 每段最多 3 个元素；返回 tuple，段是 view</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">])</span>  <span class="c1"># 预期：[[0, 1, 2], [3, 4, 5], [6]]</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>             <span class="c1"># 请求拆成 3 段</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">])</span> <span class="c1"># 预期：[[0, 1, 2], [3, 4, 5], [6]]</span>
+</pre></div>
+
+
+<p><code>split(3)</code> 的 3 是每段长度，<code>chunk(3)</code> 的 3 是期望段数；chunk 在某些大小下会返回少于请求数量的段。固定段数的需求可以查看 <code>tensor_split</code>。</p>
+<h2 id="14-排序与-top-k">14. 排序与 top-k</h2>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">values</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[[1.0, 3.0, 5.0], [2.0, 4.0, 9.0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">indices</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[[1, 0, 2], [0, 2, 1]]</span>
+<span class="n">top_values</span><span class="p">,</span> <span class="n">top_indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">top_values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[[5.0, 3.0], [9.0, 4.0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">top_indices</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[[2, 0], [1, 2]]</span>
+</pre></div>
+
+
+<p>下标指向原输入在该轴上的位置。<code>sort</code> 默认升序；<code>topk</code> 默认选最大的 k 个并排序。值相同时不要假设 topk 的下标顺序稳定；算法若要求稳定排序，需要明确排序契约。</p>
+<h2 id="15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</h2>
+<h3 id="to-不会自动改变原变量"><code>.to(...)</code> 不会自动改变原变量</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">cpu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">])</span>   <span class="c1"># 这个例子专门演示传输，所以先创建 CPU 数据</span>
+<span class="n">gpu</span> <span class="o">=</span> <span class="n">cpu</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">'cuda'</span><span class="p">)</span>            <span class="c1"># 复制到当前 GPU，返回新的 Tensor</span>
+<span class="n">back</span> <span class="o">=</span> <span class="n">gpu</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>                <span class="c1"># 复制回 CPU</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cpu</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">,</span> <span class="n">gpu</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">,</span> <span class="n">back</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">)</span>  <span class="c1"># 预期：False True False</span>
+<span class="n">same</span> <span class="o">=</span> <span class="n">gpu</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">gpu</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpu</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">same</span> <span class="ow">is</span> <span class="n">gpu</span><span class="p">)</span>               <span class="c1"># 预期：True，已经符合设备和类型要求，默认不强制复制</span>
+</pre></div>
+
+
+<p>如果想让名字继续引用 GPU 结果，写 <code>x = x.to('cuda')</code>。尽量让参与同一次运算的 Tensor 在同一设备上；有多个 GPU 时，还要区分 <code>cuda:0</code> 与 <code>cuda:1</code>。部分算子支持 CPU 标量等例外，不能据此认为一般 CPU/GPU Tensor 可以混合计算。</p>
+<p>需要在 GPU 上产生零张量时，直接用 <code>torch.zeros(..., device='cuda')</code>，或用 <code>zeros_like(x)</code> 继承设备，避免先在 CPU 创建再无意中传输。</p>
+<h3 id="python-返回-不等于-gpu-已经算完">Python 返回，不等于 GPU 已经算完</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>                      <span class="c1"># GPU 工作通常异步提交，Python 可以继续执行</span>
+<span class="n">z</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="mi">1</span>                      <span class="c1"># 同一 stream 内按序执行，不必手动在两句之间同步</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>              <span class="c1"># 预期：3.0；CPU 获取结果时需要等待相关 GPU 工作</span>
+</pre></div>
+
+
+<p>stream 是 GPU 工作的有序队列。同一 stream 中后面的计算可以使用前面的结果；切换到多个 stream 后，需要额外处理依赖和存储生命周期。初学先使用默认执行路径。</p>
+<p>不要用“Python 包住一行 GPU 运算花了多久”直接代表 GPU 计算时间。下面只是计时写法示例，没有提供实测数值：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>                  <span class="c1"># warmup，不把首次初始化混入目标区间</span>
+<span class="n">start</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">end</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">start</span><span class="o">.</span><span class="n">record</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">end</span><span class="o">.</span><span class="n">record</span><span class="p">()</span>
+<span class="n">end</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>              <span class="c1"># 等待结束 event，之后才能读取这段 GPU 时间</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">start</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 单位 ms，没有固定的预期值</span>
+</pre></div>
+
+
+<p>这个例子包含分配和多次提交的影响，不是纯 kernel 的性能结论。完整 benchmark 还要定义 shape、dtype、硬件、重复次数、计时范围与统计方式。<code>torch.cuda.synchronize()</code> 等待指定设备上各 stream 的工作，不能当作每个算子后的惯例。</p>
+<p>异步、stream 与显存管理语义见 <a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html">CUDA semantics</a>。</p>
+<h2 id="16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</h2>
+<p><code>requires_grad=True</code> 让浮点等支持求导的 Tensor 参与梯度记录。先用一个能手算的例子：<code>loss = x0² + x1²</code>，对 x 的梯度是 <code>[2×x0, 2×x1]</code>。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>               <span class="c1"># 预期：13.0</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[4.0, 6.0]</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>                  <span class="c1"># 停止沿这个结果记录梯度，仍共享 x 的存储</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>          <span class="c1"># 同时脱离梯度关系并复制数据</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">)</span>  <span class="c1"># 预期：False False</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">)</span>           <span class="c1"># 预期：False</span>
+</pre></div>
+
+
+<p><code>detach()</code> 不等于复制；<code>clone()</code> 本身也不等于停止梯度传播。<code>no_grad()</code> 是梯度记录上下文，不是设备切换或同步操作。梯度会累加进 <code>.grad</code>，训练循环需要按目标清理；这里仅执行一次 backward，不涉及完整训练循环。</p>
+<p>这部分先做到读懂输入、计算、loss、backward 和梯度的关系。更完整的图与梯度说明见 <a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>。</p>
+<h2 id="17-常见错误速查">17. 常见错误速查</h2>
+<table>
+<thead>
+<tr>
+<th>写法或判断</th>
+<th>问题</th>
+<th>处理方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x.size()</code> 当作元素总数</td>
+<td>返回 shape，不是元素个数</td>
+<td><code>x.numel()</code></td>
+</tr>
+<tr>
+<td><code>len(x)</code> 当作元素总数</td>
+<td>只取首轴长度，0 维会报错</td>
+<td><code>x.numel()</code></td>
+</tr>
+<tr>
+<td><code>a * b</code> 当作矩阵乘法</td>
+<td>逐元素乘法</td>
+<td>按 shape 使用 <code>a @ b</code></td>
+</tr>
+<tr>
+<td><code>x.reshape(...)</code> 当作转置</td>
+<td>重新分组没有交换元素对应关系</td>
+<td><code>transpose</code> / <code>permute</code></td>
+</tr>
+<tr>
+<td><code>x[:, 0]</code> 后仍假设二维</td>
+<td>整数索引去掉一个轴</td>
+<td>保留轴可用 <code>x[:, 0:1]</code></td>
+</tr>
+<tr>
+<td>给 <code>[B, D]</code> 加 <code>[B]</code> 当作每行偏置</td>
+<td>广播从末轴对齐，可能报错或沿错轴加</td>
+<td>先变成 <code>[B, 1]</code></td>
+</tr>
+<tr>
+<td><code>x.mean()</code>，x 是整数</td>
+<td>算子不接受普通整数求均值</td>
+<td>先明确所需浮点 dtype</td>
+</tr>
+<tr>
+<td><code>if x == y:</code>，结果有多个元素</td>
+<td>多个布尔值不能直接进入 if</td>
+<td><code>equal</code> / <code>allclose</code> 或明确归约条件</td>
+</tr>
+<tr>
+<td><code>x.to('cuda')</code> 后假设 x 已迁移</td>
+<td>返回值没有重新绑定到 x</td>
+<td><code>x = x.to('cuda')</code></td>
+</tr>
+<tr>
+<td>认为 <code>detach()</code> 会复制数据</td>
+<td>它仍与原 Tensor 共享 storage</td>
+<td>隔离数据用 <code>detach().clone()</code></td>
+</tr>
+<tr>
+<td>认为 <code>contiguous()</code> 总会复制</td>
+<td>符合目标布局时返回自身</td>
+<td>需要独立数据时用 <code>clone()</code></td>
+</tr>
+<tr>
+<td>认为 reshape 总不分配显存</td>
+<td>不兼容布局可能复制</td>
+<td>看 stride 与操作契约</td>
+</tr>
+<tr>
+<td>反复 <code>item()</code> / <code>tolist()</code> / 打印 GPU 数值</td>
+<td>CPU 取数，可能产生同步和传输</td>
+<td>检查时少量使用，关键路径避免反复调用</td>
+</tr>
+<tr>
+<td>用 Python 提交时间代表 GPU 时间</td>
+<td>GPU 通常异步执行</td>
+<td>明确计时边界，使用 event 或同步计时</td>
+</tr>
+</tbody>
+</table>
+<h2 id="常见计算与组件的实现">常见计算与组件的实现</h2>
+<p><a href="pytorch-components.html">常见计算与组件的 Torch 实现</a>：Linear、stable softmax、LayerNorm、RMSNorm、SwiGLU 与 scaled dot-product attention。</p>
+<h2 id="官方参考与验证范围">官方参考与验证范围</h2>
+<ul>
+<li><a href="https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html">Tensors 教程</a>：创建、属性、运算与设备。</li>
+<li><a href="https://docs.pytorch.org/docs/2.14/torch.html">torch API</a>：各算子的参数、返回值与约束。</li>
+<li><a href="https://docs.pytorch.org/docs/2.14/notes/broadcasting.html">Broadcasting semantics</a>：对齐规则及原地操作的约束。</li>
+<li><a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>：共享存储、索引与连续布局。</li>
+<li><a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.view.html">Tensor.view</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape</a>：换 shape 的契约。</li>
+<li><a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html">CUDA semantics</a>：设备、异步、stream 与显存管理。</li>
+<li><a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>：梯度记录与 backward。</li>
+</ul>
+<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片与-mask">4. 索引、切片与 mask</a><a class="level-2" href="#5-逐元素计算与比较">5. 逐元素计算与比较</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-reshape-transpose-与增加-删除轴">9. reshape、transpose 与增加/删除轴</a><a class="level-2" href="#10-stride-与-contiguous-shape-之外的内存布局">10. stride 与 contiguous：shape 之外的内存布局</a><a class="level-2" href="#11-赋值-view-clone-与原地修改">11. 赋值、view、clone 与原地修改</a><a class="level-2" href="#12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#常见计算与组件的实现">常见计算与组件的实现</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>

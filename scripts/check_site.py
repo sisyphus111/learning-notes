@@ -71,7 +71,7 @@ def main():
     # Read the page manifest without importing build.py (which writes output).
     manifest = []
     for node in ast.parse((ROOT / 'scripts/build.py').read_text()).body:
-        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id in ('CHAPTERS', 'REFERENCES', 'PYTHON_REFERENCES') for target in node.targets):
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id in ('CHAPTERS', 'REFERENCES', 'PYTHON_REFERENCES', 'PYTORCH_REFERENCES') for target in node.targets):
             manifest.extend(ast.literal_eval(node.value))
     for source, output, _, _ in manifest:
         expected = ['\n'.join(line.rstrip() for line in match[1].strip().splitlines()) for match in re.finditer(r'^```\w*\n(.*?)^```', (ROOT / source).read_text(), re.M | re.S)]

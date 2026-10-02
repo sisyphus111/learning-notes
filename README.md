@@ -9,6 +9,7 @@
 - Python 语法参考从基础数据结构开始，包含内置容器、deque、Counter、defaultdict、heapq 及复制/可哈希等易错点；另有生成器表达式与 `all`、`any`、`sum` 等常用函数的用法。
 - Python 项目入门包含模块与包、`import`、`python -m`、入口保护、pip / venv、`pyproject.toml`、editable 安装和 `__pycache__`；语言互操作页提供可构建的 pybind11 示例，并解释数据转换、所有权、GIL、ABI 与进程通信。
 - 5 个 STL 页面：速查、对象语义、序列容器、关联容器、适配器与算法。
+- 独立的 [PyTorch Tensor 参考](PyTorch/tensors.md)：以 CUDA Tensor 为主，讲解 shape、广播、矩阵乘法、stride、共享存储与异步执行；[常见计算与组件](PyTorch/operations-and-components.md) 单列 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 和 attention 的 Torch 实现。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、与个人主页相同的太阳/月亮主题图标及手机阅读。
 
 ## 内容来源
@@ -21,7 +22,7 @@ STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存�
 
 ## 维护方式
 
-编辑各题型目录、`STL/` 与 `Python/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
+编辑各题型目录、`STL/`、`Python/` 与 `PyTorch/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
 
 构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
 
