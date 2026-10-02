@@ -37,8 +37,8 @@ REFERENCES = [
     ('STL/stl-adapters-iterators.md', 'stl-adapters-iterators.html', '适配器与算法', '栈 · 队列 · 堆 · 迭代器 · 标准算法'),
 ]
 PYTHON_REFERENCES = [
-    ('Python/data-structures.md', 'python-data-structures.html', 'Python 基础数据结构',
-     'list · tuple · dict · set · str · 常用标准库容器'),
+    ('Python/data-structures.md', 'python-data-structures.html', 'Python 数据结构速查',
+     '语法 · 返回值 · 原地修改 · 常见错误'),
     ('Python/iterables-and-functions.md', 'python-iterables-and-functions.html',
      '可迭代对象与常用函数', '生成器表达式 · all / any · sum · min / max · map / filter'),
     ('Python/modules-and-packages.md', 'python-modules-and-packages.html',
