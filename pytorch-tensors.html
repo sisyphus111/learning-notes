@@ -173,7 +173,7 @@
 </pre></div>
 
 
-<p><code>...</code> 代表“补齐中间剩余的轴”，<code>None</code> 插入一个长度为 1 的轴。PyTorch 切片不支持 Python list 的负步长逆序写法；逆序可用 <code>torch.flip(x, dims=[某个轴])</code>。</p>
+<p><code>...</code> 代表“补齐中间剩余的轴”，<code>None</code> 插入一个长度为 1 的轴。PyTorch 切片不支持负步长；逆序可用 <code>torch.flip(x, dims=[某个轴])</code>。</p>
 <h3 id="布尔条件逐元素筛选">布尔条件逐元素筛选</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -235,7 +235,7 @@
 </pre></div>
 
 
-<p>对应关系是 <code>out[i, j] = x[i, columns[j]]</code>：<code>:</code> 保留所有行，columns 的第 j 个元素决定输出第 j 列从哪里取。Python 整数 list 也能作索引，但普通二维 list 不支持 <code>x[:, columns]</code> 这种 Tensor 写法。</p>
+<p>对应关系是 <code>out[i, j] = x[i, columns[j]]</code>：<code>:</code> 保留所有行，columns 的第 j 个元素决定输出第 j 列从哪里取。除了整数 Tensor，也可以像上例一样用整数列表作下标。</p>
 <p>比较三种“只取下标 1 的列”的写法，数值来源相同，shape 和存储关系不同：</p>
 <table>
 <thead>
@@ -305,7 +305,7 @@
 
 
 <p>多个整数索引 Tensor 先按广播规则对齐，再逐位置配对：两个 <code>[2]</code> 下标选出两个点；把 rows 变成 <code>[2, 1]</code>，与 columns 的 <code>[2]</code> 广播为 <code>[2, 2]</code>，才得到所有行列组合。<strong>这个广播规则属于高级索引，不能套到 gather 上。</strong></p>
-<p>index_select / gather 的下标应满足 <code>0 &lt;= index &lt; 对应轴长度</code>；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见<a href="pytorch-tensors.html#11-赋值-修改-浅拷贝与深拷贝">赋值与修改板块</a>。接口契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html">index_select</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.gather.html">gather</a>，高级索引规则见 <a href="https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing">NumPy 索引说明</a>；PyTorch 的索引读取与存储关系见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>。</p>
+<p>index_select / gather 的下标应满足 <code>0 &lt;= index &lt; 对应轴长度</code>；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见<a href="pytorch-tensors.html#11-赋值-修改与数据复制">赋值与修改板块</a>。接口契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html">index_select</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.gather.html">gather</a>，高级索引规则见 <a href="https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing">NumPy 索引说明</a>；PyTorch 的索引读取与存储关系见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>。</p>
 <h2 id="5-逐元素计算与比较">5. 逐元素计算与比较</h2>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -878,9 +878,10 @@ stride       (2,1)
 </table>
 <p>view/permute 等操作只改元数据，通常不用复制 GPU 数值；连续化或不兼容的 reshape 需要读旧数据、写新 buffer。即使 permute 本身不搬数据，后续算子也会按不同 stride 访问，可能影响访问效率或触发内部复制。因此不应每次转置后都机械地 contiguous，也不能只看 shape 就判断布局与性能。</p>
 <p>共享、连续布局与 view 的一般规则见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>，轴重排接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.permute.html">permute</a>。本节代码与其他 GPU 示例一样，以注释给出推导预期，不把它们当作实测性能。</p>
-<p><span id="11-赋值-view-clone-与原地修改"></span></p>
-<h2 id="11-赋值-修改-浅拷贝与深拷贝">11. 赋值、修改、浅拷贝与深拷贝</h2>
-<p>先区分三层：<strong>变量名引用对象，Tensor 对象描述 shape/stride 等信息，storage 保存数值。</strong> 两个名字可以引用同一个对象；两个不同 Tensor 对象也可以共享 storage。浅拷贝、深拷贝说的是复制对象及其内部引用的范围；view / clone 则明确描述 Tensor 数值是否共享。</p>
+<p><span id="11-赋值-view-clone-与原地修改"></span>
+<span id="11-赋值-修改-浅拷贝与深拷贝"></span></p>
+<h2 id="11-赋值-修改与数据复制">11. 赋值、修改与数据复制</h2>
+<p>先区分三层：<strong>变量名引用 Tensor 对象，Tensor 对象描述 shape/stride 等信息，storage 保存数值。</strong> 两个名字可以引用同一个 Tensor 对象；两个不同 Tensor 对象也可以共享 storage。判断赋值或复制的影响，要分别看对象身份、数值存储与梯度关系。</p>
 <h3 id="赋值改名字绑定-原地修改改已有数据">赋值改名字绑定，原地修改改已有数据</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -899,54 +900,7 @@ stride       (2,1)
 </pre></div>
 
 
-<p><code>x = ...</code> 本身只改名字绑定；右侧操作决定是否分配新数据。<code>x[...] = ...</code>、<code>x.add_(...)</code> 修改已有数据，共享它的人也会看到。<code>+=</code> 的行为取决于对象类型：整数会改绑，list 通常原地扩展，普通 Tensor 通常原地相加。</p>
-<h3 id="python-容器-浅拷贝只复制外层-深拷贝递归复制">Python 容器：浅拷贝只复制外层，深拷贝递归复制</h3>
-<p>以嵌套 list 为例：</p>
-<table>
-<thead>
-<tr>
-<th>写法</th>
-<th>外层 list</th>
-<th>内层 list</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>alias = a</code></td>
-<td>同一个对象</td>
-<td>同一个对象</td>
-</tr>
-<tr>
-<td><code>shallow = a.copy()</code> / <code>copy.copy(a)</code></td>
-<td>新对象</td>
-<td>仍引用原来的内层对象</td>
-</tr>
-<tr>
-<td><code>deep = copy.deepcopy(a)</code></td>
-<td>新对象</td>
-<td>本例中也复制为独立对象</td>
-</tr>
-</tbody>
-</table>
-<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
-
-<span class="n">a</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]]</span>
-<span class="n">alias</span> <span class="o">=</span> <span class="n">a</span>                       <span class="c1"># 赋值：共享整个 list</span>
-<span class="n">shallow</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>          <span class="c1"># 浅拷贝：新外层 list，内层仍共享</span>
-<span class="n">deep</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>         <span class="c1"># 深拷贝：本例的内层 list 也复制</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">alias</span> <span class="ow">is</span> <span class="n">a</span><span class="p">,</span> <span class="n">shallow</span> <span class="ow">is</span> <span class="n">a</span><span class="p">)</span>  <span class="c1"># 预期：True False</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">deep</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># 预期：True False</span>
-
-<span class="n">shallow</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>             <span class="c1"># 修改共享的内层 list</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>                        <span class="c1"># 预期：[[99, 2], [3, 4]]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">deep</span><span class="p">)</span>                     <span class="c1"># 预期：[[1, 2], [3, 4]]</span>
-<span class="n">shallow</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span>            <span class="c1"># 替换新外层 list 的一个位置</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>                        <span class="c1"># 预期：[[99, 2], [3, 4]]，原外层位置不变</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">)</span>                  <span class="c1"># 预期：[[99, 2], [7, 8]]</span>
-</pre></div>
-
-
-<p>list 的 <code>a.copy()</code>、<code>a[:]</code>、<code>list(a)</code>，以及 dict 的 <code>d.copy()</code> 都是浅拷贝。深拷贝按对象的复制规则递归处理，整数、字符串等不可变对象可以复用，不等于“每个对象都必须换一个地址”。同一次 deepcopy 也会保留原对象图内部的重复引用关系。更多例子见 <a href="python-data-structures.html#赋值-浅拷贝与二维列表">Python 对象引用与拷贝</a>，定义见 <a href="https://docs.python.org/3/library/copy.html">Python copy 文档</a>。</p>
+<p><code>x = ...</code> 本身只改名字绑定；右侧操作决定是否分配新数据。<code>x[...] = ...</code>、<code>x.add_(...)</code> 修改已有数据，共享存储的 Tensor 也会看到变化。对普通 Tensor，<code>x += value</code> 是原地相加，受 dtype、shape 和 autograd 约束。</p>
 <h3 id="不同对象也可以共享一份数据">不同对象也可以共享一份数据</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -961,24 +915,7 @@ stride       (2,1)
 </pre></div>
 
 
-<p><code>is</code> 只能判断 Python 对象身份，不能证明存储是否共享。view 有自己的 shape/stride 等信息，但仍读写原 storage；不要直接把它叫作 Python 容器的浅拷贝。<code>clone()</code> 复制 Tensor 数值，得到独立存储，但不是递归复制任意 Python 对象图。</p>
-<h3 id="tensor-装在容器里-复制外层不等于复制数值">Tensor 装在容器里：复制外层不等于复制数值</h3>
-<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-
-<span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'x'</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)}</span>
-<span class="n">shallow</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>          <span class="c1"># 新 dict；value 仍是同一个 Tensor</span>
-<span class="n">deep</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>     <span class="c1"># 本例 Tensor 不要求梯度，可以深拷贝</span>
-<span class="n">cloned</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'x'</span><span class="p">:</span> <span class="n">state</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()}</span>  <span class="c1"># 明确复制这个 Tensor 的数值</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span> <span class="ow">is</span> <span class="n">state</span><span class="p">[</span><span class="s1">'x'</span><span class="p">])</span>  <span class="c1"># 预期：True</span>
-<span class="n">shallow</span><span class="p">[</span><span class="s1">'x'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>           <span class="c1"># 修改共享 Tensor，原 state 同样变化</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[99, 2]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">deep</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[1, 2]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">cloned</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>     <span class="c1"># 预期：[1, 2]</span>
-</pre></div>
-
-
-<p>需要复制一个普通 Tensor 的数值时，用 <code>clone()</code> 表达意图；需要复制嵌套容器时再考虑 deepcopy。PyTorch 的 Tensor deepcopy 有限制：当前只支持叶子 Tensor（没有上游梯度运算的 Tensor），带梯度计算产生的非叶子 Tensor 会报错；它也不是保留计算图关系的 clone 替代品。限制见 <a href="https://github.com/pytorch/pytorch/blob/v2.14.0/torch/_tensor.py">Tensor deepcopy 实现</a>。</p>
+<p><code>is</code> 只能判断是否是同一个 Tensor 对象，不能证明存储是否共享。view 有自己的 shape/stride 等信息，但仍读写原 storage；<code>clone()</code> 复制数值，得到独立存储。</p>
 <h3 id="存储独立与梯度关系是两件事">存储独立与梯度关系是两件事</h3>
 <p>以下按普通 Tensor 的常用行为总结；梯度列假定 x 要求梯度，并启用梯度记录。</p>
 <table>
@@ -1053,7 +990,7 @@ stride       (2,1)
 </pre></div>
 
 
-<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。<code>x.copy_(src)</code> 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html">copy_</a>。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。与 Python list 不同，很多 Tensor 原地方法会返回自身，不是返回 <code>None</code>。</p>
+<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。<code>x.copy_(src)</code> 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html">copy_</a>。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。这些 Tensor 原地方法返回自身。</p>
 <h2 id="12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</h2>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -1266,7 +1203,7 @@ stride       (2,1)
 <li><a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html">CUDA semantics</a>：设备、异步、stream 与显存管理。</li>
 <li><a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>：梯度记录与 backward。</li>
 </ul>
-<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片-高级索引-index_select-与-gather">4. 索引：切片、高级索引、index_select 与 gather</a><a class="level-2" href="#5-逐元素计算与比较">5. 逐元素计算与比较</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</a><a class="level-2" href="#10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</a><a class="level-2" href="#11-赋值-修改-浅拷贝与深拷贝">11. 赋值、修改、浅拷贝与深拷贝</a><a class="level-2" href="#12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#常见计算与组件的实现">常见计算与组件的实现</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
+<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片-高级索引-index_select-与-gather">4. 索引：切片、高级索引、index_select 与 gather</a><a class="level-2" href="#5-逐元素计算与比较">5. 逐元素计算与比较</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</a><a class="level-2" href="#10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</a><a class="level-2" href="#11-赋值-修改与数据复制">11. 赋值、修改与数据复制</a><a class="level-2" href="#12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#常见计算与组件的实现">常见计算与组件的实现</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>

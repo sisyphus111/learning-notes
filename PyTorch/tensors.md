@@ -146,7 +146,7 @@ print(tuple(x[..., 0].shape))    # 预期：(2, 3)
 print(tuple(x[:, None, :, :].shape))  # 预期：(2, 1, 3, 4)
 ```
 
-`...` 代表“补齐中间剩余的轴”，`None` 插入一个长度为 1 的轴。PyTorch 切片不支持 Python list 的负步长逆序写法；逆序可用 `torch.flip(x, dims=[某个轴])`。
+`...` 代表“补齐中间剩余的轴”，`None` 插入一个长度为 1 的轴。PyTorch 切片不支持负步长；逆序可用 `torch.flip(x, dims=[某个轴])`。
 
 ### 布尔条件逐元素筛选
 
@@ -192,7 +192,7 @@ print(tuple(out.shape))         # 预期：(2, 3)
 print(x[:, [2, 0, 2]].tolist())  # 预期：[[30, 10, 30], [60, 40, 60]]
 ```
 
-对应关系是 `out[i, j] = x[i, columns[j]]`：`:` 保留所有行，columns 的第 j 个元素决定输出第 j 列从哪里取。Python 整数 list 也能作索引，但普通二维 list 不支持 `x[:, columns]` 这种 Tensor 写法。
+对应关系是 `out[i, j] = x[i, columns[j]]`：`:` 保留所有行，columns 的第 j 个元素决定输出第 j 列从哪里取。除了整数 Tensor，也可以像上例一样用整数列表作下标。
 
 比较三种“只取下标 1 的列”的写法，数值来源相同，shape 和存储关系不同：
 
@@ -251,7 +251,7 @@ print(x[rows[:, None], columns].tolist()) # 预期：[[30, 10], [60, 40]]，取�
 
 多个整数索引 Tensor 先按广播规则对齐，再逐位置配对：两个 `[2]` 下标选出两个点；把 rows 变成 `[2, 1]`，与 columns 的 `[2]` 广播为 `[2, 2]`，才得到所有行列组合。**这个广播规则属于高级索引，不能套到 gather 上。**
 
-index_select / gather 的下标应满足 `0 <= index < 对应轴长度`；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见[赋值与修改板块](#11-赋值-修改-浅拷贝与深拷贝)。接口契约见 [index_select](https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html)、[gather](https://docs.pytorch.org/docs/2.14/generated/torch.gather.html)，高级索引规则见 [NumPy 索引说明](https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing)；PyTorch 的索引读取与存储关系见 [Tensor Views](https://docs.pytorch.org/docs/2.14/tensor_view.html)。
+index_select / gather 的下标应满足 `0 <= index < 对应轴长度`；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见[赋值与修改板块](#11-赋值-修改与数据复制)。接口契约见 [index_select](https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html)、[gather](https://docs.pytorch.org/docs/2.14/generated/torch.gather.html)，高级索引规则见 [NumPy 索引说明](https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing)；PyTorch 的索引读取与存储关系见 [Tensor Views](https://docs.pytorch.org/docs/2.14/tensor_view.html)。
 
 ## 5. 逐元素计算与比较
 
@@ -769,10 +769,11 @@ view/permute 等操作只改元数据，通常不用复制 GPU 数值；连续�
 
 
 <span id="11-赋值-view-clone-与原地修改"></span>
+<span id="11-赋值-修改-浅拷贝与深拷贝"></span>
 
-## 11. 赋值、修改、浅拷贝与深拷贝
+## 11. 赋值、修改与数据复制
 
-先区分三层：**变量名引用对象，Tensor 对象描述 shape/stride 等信息，storage 保存数值。** 两个名字可以引用同一个对象；两个不同 Tensor 对象也可以共享 storage。浅拷贝、深拷贝说的是复制对象及其内部引用的范围；view / clone 则明确描述 Tensor 数值是否共享。
+先区分三层：**变量名引用 Tensor 对象，Tensor 对象描述 shape/stride 等信息，storage 保存数值。** 两个名字可以引用同一个 Tensor 对象；两个不同 Tensor 对象也可以共享 storage。判断赋值或复制的影响，要分别看对象身份、数值存储与梯度关系。
 
 ### 赋值改名字绑定，原地修改改已有数据
 
@@ -793,37 +794,7 @@ alias[0] = 99                  # 修改旧 Tensor 的数据
 print(alias.tolist())           # 预期：[99, 2]
 ```
 
-`x = ...` 本身只改名字绑定；右侧操作决定是否分配新数据。`x[...] = ...`、`x.add_(...)` 修改已有数据，共享它的人也会看到。`+=` 的行为取决于对象类型：整数会改绑，list 通常原地扩展，普通 Tensor 通常原地相加。
-
-### Python 容器：浅拷贝只复制外层，深拷贝递归复制
-
-以嵌套 list 为例：
-
-| 写法 | 外层 list | 内层 list |
-| --- | --- | --- |
-| `alias = a` | 同一个对象 | 同一个对象 |
-| `shallow = a.copy()` / `copy.copy(a)` | 新对象 | 仍引用原来的内层对象 |
-| `deep = copy.deepcopy(a)` | 新对象 | 本例中也复制为独立对象 |
-
-```python
-import copy
-
-a = [[1, 2], [3, 4]]
-alias = a                       # 赋值：共享整个 list
-shallow = copy.copy(a)          # 浅拷贝：新外层 list，内层仍共享
-deep = copy.deepcopy(a)         # 深拷贝：本例的内层 list 也复制
-print(alias is a, shallow is a)  # 预期：True False
-print(shallow[0] is a[0], deep[0] is a[0])  # 预期：True False
-
-shallow[0][0] = 99             # 修改共享的内层 list
-print(a)                        # 预期：[[99, 2], [3, 4]]
-print(deep)                     # 预期：[[1, 2], [3, 4]]
-shallow[1] = [7, 8]            # 替换新外层 list 的一个位置
-print(a)                        # 预期：[[99, 2], [3, 4]]，原外层位置不变
-print(shallow)                  # 预期：[[99, 2], [7, 8]]
-```
-
-list 的 `a.copy()`、`a[:]`、`list(a)`，以及 dict 的 `d.copy()` 都是浅拷贝。深拷贝按对象的复制规则递归处理，整数、字符串等不可变对象可以复用，不等于“每个对象都必须换一个地址”。同一次 deepcopy 也会保留原对象图内部的重复引用关系。更多例子见 [Python 对象引用与拷贝](../Python/data-structures.md#赋值-浅拷贝与二维列表)，定义见 [Python copy 文档](https://docs.python.org/3/library/copy.html)。
+`x = ...` 本身只改名字绑定；右侧操作决定是否分配新数据。`x[...] = ...`、`x.add_(...)` 修改已有数据，共享存储的 Tensor 也会看到变化。对普通 Tensor，`x += value` 是原地相加，受 dtype、shape 和 autograd 约束。
 
 ### 不同对象也可以共享一份数据
 
@@ -840,26 +811,7 @@ print(x.tolist())                # 预期：[[99, 2], [3, 4]]
 print(copied.tolist())           # 预期：[[1, 2], [3, 4]]
 ```
 
-`is` 只能判断 Python 对象身份，不能证明存储是否共享。view 有自己的 shape/stride 等信息，但仍读写原 storage；不要直接把它叫作 Python 容器的浅拷贝。`clone()` 复制 Tensor 数值，得到独立存储，但不是递归复制任意 Python 对象图。
-
-### Tensor 装在容器里：复制外层不等于复制数值
-
-```python
-import copy
-import torch
-
-state = {'x': torch.tensor([1, 2], device='cuda')}
-shallow = state.copy()          # 新 dict；value 仍是同一个 Tensor
-deep = copy.deepcopy(state)     # 本例 Tensor 不要求梯度，可以深拷贝
-cloned = {'x': state['x'].clone()}  # 明确复制这个 Tensor 的数值
-print(shallow['x'] is state['x'])  # 预期：True
-shallow['x'][0] = 99           # 修改共享 Tensor，原 state 同样变化
-print(state['x'].tolist())      # 预期：[99, 2]
-print(deep['x'].tolist())       # 预期：[1, 2]
-print(cloned['x'].tolist())     # 预期：[1, 2]
-```
-
-需要复制一个普通 Tensor 的数值时，用 `clone()` 表达意图；需要复制嵌套容器时再考虑 deepcopy。PyTorch 的 Tensor deepcopy 有限制：当前只支持叶子 Tensor（没有上游梯度运算的 Tensor），带梯度计算产生的非叶子 Tensor 会报错；它也不是保留计算图关系的 clone 替代品。限制见 [Tensor deepcopy 实现](https://github.com/pytorch/pytorch/blob/v2.14.0/torch/_tensor.py)。
+`is` 只能判断是否是同一个 Tensor 对象，不能证明存储是否共享。view 有自己的 shape/stride 等信息，但仍读写原 storage；`clone()` 复制数值，得到独立存储。
 
 ### 存储独立与梯度关系是两件事
 
@@ -909,7 +861,7 @@ x.copy_(src)                   # 把数值写进已有 x；不同于 alias = src
 print(alias.tolist())            # 预期：[8.0, 9.0]
 ```
 
-`add_`、`zero_`、`fill_`、`copy_` 是常见原地操作。`x.copy_(src)` 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 [copy_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html)。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。与 Python list 不同，很多 Tensor 原地方法会返回自身，不是返回 `None`。
+`add_`、`zero_`、`fill_`、`copy_` 是常见原地操作。`x.copy_(src)` 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 [copy_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html)。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。这些 Tensor 原地方法返回自身。
 
 ## 12. expand 与 repeat：复用存储还是复制元素
 
