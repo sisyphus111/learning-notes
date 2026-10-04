@@ -342,107 +342,355 @@ print(tuple(scores.shape))        # 预期：(2, 4, 8, 10)
 
 对每个 batch、每个 head，做 `[8, 16] @ [16, 10] → [8, 10]`。query token 数和 key token 数可以不同；匹配的是 head 内的特征轴 16。
 
-## 9. reshape、transpose 与增加/删除轴
+## 9. 逻辑形状：reshape、permute 与增加/删除轴
 
-### reshape：重新分组元素
+### shape 描述逻辑轴，不决定底层元素怎样排列
 
-```python
-import torch
+先用同一组数区分三个概念：
 
-x = torch.arange(6, device='cuda')
-print(x.reshape(2, 3).tolist())   # 预期：[[0, 1, 2], [3, 4, 5]]
-print(x.reshape(3, 2).tolist())   # 预期：[[0, 1], [2, 3], [4, 5]]
-print(tuple(x.reshape(2, -1).shape))  # 预期：(2, 3)，自动推断唯一的 -1
-# x.reshape(4, 2)                # 报错：元素总数不匹配
-# x.reshape(-1, -1)              # 报错：不能同时推断两个轴
-```
+| 概念 | 描述什么 | 本节中的值 |
+| --- | --- | --- |
+| storage | 底层 buffer 保存的数值 | 六个数 0、1、2、3、4、5 |
+| shape | 逻辑上有几个轴，每个轴多长 | 两行三列 `[2, 3]` |
+| stride | 沿某个轴走一步，在 storage 中跳过几个元素 | `(3, 1)` |
 
-reshape 保持元素数量，按当前逻辑遍历顺序重新分组。它不会把轴的含义自动交换；是否复制数据要看布局，下一节会具体说明。
-
-### transpose / permute：交换轴的解释
+这里说的“物理排布”是 buffer 中元素的线性存储次序，不是 GPU 显存颗粒、bank 或页表等更底层结构。普通 strided Tensor 用 shape、stride 和起始偏移解释这份存储；多张不同 shape 的 Tensor 可以共享同一份数据。
 
 ```python
 import torch
 
-x = torch.arange(6, device='cuda').reshape(2, 3)
-print(x.transpose(0, 1).tolist()) # 预期：[[0, 3], [1, 4], [2, 5]]
-print(x.reshape(3, 2).tolist())   # 预期：[[0, 1], [2, 3], [4, 5]]
-t = torch.zeros(2, 3, 4, device='cuda')
-print(tuple(t.permute(1, 0, 2).shape))  # 预期：(3, 2, 4)
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+print(tuple(x.shape), x.stride())    # 预期：(2, 3) (3, 1)
+print(x.tolist())                   # 预期：[[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]]
 ```
 
-两个结果都可以是 `[3, 2]`，但对应元素完全不同。`transpose(i, j)` 交换两个轴；`permute(...)` 给出**原来各轴的新排列顺序**，每个轴出现一次。普通 strided Tensor 的这些操作返回 view，不直接搬动所有元素。
+```text
+底层 storage：
+元素位置   0   1   2   3   4   5
+保存数值  [0,  1,  2,  3,  4,  5]
 
-### unsqueeze / squeeze：处理长度为 1 的轴
+用 shape=[2,3]、stride=(3,1) 解释：
+[[0, 1, 2],
+ [3, 4, 5]]
+```
+
+两个轴分别对应行、列。行轴 stride=3，表示换到下一行要跳 3 个元素；列轴 stride=1，表示下一列紧接着当前元素。读取 `x[i,j]` 的位置为 `i×3+j×1`，例如 `x[1,2]` 对应元素位置 5。
+
+**逻辑上相邻，不保证存储位置也相邻。** 改变 shape/stride 可以改变看到的矩阵，却完全不移动原来的数。下一节会把索引与地址的关系展开。
+
+### reshape：保持逻辑遍历顺序，重新分组
+
+`reshape` 保持元素总数，将当前 Tensor 按各轴顺序、最后一轴变化最快的逻辑次序读出，再按新的 shape 分组。对这里连续的 x：
+
+```text
+原来的逻辑顺序：0, 1, 2, 3, 4, 5
+
+reshape(3,2)：每两个元素分为一行
+[[0, 1],
+ [2, 3],
+ [4, 5]]
+```
+
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+r = x.reshape(3, 2)
+print(r.tolist())                   # 预期：[[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]
+print(tuple(r.shape), r.stride())    # 预期：(3, 2) (2, 1)
+print(r.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+print(tuple(x.shape))               # 预期：(2, 3)，原 x 的 shape 没有改变
+print(tuple(x.reshape(2, -1).shape)) # 预期：(2, 3)，推断唯一的 -1
+# x.reshape(4, 2)                   # 报错：6 个元素不能变成 8 个
+# x.reshape(-1, -1)                 # 报错：不能同时推断两个轴
+```
+
+这个例子只需把 stride 从 `(3,1)` 改为 `(2,1)`，就能在同一份 storage 上得到新矩阵。**这是本例的行为，不是 reshape 永远不复制的保证。** 当原布局无法表达目标分组时，reshape 允许复制；不能仅根据函数名判断是否发生显存分配。
+
+`-1` 用元素总数与其他轴长度推断剩下的一个轴，不代表“自动交换轴”或“自动理解 batch”。
+
+### permute / transpose：交换轴及其 stride
+
+`permute(1,0)` 表示新第 0 轴来自原第 1 轴，新第 1 轴来自原第 0 轴。shape 和 stride 一起重排：
+
+```text
+原 x：shape=[2,3]，stride=(3,1)
+新 p：shape=[3,2]，stride=(1,3)
+
+原 x：               p=x.permute(1,0)：
+[[0, 1, 2],          [[0, 3],
+ [3, 4, 5]]           [1, 4],
+                      [2, 5]]
+
+两者仍共享 storage：[0,1,2,3,4,5]
+```
+
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+p = x.permute(1, 0)
+t = x.transpose(0, 1)
+print(p.tolist())                   # 预期：[[0.0, 3.0], [1.0, 4.0], [2.0, 5.0]]
+print(tuple(p.shape), p.stride())    # 预期：(3, 2) (1, 3)
+print(torch.equal(p, t))            # 预期：True
+print(p.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+```
+
+为什么 p 的第一行是 `[0,3]`？因为 `p[0,0]` 的位置是 `0×1+0×3=0`，`p[0,1]` 的位置是 `0×1+1×3=3`。这一行的两个相邻元素在底层存储中间隔 3 个位置。
+
+普通 strided Tensor 的 `permute` 与 `transpose` 返回 view：改变轴与索引到地址的映射，不搬动原 buffer 中的数值。它们也不会修改原 x 的元数据。
+
+| 操作 | 用法 | 轴的变化 |
+| --- | --- | --- |
+| `transpose(i,j)` | 交换两个轴 | 只交换 i、j |
+| `permute(...)` | 给出原轴的新排列顺序 | 所有轴各出现一次 |
+| `reshape(...)` | 给出目标各轴长度 | 重分组，不等于交换轴 |
+
+三维时，`x.permute(1,0,2)` 就是把原轴 1 放到第一位、原轴 0 放到第二位、原轴 2 留在第三位。例如 `[B,S,D]` 变成 `[S,B,D]`，数值关系为 `out[s,b,d]=x[b,s,d]`。
+
+### shape 相同，也可能对应完全不同的矩阵
+
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+regrouped = x.reshape(3, 2)
+transposed = x.permute(1, 0)
+print(tuple(regrouped.shape), tuple(transposed.shape))  # 预期：(3, 2) (3, 2)
+print(regrouped.tolist())           # 预期：[[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]
+print(transposed.tolist())          # 预期：[[0.0, 3.0], [1.0, 4.0], [2.0, 5.0]]
+print(torch.equal(regrouped, transposed))  # 预期：False
+```
+
+reshape 把 `0,1,2,3,4,5` 重新分组；permute 保留原元素的轴对应关系，通过交换轴让 `out[j,i]=x[i,j]`。**不要因为目标 shape 相同，就把 reshape 当成 transpose。**
+
+### None / unsqueeze / squeeze：只增删长度为 1 的轴
 
 ```python
 import torch
 
 x = torch.tensor([10, 20, 30], device='cuda')
-print(tuple(x.unsqueeze(0).shape))     # 预期：(1, 3)
-print(tuple(x.unsqueeze(1).shape))     # 预期：(3, 1)
+print(tuple(x[None, :].shape))      # 预期：(1, 3)
+print(tuple(x[:, None].shape))      # 预期：(3, 1)
+print(tuple(x.unsqueeze(0).shape))  # 预期：(1, 3)
+print(tuple(x.unsqueeze(1).shape))  # 预期：(3, 1)
+print(x[:, None].tolist())          # 预期：[[10], [20], [30]]
 y = torch.zeros(1, 2, 1, device='cuda')
-print(tuple(y.squeeze(0).shape))       # 预期：(2, 1)
-print(tuple(y.squeeze().shape))        # 预期：(2,)
-print(tuple(y.squeeze(1).shape))       # 预期：(1, 2, 1)，该轴长度不为 1
+print(tuple(y.squeeze(0).shape))    # 预期：(2, 1)
+print(tuple(y.squeeze().shape))     # 预期：(2,)
+print(tuple(y.squeeze(1).shape))    # 预期：(1, 2, 1)，该轴长度不为 1
 ```
 
-`unsqueeze` 插入长度为 1 的轴；`squeeze(dim)` 只在指定轴长度为 1 时删除它。直接 `squeeze()` 会删掉所有长度为 1 的轴，batch=1 时也可能把 batch 轴删掉；需要保留哪些轴，应显式指定。
+`None` 在索引里插入一个新轴，不向数值里添加 None。`unsqueeze` 也插入长度为 1 的轴；`squeeze(dim)` 只在指定轴长度为 1 时删除它。这些操作共享数据，不增加或减少元素总数。长度为 1 的轴只有一个有效下标，其 stride 不决定新的独立数值位置。
 
-## 10. stride 与 contiguous：shape 之外的内存布局
+对 `[B,D]`，`x[:,None,:]` 得到 `[B,1,D]`；这里两个 `:` 使用原来的两个轴，None 不消耗原来的轴。直接 `squeeze()` 会删除所有长度为 1 的轴，batch=1 时也可能删掉 batch 轴，所以需要明确保留哪些轴。
 
-### shape 相同或元素相同，不代表布局相同
+## 10. 存储布局：stride、view 与 contiguous
 
-对普通 strided Tensor，可用下面的式子找到元素在 storage 中的位置：
+### 用 stride 与 storage_offset 找到元素地址
+
+对本节的普通 strided Tensor：
 
 ```text
-元素偏移 = storage_offset + i0 * stride[0] + i1 * stride[1] + ...
+storage 内的元素位置 = storage_offset + Σ(下标 × 对应 stride)
+
+字节地址 = storage 起始地址 + 元素位置 × element_size()
 ```
 
-这里的 stride 和偏移以**元素**为单位；转换成字节地址，还要乘以 `element_size()`。
+stride 和 storage_offset 的单位都是**元素**。对 float32，一个元素 4 字节；对 int64，一个元素 8 字节。storage_offset 表示当前 Tensor 的第一个逻辑元素从共享 storage 的哪个位置开始。
 
 ```python
 import torch
 
-x = torch.arange(6, device='cuda').reshape(2, 3)
-t = x.transpose(0, 1)
-print(tuple(x.shape), x.stride())      # 预期：(2, 3) (3, 1)
-print(tuple(t.shape), t.stride())      # 预期：(3, 2) (1, 3)
-print(x.is_contiguous(), t.is_contiguous())  # 预期：True False
-print(x[1, 2].item(), t[2, 1].item()) # 预期：5 5
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+part = x[1, 1:]
+print(part.tolist())                # 预期：[4.0, 5.0]
+print(tuple(part.shape), part.stride(), part.storage_offset())  # 预期：(2,) (1,) 4
+print(part.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+print(part.data_ptr() == x.data_ptr())  # 预期：False，两个 Tensor 的起始元素不同
 ```
 
-原 storage 的顺序是 `0, 1, 2, 3, 4, 5`。x 中沿行轴走一步跳 3 个元素，沿列轴走一步跳 1 个元素。t 把这两个 stride 交换：`t[2, 1]` 的偏移为 `2×1 + 1×3 = 5`，仍读同一个数。**转置先改变“怎么找数据”，不等于已经重排设备内存。**
+part 的第 0 个元素对应 storage 位置 `4+0×1=4`，第 1 个对应 `4+1×1=5`。因此，Tensor 的 `data_ptr()` 不同不能直接证明 storage 独立；本例仍共享同一份底层数据。
 
-`is_contiguous()` 默认检查标准 contiguous 布局；不是单纯检查底层是否来自一块显存。其他 memory format 另有布局要求。
+### contiguous 描述当前逻辑遍历与存储次序的关系
 
-### view、reshape、contiguous 各自保证什么
+默认标准连续布局是最后一个轴变化最快，相邻逻辑元素在 storage 中依次相邻。对非空二维矩阵 `[rows,columns]`，通常的 stride 是 `(columns,1)`；长度为 1 的轴有特殊余地，不能只机械比较 stride 数字。
 
-| 操作 | 保证 | 是否可能复制数值 |
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+p = x.permute(1, 0)
+print(x.is_contiguous(), p.is_contiguous())  # 预期：True False
+print(x.stride(), p.stride())        # 预期：(3, 1) (1, 3)
+```
+
+```text
+x 按当前 shape 逐行读：
+数值/原位置  0 → 1 → 2 → 3 → 4 → 5
+相邻元素都紧接着：连续
+
+p 按当前 shape 逐行读：
+数值/原位置  0 → 3 → 1 → 4 → 2 → 5
+位置跳来跳去：非连续
+
+两者都来自同一份 storage：
+[0,1,2,3,4,5]
+```
+
+**非连续不表示这份 GPU allocation 碎成了多块。** 它描述逻辑索引在共享 buffer 中的排列方式。`is_contiguous()` 默认检查标准 contiguous memory format；channels-last 等格式有不同规则，本节不展开。
+
+### contiguous()：保持逻辑矩阵，必要时复制成连续布局
+
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+p = x.permute(1, 0)
+c = p.contiguous()
+print(c.tolist())                   # 预期：[[0.0, 3.0], [1.0, 4.0], [2.0, 5.0]]
+print(tuple(c.shape), c.stride())    # 预期：(3, 2) (2, 1)
+print(c.is_contiguous())            # 预期：True
+print(c.untyped_storage().data_ptr() == p.untyped_storage().data_ptr())  # 预期：False
+print(x.contiguous() is x)          # 预期：True，x 已经符合标准连续布局
+```
+
+```text
+p：
+逻辑矩阵     [[0,3],[1,4],[2,5]]
+共享 storage [0,1,2,3,4,5]
+stride       (1,3)
+
+c=p.contiguous()：
+逻辑矩阵     [[0,3],[1,4],[2,5]]    ← 保持不变
+新 storage   [0,3,1,4,2,5]         ← 按这个逻辑顺序重新存放
+stride       (2,1)
+```
+
+这里连续化复制出了新 buffer，没有改变原 storage。`contiguous()` 不是“恢复转置前的矩阵”；它保留 p 当前的元素对应关系，使这些元素连续存放。如果输入已经符合目标 memory format，它返回自身，所以也不能用它替代“保证独立副本”的 clone。
+
+### view：只允许不用复制就能表达的目标 shape
+
+这里的 `view(shape)` 表示换 shape，不讨论另一个重解释 dtype 的重载。它必须共享输入数据；如果目标 shape 不能由原 shape/stride 表达，就报错。
+
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+v = x.view(3, 2)
+print(v.tolist())                   # 预期：[[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]
+print(v.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+p = x.permute(1, 0)
+# p.view(6)                        # 报错：不能只用一个一维 stride 表达其逻辑顺序
+print(tuple(p.view(3, 2).shape))    # 预期：(3, 2)，保留原 shape 本身仍可 view
+```
+
+p 的逻辑展平顺序要求依次访问原位置：
+
+```text
+0 → 3 → 1 → 4 → 2 → 5
+  +3  -2  +3  -2  +3
+```
+
+一维 Tensor 只有一个 stride，表示每走一步固定跳过几个元素。这里无法用一个固定 stride 表达这组访问位置，所以 `p.view(6)` 不能成功。
+
+合并相邻轴时，一个关键兼容条件是：
+
+```text
+stride[i] = stride[i+1] × size[i+1]
+```
+
+原 x 的两个轴满足 `3=1×3`，能合并；p 的两个轴不满足 `1=3×2`，不能直接合并。完整条件允许拆轴、保留轴等情况，所以不要把它简化成“所有非连续输入都不能 view”。具体契约见 [Tensor.view](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.view.html)。
+
+### reshape：兼容时共享，不兼容时允许复制
+
+```python
+import torch
+
+x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
+p = x.permute(1, 0)
+r = p.reshape(6)
+explicit = p.contiguous().view(6)
+print(r.tolist())                   # 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]
+print(explicit.tolist())            # 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]
+print(r.untyped_storage().data_ptr() == p.untyped_storage().data_ptr())  # 预期：False，本例需要复制
+print(tuple(p.shape), p.stride())    # 预期：(3, 2) (1, 3)，原 p 未被改动
+```
+
+reshape 保持的是**当前 Tensor 的逻辑遍历顺序**。p 的顺序是 `0,3,1,4,2,5`，所以输出不能直接返回原 storage 次序 `0,1,2,3,4,5`。复制后得到新的一维连续数据，才能保持正确元素对应关系。
+
+不要依赖 reshape 必然共享或必然复制；这里的具体例子需要复制，其他兼容布局则可以返回 view。性能关键路径要结合实际 stride 和下一步算子的要求判断。[reshape 官方说明](https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html)
+
+### 反例：非连续 Tensor 也可能成功 view
+
+```python
+import torch
+
+a = torch.arange(12, dtype=torch.float32, device='cuda').reshape(3, 4)
+s = a[:, ::2]
+flat = s.view(6)
+print(s.tolist())                   # 预期：[[0.0, 2.0], [4.0, 6.0], [8.0, 10.0]]
+print(tuple(s.shape), s.stride(), s.is_contiguous())  # 预期：(3, 2) (4, 2) False
+print(flat.tolist())                # 预期：[0.0, 2.0, 4.0, 6.0, 8.0, 10.0]
+print(flat.stride())                # 预期：(2,)
+print(flat.untyped_storage().data_ptr() == a.untyped_storage().data_ptr())  # 预期：True
+```
+
+s 的逻辑位置依次为 `0,2,4,6,8,10`，每一步都固定跳 2，可以用一维 stride=2 表达。它也满足两个轴的合并条件 `4=2×2`。**view 是否可行取决于目标 shape 的布局兼容性，而不只取决于 is_contiguous()。**
+
+### attention head：拆分特征、重排轴，再合并
+
+设 `B=1`、`S=2`、`H=2`、每个 head 的 `D=2`。输入为 `[B,S,H×D]=[1,2,4]`，每个 token 的四个特征分成两个 head：
+
+```python
+import torch
+
+x = torch.arange(8, dtype=torch.float32, device='cuda').reshape(1, 2, 4)
+split = x.reshape(1, 2, 2, 2)      # [B,S,H,D]：拆开特征轴
+heads = split.permute(0, 2, 1, 3)  # [B,H,S,D]：把 head 放到 token 前面
+print(split.stride(), heads.stride())  # 预期：(8, 4, 2, 1) (8, 2, 4, 1)
+print(heads[0, 0].tolist())         # 预期：[[0.0, 1.0], [4.0, 5.0]]，head 0 的两个 token
+print(heads[0, 1].tolist())         # 预期：[[2.0, 3.0], [6.0, 7.0]]，head 1 的两个 token
+print(heads.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+```
+
+因为这里 S 与 H 都等于 2，split 与 heads 的 shape 数字看起来完全相同，但 stride 和轴的含义已经不同。仅把 `[B,S,H×D]` reshape 成一个叫 `[B,H,S,D]` 的 shape，不能代替这次 permute。
+
+合并时，先让同一个 token 的各个 head 相邻，再合并 H 与 D：
+
+```python
+import torch
+
+x = torch.arange(8, dtype=torch.float32, device='cuda').reshape(1, 2, 4)
+heads = x.reshape(1, 2, 2, 2).permute(0, 2, 1, 3)
+back = heads.permute(0, 2, 1, 3).reshape(1, 2, 4)
+print(torch.equal(back, x))         # 预期：True
+print(back.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+head_output = heads.contiguous()    # 模拟一份连续 [B,H,S,D] 结果
+merged = head_output.permute(0, 2, 1, 3).reshape(1, 2, 4)
+print(torch.equal(merged, x))       # 预期：True
+print(merged.untyped_storage().data_ptr() == head_output.untyped_storage().data_ptr())  # 预期：False
+```
+
+第一条路径撤销原来的轴重排，恢复连续布局后可以共享原 storage。第二条路径从连续的 `[B,H,S,D]` 出发，permute 后 H、D 的布局不兼容直接合并，本例 reshape 需要复制。**同一组 shape 变换，是否复制还取决于实际输入布局。**
+
+### 操作对逻辑与存储的影响速查
+
+| 操作 | 对逻辑 shape / 元素关系的影响 | 对底层存储的影响 |
 | --- | --- | --- |
-| `view(shape)` | 布局兼容时换 shape，共享原存储；不兼容则报错 | 不复制 |
-| `reshape(shape)` | 得到指定 shape，元素数量不变 | 可能，别依赖其是否复制 |
-| `contiguous()` | 得到指定 memory format 的连续布局 | 已符合时返回自身，否则复制 |
-| `clone()` | 复制数据，得到独立存储 | 是 |
+| `view(shape)` | 按当前逻辑次序重新分组 | 保证共享，不兼容则报错 |
+| `reshape(shape)` | 按当前逻辑次序重新分组 | 兼容时可共享，不兼容时可复制 |
+| `permute(...)` | 重排所有轴及其对应 stride | 共享原数据，不移动数值 |
+| `transpose(i,j)` | 交换两个轴及其 stride | 共享原数据，不移动数值 |
+| `None/unsqueeze/squeeze` | 增删长度为 1 的轴 | 共享原数据，元素总数不变 |
+| `contiguous()` | 保留当前 shape 与对应数值 | 不符合目标布局时复制；已符合时返回自身 |
+| `clone()` | 保留 shape 与数值 | 得到独立存储；不等于指定某种 memory format |
 
-```python
-import torch
+view/permute 等操作只改元数据，通常不用复制 GPU 数值；连续化或不兼容的 reshape 需要读旧数据、写新 buffer。即使 permute 本身不搬数据，后续算子也会按不同 stride 访问，可能影响访问效率或触发内部复制。因此不应每次转置后都机械地 contiguous，也不能只看 shape 就判断布局与性能。
 
-x = torch.arange(6, device='cuda').reshape(2, 3)
-t = x.transpose(0, 1)
-# t.view(6)                          # 报错：这份 stride 不能直接合并成一个轴
-r = t.reshape(6)                     # 此例需要复制，按 t 的逻辑顺序取数
-c = t.contiguous()                   # 重排成连续的 [3, 2] 数据
-v = c.view(6)                        # 此时可以仅换解释方式
-print(r.tolist())                    # 预期：[0, 3, 1, 4, 2, 5]
-print(c.stride(), c.is_contiguous())  # 预期：(2, 1) True
-print(v.tolist())                    # 预期：[0, 3, 1, 4, 2, 5]
-print(x.contiguous() is x)            # 预期：True
-```
+共享、连续布局与 view 的一般规则见 [Tensor Views](https://docs.pytorch.org/docs/2.14/tensor_view.html)，轴重排接口见 [permute](https://docs.pytorch.org/docs/2.14/generated/torch.permute.html)。本节代码与其他 GPU 示例一样，以注释给出推导预期，不把它们当作实测性能。
 
-并非“所有非连续 Tensor 都不能 view”；真正条件是新 shape 与原 shape/stride 兼容。`reshape` 接口允许在需要时复制，不能在性能分析中一律当成免费的元数据操作。`contiguous()` 也不该当作每个算子前的固定步骤；先看下一步是否要求连续布局。
-
-共享、索引与连续布局规则见 [Tensor Views](https://docs.pytorch.org/docs/2.14/tensor_view.html)，换 shape 的契约见 [view](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.view.html) 与 [reshape](https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html)。
 
 ## 11. 赋值、view、clone 与原地修改
 
