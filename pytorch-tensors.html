@@ -459,7 +459,145 @@
 
 
 <p><code>round()</code> 不是简单的“逢 5 就增大”：1.5 → 2，2.5 → 2，−1.5 → −2。<code>x.round(decimals=2)</code> 可保留两位小数，但浮点存储不保证十进制精确，低精度时还可能溢出。规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.round.html">round</a>。</p>
-<p><code>x.square_()</code> 等带下划线的版本会修改原 Tensor；使用前看<a href="pytorch-tensors.html#11-赋值-修改与数据复制">赋值、修改与数据复制</a>中的共享存储和 autograd 约束。</p>
+<h3 id="原地运算-带下划线的方法">原地运算：带下划线的方法</h3>
+<p><strong><code>x.mul(2)</code> / <code>x * 2</code> 返回新结果；<code>x.mul_(2)</code> 把计算结果写回 x 的现有存储。</strong> 这类原地算术方法返回 x 自身，因此通常直接调用即可，也可以接收返回值或链式调用。</p>
+<table>
+<thead>
+<tr>
+<th>返回新结果的写法</th>
+<th>原地写法</th>
+<th>写回 x 的操作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x + y</code> / <code>x.add(y)</code></td>
+<td><code>x.add_(y)</code></td>
+<td>逐元素加 y</td>
+</tr>
+<tr>
+<td><code>x - y</code> / <code>x.sub(y)</code></td>
+<td><code>x.sub_(y)</code></td>
+<td>逐元素减 y</td>
+</tr>
+<tr>
+<td><code>x * y</code> / <code>x.mul(y)</code></td>
+<td><code>x.mul_(y)</code></td>
+<td>逐元素乘 y</td>
+</tr>
+<tr>
+<td><code>x / y</code> / <code>x.div(y)</code></td>
+<td><code>x.div_(y)</code></td>
+<td>逐元素除以 y</td>
+</tr>
+<tr>
+<td><code>x.square()</code></td>
+<td><code>x.square_()</code></td>
+<td>平方</td>
+</tr>
+<tr>
+<td><code>x.pow(p)</code></td>
+<td><code>x.pow_(p)</code></td>
+<td>p 次幂</td>
+</tr>
+<tr>
+<td><code>x.sqrt()</code> / <code>x.rsqrt()</code></td>
+<td><code>x.sqrt_()</code> / <code>x.rsqrt_()</code></td>
+<td>平方根 / 平方根的倒数</td>
+</tr>
+<tr>
+<td><code>x.abs()</code> / <code>x.neg()</code></td>
+<td><code>x.abs_()</code> / <code>x.neg_()</code></td>
+<td>绝对值 / 相反数</td>
+</tr>
+<tr>
+<td><code>x.exp()</code> / <code>x.log()</code></td>
+<td><code>x.exp_()</code> / <code>x.log_()</code></td>
+<td>指数 / 自然对数</td>
+</tr>
+<tr>
+<td><code>x.sin()</code> / <code>x.cos()</code> / <code>x.tanh()</code></td>
+<td><code>x.sin_()</code> / <code>x.cos_()</code> / <code>x.tanh_()</code></td>
+<td>正弦 / 余弦 / 双曲正切</td>
+</tr>
+<tr>
+<td><code>x.floor()</code> / <code>x.ceil()</code> / <code>x.round()</code></td>
+<td><code>x.floor_()</code> / <code>x.ceil_()</code> / <code>x.round_()</code></td>
+<td>向下 / 向上 / 就近取整</td>
+</tr>
+<tr>
+<td><code>x.clamp(a, b)</code></td>
+<td><code>x.clamp_(a, b)</code></td>
+<td>截断到 [a, b]</td>
+</tr>
+<tr>
+<td><code>torch.zeros_like(x)</code></td>
+<td><code>x.zero_()</code></td>
+<td>全部置零</td>
+</tr>
+<tr>
+<td><code>torch.full_like(x, value)</code></td>
+<td><code>x.fill_(value)</code></td>
+<td>全部填入 value</td>
+</tr>
+</tbody>
+</table>
+<p>并非每个方法都有加下划线的版本，例如归约 <code>sum()</code>、<code>mean()</code> 没有对应的 <code>sum_()</code>、<code>mean_()</code>。原地方法列表见 <a href="https://docs.pytorch.org/docs/2.14/tensors.html">Tensor API</a>，乘法接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.mul_.html">mul_</a>。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">x</span>                       <span class="c1"># 两个名字引用同一个 Tensor</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">10</span>                     <span class="c1"># 新结果，不修改 x</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>   <span class="c1"># 预期：[1.0, 2.0, 3.0] [10.0, 20.0, 30.0]</span>
+
+<span class="n">returned</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>           <span class="c1"># 原地乘，修改 x，返回 x 自身</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">returned</span> <span class="ow">is</span> <span class="n">x</span><span class="p">)</span>            <span class="c1"># 预期：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[10.0, 20.0, 30.0]，alias 同样看到变化</span>
+<span class="n">x</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>                      <span class="c1"># 原地加，x 变为 [11, 21, 31]</span>
+<span class="n">x</span><span class="o">.</span><span class="n">square_</span><span class="p">()</span>                    <span class="c1"># 原地平方，基于刚才修改后的数值</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[121.0, 441.0, 961.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[10.0, 20.0, 30.0]，独立的新结果不受影响</span>
+</pre></div>
+
+
+<p>对普通 Tensor，<code>x += y</code>、<code>x -= y</code>、<code>x *= y</code>、<code>x /= y</code> 也是原地算术；<code>x = x * y</code> 则先计算新结果，再把名字 x 改绑。共享存储的 view 也会看到原地修改，详见<a href="pytorch-tensors.html#11-赋值-修改与数据复制">赋值、修改与数据复制</a>。</p>
+<h3 id="保留输入-先-clone-再在副本上原地计算">保留输入：先 clone，再在副本上原地计算</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>                 <span class="c1"># 复制数值，得到独立存储</span>
+<span class="n">out</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>                    <span class="c1"># 在副本上原地乘，不再新建一份乘法结果</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[10.0, 20.0, 30.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[1.0, 2.0, 3.0]，原输入保留</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span> <span class="ow">is</span> <span class="n">x</span><span class="p">)</span>                 <span class="c1"># 预期：False</span>
+</pre></div>
+
+
+<p><code>out = x.clone().mul_(10)</code> 也可以，因为 mul_ 返回这个副本自身。写成 <code>out = x.clone() * 10</code> 则先分配 clone 的副本，再为乘法分配新结果。原地计算复用目标的数值存储，但算子仍可能使用临时空间，不能据此断言整次调用零分配或一定更快。</p>
+<h3 id="原地算术的-shape-dtype-与梯度限制">原地算术的 shape、dtype 与梯度限制</h3>
+<p><strong>右侧可以广播，但写回目标 x 的 shape 不能因广播而扩大。</strong> 原地算术还要把结果写回 x 原来的 dtype，不会自动替 x 更换 dtype。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">bias</span><span class="p">)</span>                   <span class="c1"># 将 bias 广播到每一行，x 保持 [2, 3]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>              <span class="c1"># 预期：[[2.0, 3.0, 4.0], [2.0, 3.0, 4.0]]</span>
+
+<span class="n">small</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">((</span><span class="n">small</span> <span class="o">+</span> <span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>  <span class="c1"># 预期：(2, 3)，新结果可以扩大</span>
+<span class="c1"># small.add_(rows)              # 报错：不能把写回目标从 [1, 3] 扩成 [2, 3]</span>
+
+<span class="n">ints</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="c1"># ints.mul_(0.5)                # 报错：浮点结果不能按此算术规则写回整数 dtype</span>
+<span class="c1"># ints.div_(2)                  # 报错：默认真除法产生浮点结果</span>
+<span class="n">floats</span> <span class="o">=</span> <span class="n">ints</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>           <span class="c1"># 先显式转换为浮点 Tensor</span>
+<span class="n">floats</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">floats</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[0.5, 1.0, 1.5]</span>
+</pre></div>
+
+
+<p>原地算术不要求目标一定连续，但布局必须允许写入；例如 expand 产生的重复存储位置不适合逐元素原地运算。参与 autograd 时，要求梯度的叶子 Tensor 在梯度记录模式下不能直接原地修改；覆盖反向传播需要的数值，也可能在 backward 时触发错误。不能把全部普通运算机械地换成带下划线的版本。规则见 <a href="https://docs.pytorch.org/docs/2.14/notes/broadcasting.html#in-place-semantics">广播的原地限制</a>、<a href="https://docs.pytorch.org/docs/2.14/notes/autograd.html#in-place-operations-with-autograd">Autograd 原地操作</a>及 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.expand.html">expand</a>。</p>
 <h3 id="比较整个-tensor-的内容">比较整个 Tensor 的内容</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -1225,7 +1363,7 @@ stride       (2,1)
 </pre></div>
 
 
-<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。<code>x.copy_(src)</code> 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html">copy_</a>。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。这些 Tensor 原地方法返回自身。</p>
+<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。<code>x.copy_(src)</code> 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html">copy_</a>。这些方法返回自身，共享存储的 view 会看到修改。常用算术方法与具体限制见<a href="pytorch-tensors.html#原地运算-带下划线的方法">原地运算</a>。</p>
 <h2 id="12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</h2>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 

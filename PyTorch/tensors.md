@@ -354,7 +354,89 @@ print(x.round().dtype)           # 预期：torch.float32，取整不等于转�
 
 `round()` 不是简单的“逢 5 就增大”：1.5 → 2，2.5 → 2，−1.5 → −2。`x.round(decimals=2)` 可保留两位小数，但浮点存储不保证十进制精确，低精度时还可能溢出。规则见 [round](https://docs.pytorch.org/docs/2.14/generated/torch.round.html)。
 
-`x.square_()` 等带下划线的版本会修改原 Tensor；使用前看[赋值、修改与数据复制](#11-赋值-修改与数据复制)中的共享存储和 autograd 约束。
+### 原地运算：带下划线的方法
+
+**`x.mul(2)` / `x * 2` 返回新结果；`x.mul_(2)` 把计算结果写回 x 的现有存储。** 这类原地算术方法返回 x 自身，因此通常直接调用即可，也可以接收返回值或链式调用。
+
+| 返回新结果的写法 | 原地写法 | 写回 x 的操作 |
+| --- | --- | --- |
+| `x + y` / `x.add(y)` | `x.add_(y)` | 逐元素加 y |
+| `x - y` / `x.sub(y)` | `x.sub_(y)` | 逐元素减 y |
+| `x * y` / `x.mul(y)` | `x.mul_(y)` | 逐元素乘 y |
+| `x / y` / `x.div(y)` | `x.div_(y)` | 逐元素除以 y |
+| `x.square()` | `x.square_()` | 平方 |
+| `x.pow(p)` | `x.pow_(p)` | p 次幂 |
+| `x.sqrt()` / `x.rsqrt()` | `x.sqrt_()` / `x.rsqrt_()` | 平方根 / 平方根的倒数 |
+| `x.abs()` / `x.neg()` | `x.abs_()` / `x.neg_()` | 绝对值 / 相反数 |
+| `x.exp()` / `x.log()` | `x.exp_()` / `x.log_()` | 指数 / 自然对数 |
+| `x.sin()` / `x.cos()` / `x.tanh()` | `x.sin_()` / `x.cos_()` / `x.tanh_()` | 正弦 / 余弦 / 双曲正切 |
+| `x.floor()` / `x.ceil()` / `x.round()` | `x.floor_()` / `x.ceil_()` / `x.round_()` | 向下 / 向上 / 就近取整 |
+| `x.clamp(a, b)` | `x.clamp_(a, b)` | 截断到 [a, b] |
+| `torch.zeros_like(x)` | `x.zero_()` | 全部置零 |
+| `torch.full_like(x, value)` | `x.fill_(value)` | 全部填入 value |
+
+并非每个方法都有加下划线的版本，例如归约 `sum()`、`mean()` 没有对应的 `sum_()`、`mean_()`。原地方法列表见 [Tensor API](https://docs.pytorch.org/docs/2.14/tensors.html)，乘法接口见 [mul_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.mul_.html)。
+
+```python
+import torch
+
+x = torch.tensor([1.0, 2.0, 3.0], device='cuda')
+alias = x                       # 两个名字引用同一个 Tensor
+y = x * 10                     # 新结果，不修改 x
+print(x.tolist(), y.tolist())   # 预期：[1.0, 2.0, 3.0] [10.0, 20.0, 30.0]
+
+returned = x.mul_(10)           # 原地乘，修改 x，返回 x 自身
+print(returned is x)            # 预期：True
+print(alias.tolist())           # 预期：[10.0, 20.0, 30.0]，alias 同样看到变化
+x.add_(1)                      # 原地加，x 变为 [11, 21, 31]
+x.square_()                    # 原地平方，基于刚才修改后的数值
+print(x.tolist())               # 预期：[121.0, 441.0, 961.0]
+print(y.tolist())               # 预期：[10.0, 20.0, 30.0]，独立的新结果不受影响
+```
+
+对普通 Tensor，`x += y`、`x -= y`、`x *= y`、`x /= y` 也是原地算术；`x = x * y` 则先计算新结果，再把名字 x 改绑。共享存储的 view 也会看到原地修改，详见[赋值、修改与数据复制](#11-赋值-修改与数据复制)。
+
+### 保留输入：先 clone，再在副本上原地计算
+
+```python
+import torch
+
+x = torch.tensor([1.0, 2.0, 3.0], device='cuda')
+out = x.clone()                 # 复制数值，得到独立存储
+out.mul_(10)                    # 在副本上原地乘，不再新建一份乘法结果
+print(out.tolist())             # 预期：[10.0, 20.0, 30.0]
+print(x.tolist())               # 预期：[1.0, 2.0, 3.0]，原输入保留
+print(out is x)                 # 预期：False
+```
+
+`out = x.clone().mul_(10)` 也可以，因为 mul_ 返回这个副本自身。写成 `out = x.clone() * 10` 则先分配 clone 的副本，再为乘法分配新结果。原地计算复用目标的数值存储，但算子仍可能使用临时空间，不能据此断言整次调用零分配或一定更快。
+
+### 原地算术的 shape、dtype 与梯度限制
+
+**右侧可以广播，但写回目标 x 的 shape 不能因广播而扩大。** 原地算术还要把结果写回 x 原来的 dtype，不会自动替 x 更换 dtype。
+
+```python
+import torch
+
+x = torch.ones(2, 3, device='cuda')
+bias = torch.tensor([1.0, 2.0, 3.0], device='cuda')
+x.add_(bias)                   # 将 bias 广播到每一行，x 保持 [2, 3]
+print(x.tolist())              # 预期：[[2.0, 3.0, 4.0], [2.0, 3.0, 4.0]]
+
+small = torch.ones(1, 3, device='cuda')
+rows = torch.ones(2, 1, device='cuda')
+print(tuple((small + rows).shape))  # 预期：(2, 3)，新结果可以扩大
+# small.add_(rows)              # 报错：不能把写回目标从 [1, 3] 扩成 [2, 3]
+
+ints = torch.tensor([1, 2, 3], device='cuda')
+# ints.mul_(0.5)                # 报错：浮点结果不能按此算术规则写回整数 dtype
+# ints.div_(2)                  # 报错：默认真除法产生浮点结果
+floats = ints.float()           # 先显式转换为浮点 Tensor
+floats.mul_(0.5)
+print(floats.tolist())          # 预期：[0.5, 1.0, 1.5]
+```
+
+原地算术不要求目标一定连续，但布局必须允许写入；例如 expand 产生的重复存储位置不适合逐元素原地运算。参与 autograd 时，要求梯度的叶子 Tensor 在梯度记录模式下不能直接原地修改；覆盖反向传播需要的数值，也可能在 backward 时触发错误。不能把全部普通运算机械地换成带下划线的版本。规则见 [广播的原地限制](https://docs.pytorch.org/docs/2.14/notes/broadcasting.html#in-place-semantics)、[Autograd 原地操作](https://docs.pytorch.org/docs/2.14/notes/autograd.html#in-place-operations-with-autograd)及 [expand](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.expand.html)。
 
 ### 比较整个 Tensor 的内容
 
@@ -1010,7 +1092,7 @@ x.copy_(src)                   # 把数值写进已有 x；不同于 alias = src
 print(alias.tolist())            # 预期：[8.0, 9.0]
 ```
 
-`add_`、`zero_`、`fill_`、`copy_` 是常见原地操作。`x.copy_(src)` 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 [copy_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html)。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。这些 Tensor 原地方法返回自身。
+`add_`、`zero_`、`fill_`、`copy_` 是常见原地操作。`x.copy_(src)` 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 [copy_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html)。这些方法返回自身，共享存储的 view 会看到修改。常用算术方法与具体限制见[原地运算](#原地运算-带下划线的方法)。
 
 ## 12. expand 与 repeat：复用存储还是复制元素
 
