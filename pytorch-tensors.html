@@ -643,6 +643,42 @@ result  [2, 3]
 
 <p>对每个 batch、每个 head，做 <code>[8, 16] @ [16, 10] → [8, 10]</code>。query token 数和 key token 数可以不同；匹配的是 head 内的特征轴 16。</p>
 <h2 id="9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</h2>
+<h3 id="新建-tensor-对象-不等于新建数值存储">新建 Tensor 对象，不等于新建数值存储</h3>
+<p>本节讨论普通稠密 strided Tensor。<strong>permute、transpose 返回共享原 storage 的 view；reshape 不保证共享，布局不兼容时会复制数值。</strong> 这不是由“默认参数”决定的，也不能把三个操作都理解成“不分配新显存”。</p>
+<p>Tensor 对象保存 shape、stride 等元数据，storage 保存数值。创建一个新的 view 对象，只需让新元数据指向原 storage；它不会另分配一份数值 buffer。<strong>“不复制数值”不代表连 Tensor 对象和元数据都不创建。</strong></p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>返回结果</th>
+<th>是否新建数值 storage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>y = x</code></td>
+<td>同一个 Tensor 对象</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>y = x.permute(...)</code></td>
+<td>新的 view 对象，重排所有轴</td>
+<td>否，共享 x 的 storage</td>
+</tr>
+<tr>
+<td><code>y = x.transpose(i, j)</code></td>
+<td>新的 view 对象，交换两个轴</td>
+<td>否，共享 x 的 storage</td>
+</tr>
+<tr>
+<td><code>y = x.reshape(...)</code></td>
+<td>布局兼容时是 view，否则复制</td>
+<td>不保证；取决于当前 stride 与目标 shape</td>
+</tr>
+</tbody>
+</table>
+<p>共享 storage 时，修改 view 中的数值会影响原 Tensor 对应位置；改变 view 的 shape/stride 不会改变原 Tensor 的 shape/stride。要保证换 shape 时不复制，用 <code>view(shape)</code>，不兼容时它会报错；要保证数值独立，用 <code>clone()</code>。<strong>非连续不意味着 reshape 一定复制，关键是目标 shape 能否由现有布局表达。</strong> 详细例子见<a href="pytorch-tensors.html#reshape-兼容时共享-不兼容时允许复制">共享与复制</a>和<a href="pytorch-tensors.html#反例-非连续-tensor-也可能成功-view">非连续也能 view 的反例</a>。</p>
+<p>接口契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.permute.html">permute</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.transpose.html">transpose</a>。</p>
 <h3 id="shape-描述逻辑轴-不决定底层元素怎样排列">shape 描述逻辑轴，不决定底层元素怎样排列</h3>
 <p>先用同一组数区分三个概念：</p>
 <table>
@@ -911,17 +947,21 @@ stride       (2,1)
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-<span class="n">p</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
-<span class="n">explicit</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+<span class="n">shared</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>              <span class="c1"># 原 x 连续，本例展平可以共享 storage</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>             <span class="c1"># 交换行列轴，仍共享 x 的 storage</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>                  <span class="c1"># 转置后的逻辑顺序不能用一个 stride 展平，本例复制</span>
+<span class="n">explicit</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">shared</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">()</span> <span class="o">==</span> <span class="n">x</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">())</span>  <span class="c1"># 预期：True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">t</span> <span class="ow">is</span> <span class="n">x</span><span class="p">)</span>                      <span class="c1"># 预期：False，不同 Tensor 对象</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">()</span> <span class="o">==</span> <span class="n">x</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">())</span>  <span class="c1"># 预期：True，共享数值存储</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                   <span class="c1"># 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">explicit</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>            <span class="c1"># 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">()</span> <span class="o">==</span> <span class="n">p</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">())</span>  <span class="c1"># 预期：False，本例需要复制</span>
-<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">p</span><span class="o">.</span><span class="n">stride</span><span class="p">())</span>    <span class="c1"># 预期：(3, 2) (1, 3)，原 p 未被改动</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">()</span> <span class="o">==</span> <span class="n">t</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">())</span>  <span class="c1"># 预期：False，本例需要复制</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">t</span><span class="o">.</span><span class="n">stride</span><span class="p">())</span>    <span class="c1"># 预期：(3, 2) (1, 3)，原 t 未被改动</span>
 </pre></div>
 
 
-<p>reshape 保持的是<strong>当前 Tensor 的逻辑遍历顺序</strong>。p 的顺序是 <code>0,3,1,4,2,5</code>，所以输出不能直接返回原 storage 次序 <code>0,1,2,3,4,5</code>。复制后得到新的一维连续数据，才能保持正确元素对应关系。</p>
+<p>reshape 保持的是<strong>当前 Tensor 的逻辑遍历顺序</strong>。转置后的 t 按顺序访问原 storage 的位置 <code>0,3,1,4,2,5</code>，相邻位置的间隔为 <code>+3,-2,+3,-2,+3</code>，无法用一个固定的一维 stride 表达。因此这次 reshape 必须复制，得到按 <code>0,3,1,4,2,5</code> 连续存放的新 storage；直接沿原 storage 读 <code>0,1,2,3,4,5</code> 会改变元素对应关系。</p>
 <p>不要依赖 reshape 必然共享或必然复制；这里的具体例子需要复制，其他兼容布局则可以返回 view。性能关键路径要结合实际 stride 和下一步算子的要求判断。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape 官方说明</a></p>
 <h3 id="反例-非连续-tensor-也可能成功-view">反例：非连续 Tensor 也可能成功 view</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -970,6 +1010,7 @@ stride       (2,1)
 
 <p>第一条路径撤销原来的轴重排，恢复连续布局后可以共享原 storage。第二条路径从连续的 <code>[B,H,S,D]</code> 出发，permute 后 H、D 的布局不兼容直接合并，本例 reshape 需要复制。<strong>同一组 shape 变换，是否复制还取决于实际输入布局。</strong></p>
 <h3 id="操作对逻辑与存储的影响速查">操作对逻辑与存储的影响速查</h3>
+<p>下表的“共享 / 复制”指底层数值存储，不是 Tensor 对象是否相同；按普通稠密 strided Tensor 的行为总结。</p>
 <table>
 <thead>
 <tr>
@@ -987,17 +1028,17 @@ stride       (2,1)
 <tr>
 <td><code>reshape(shape)</code></td>
 <td>按当前逻辑次序重新分组</td>
-<td>兼容时可共享，不兼容时可复制</td>
+<td>布局兼容时共享，否则复制；不保证不分配</td>
 </tr>
 <tr>
 <td><code>permute(...)</code></td>
 <td>重排所有轴及其对应 stride</td>
-<td>共享原数据，不移动数值</td>
+<td>保证共享原 storage，只创建 view，不复制数值</td>
 </tr>
 <tr>
 <td><code>transpose(i,j)</code></td>
 <td>交换两个轴及其 stride</td>
-<td>共享原数据，不移动数值</td>
+<td>保证共享原 storage，只创建 view，不复制数值</td>
 </tr>
 <tr>
 <td><code>None/unsqueeze/squeeze</code></td>

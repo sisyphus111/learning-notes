@@ -508,6 +508,23 @@ print(tuple(scores.shape))        # 预期：(2, 4, 8, 10)
 
 ## 9. 逻辑形状：reshape、permute 与增加/删除轴
 
+### 新建 Tensor 对象，不等于新建数值存储
+
+本节讨论普通稠密 strided Tensor。**permute、transpose 返回共享原 storage 的 view；reshape 不保证共享，布局不兼容时会复制数值。** 这不是由“默认参数”决定的，也不能把三个操作都理解成“不分配新显存”。
+
+Tensor 对象保存 shape、stride 等元数据，storage 保存数值。创建一个新的 view 对象，只需让新元数据指向原 storage；它不会另分配一份数值 buffer。**“不复制数值”不代表连 Tensor 对象和元数据都不创建。**
+
+| 写法 | 返回结果 | 是否新建数值 storage |
+| --- | --- | --- |
+| `y = x` | 同一个 Tensor 对象 | 否 |
+| `y = x.permute(...)` | 新的 view 对象，重排所有轴 | 否，共享 x 的 storage |
+| `y = x.transpose(i, j)` | 新的 view 对象，交换两个轴 | 否，共享 x 的 storage |
+| `y = x.reshape(...)` | 布局兼容时是 view，否则复制 | 不保证；取决于当前 stride 与目标 shape |
+
+共享 storage 时，修改 view 中的数值会影响原 Tensor 对应位置；改变 view 的 shape/stride 不会改变原 Tensor 的 shape/stride。要保证换 shape 时不复制，用 `view(shape)`，不兼容时它会报错；要保证数值独立，用 `clone()`。**非连续不意味着 reshape 一定复制，关键是目标 shape 能否由现有布局表达。** 详细例子见[共享与复制](#reshape-兼容时共享-不兼容时允许复制)和[非连续也能 view 的反例](#反例-非连续-tensor-也可能成功-view)。
+
+接口契约见 [reshape](https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html)、[permute](https://docs.pytorch.org/docs/2.14/generated/torch.permute.html) 与 [transpose](https://docs.pytorch.org/docs/2.14/generated/torch.transpose.html)。
+
 ### shape 描述逻辑轴，不决定底层元素怎样排列
 
 先用同一组数区分三个概念：
@@ -773,16 +790,20 @@ stride[i] = stride[i+1] × size[i+1]
 import torch
 
 x = torch.arange(6, dtype=torch.float32, device='cuda').reshape(2, 3)
-p = x.permute(1, 0)
-r = p.reshape(6)
-explicit = p.contiguous().view(6)
+shared = x.reshape(6)              # 原 x 连续，本例展平可以共享 storage
+t = x.transpose(0, 1)             # 交换行列轴，仍共享 x 的 storage
+r = t.reshape(6)                  # 转置后的逻辑顺序不能用一个 stride 展平，本例复制
+explicit = t.contiguous().view(6)
+print(shared.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
+print(t is x)                      # 预期：False，不同 Tensor 对象
+print(t.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True，共享数值存储
 print(r.tolist())                   # 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]
 print(explicit.tolist())            # 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]
-print(r.untyped_storage().data_ptr() == p.untyped_storage().data_ptr())  # 预期：False，本例需要复制
-print(tuple(p.shape), p.stride())    # 预期：(3, 2) (1, 3)，原 p 未被改动
+print(r.untyped_storage().data_ptr() == t.untyped_storage().data_ptr())  # 预期：False，本例需要复制
+print(tuple(t.shape), t.stride())    # 预期：(3, 2) (1, 3)，原 t 未被改动
 ```
 
-reshape 保持的是**当前 Tensor 的逻辑遍历顺序**。p 的顺序是 `0,3,1,4,2,5`，所以输出不能直接返回原 storage 次序 `0,1,2,3,4,5`。复制后得到新的一维连续数据，才能保持正确元素对应关系。
+reshape 保持的是**当前 Tensor 的逻辑遍历顺序**。转置后的 t 按顺序访问原 storage 的位置 `0,3,1,4,2,5`，相邻位置的间隔为 `+3,-2,+3,-2,+3`，无法用一个固定的一维 stride 表达。因此这次 reshape 必须复制，得到按 `0,3,1,4,2,5` 连续存放的新 storage；直接沿原 storage 读 `0,1,2,3,4,5` 会改变元素对应关系。
 
 不要依赖 reshape 必然共享或必然复制；这里的具体例子需要复制，其他兼容布局则可以返回 view。性能关键路径要结合实际 stride 和下一步算子的要求判断。[reshape 官方说明](https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html)
 
@@ -841,12 +862,14 @@ print(merged.untyped_storage().data_ptr() == head_output.untyped_storage().data_
 
 ### 操作对逻辑与存储的影响速查
 
+下表的“共享 / 复制”指底层数值存储，不是 Tensor 对象是否相同；按普通稠密 strided Tensor 的行为总结。
+
 | 操作 | 对逻辑 shape / 元素关系的影响 | 对底层存储的影响 |
 | --- | --- | --- |
 | `view(shape)` | 按当前逻辑次序重新分组 | 保证共享，不兼容则报错 |
-| `reshape(shape)` | 按当前逻辑次序重新分组 | 兼容时可共享，不兼容时可复制 |
-| `permute(...)` | 重排所有轴及其对应 stride | 共享原数据，不移动数值 |
-| `transpose(i,j)` | 交换两个轴及其 stride | 共享原数据，不移动数值 |
+| `reshape(shape)` | 按当前逻辑次序重新分组 | 布局兼容时共享，否则复制；不保证不分配 |
+| `permute(...)` | 重排所有轴及其对应 stride | 保证共享原 storage，只创建 view，不复制数值 |
+| `transpose(i,j)` | 交换两个轴及其 stride | 保证共享原 storage，只创建 view，不复制数值 |
 | `None/unsqueeze/squeeze` | 增删长度为 1 的轴 | 共享原数据，元素总数不变 |
 | `contiguous()` | 保留当前 shape 与对应数值 | 不符合目标布局时复制；已符合时返回自身 |
 | `clone()` | 保留 shape 与数值 | 得到独立存储；不等于指定某种 memory format |
