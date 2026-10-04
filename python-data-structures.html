@@ -322,13 +322,41 @@
 
 <h2 id="tuple-元组">tuple：元组</h2>
 <p>用于坐标、固定字段、多返回值。不能替换元素，但元素引用的可变对象仍可修改。</p>
-<div class="codehilite"><pre><span></span><span class="n">single</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,)</span>                   <span class="c1"># 单元素 tuple，逗号不能省</span>
-<span class="n">not_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">)</span>                 <span class="c1"># 整数 10</span>
-<span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<h3 id="直接构造-空元组-单元素-多元素">直接构造：空元组、单元素、多元素</h3>
+<div class="codehilite"><pre><span></span><span class="n">empty</span> <span class="o">=</span> <span class="p">()</span>                      <span class="c1"># 构造空 tuple</span>
+<span class="n">empty</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">()</span>                 <span class="c1"># 同样得到空 tuple：()</span>
+<span class="n">single</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,)</span>                   <span class="c1"># 单元素 tuple，逗号不能省</span>
+<span class="n">single</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>                     <span class="c1"># 省略括号，仍是 (10,)</span>
+<span class="n">not_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">)</span>                 <span class="c1"># 整数 10，括号只做分组</span>
+<span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>                   <span class="c1"># 构造两个元素的 tuple</span>
+<span class="n">point</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span>                     <span class="c1"># 省略括号，仍是 (3, 5)</span>
+<span class="n">mixed</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">'cat'</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>          <span class="c1"># 元素可以是不同类型</span>
+</pre></div>
+
+
+<p>非空元组由<strong>逗号</strong>构造，括号主要用于分组；空元组写成 <code>()</code>。在函数调用里要保留括号：<code>f((3, 5))</code> 传入一个元组，<code>f(3, 5)</code> 传入两个参数。</p>
+<h3 id="从其他可迭代对象转换">从其他可迭代对象转换</h3>
+<p><code>tuple(iterable)</code> 按迭代顺序收集元素。可传入 list、字符串、range、生成器等。</p>
+<div class="codehilite"><pre><span></span><span class="nb">tuple</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>                    <span class="c1"># (1, 2)：从 list 转换</span>
+<span class="nb">tuple</span><span class="p">(</span><span class="s1">'cat'</span><span class="p">)</span>                     <span class="c1"># ('c', 'a', 't')：逐字符转换</span>
+<span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>                  <span class="c1"># (0, 1, 2)：从 range 转换</span>
+<span class="nb">tuple</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>   <span class="c1"># (0, 1, 4)：收集生成器的结果</span>
+<span class="nb">tuple</span><span class="p">({</span><span class="s1">'a'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'b'</span><span class="p">:</span> <span class="mi">2</span><span class="p">})</span>          <span class="c1"># ('a', 'b')：迭代 dict 的 key</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>    <span class="c1"># 创建生成器，不是 tuple</span>
+<span class="nb">tuple</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>                         <span class="c1"># (0, 1, 4)：消费生成器，构造 tuple</span>
+<span class="nb">tuple</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>                         <span class="c1"># ()：生成器已耗尽</span>
+<span class="c1"># tuple(10)                      # TypeError：整数不可迭代</span>
+<span class="c1"># tuple(1, 2)                    # TypeError：不能传入两个元素参数</span>
+</pre></div>
+
+
+<p>没有“元组推导式”：<code>(x for x in ...)</code> 是生成器表达式，要得到元组需写 <code>tuple(x for x in ...)</code>。转换保留元素引用，不会深拷贝内部对象。</p>
+<h3 id="读取-解包与不可变性">读取、解包与不可变性</h3>
+<div class="codehilite"><pre><span></span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
 <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">point</span>                    <span class="c1"># 解包：x 为 3，y 为 5</span>
-<span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                         <span class="c1"># 3</span>
-<span class="n">point</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>                        <span class="c1"># 5</span>
-<span class="nb">tuple</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>                    <span class="c1"># (1, 2)</span>
+<span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                         <span class="c1"># 3：读取第一个元素</span>
+<span class="n">point</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>                        <span class="c1"># 5：读取最后一个元素</span>
 <span class="c1"># point[0] = 9                   # TypeError</span>
 
 <span class="n">t</span> <span class="o">=</span> <span class="p">([</span><span class="mi">1</span><span class="p">],</span> <span class="s1">'label'</span><span class="p">)</span>

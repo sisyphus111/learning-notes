@@ -261,14 +261,48 @@ print(a, b)                      # 输出：[10, 8, 9, 40] [10, 8, 9, 40, 50]
 
 用于坐标、固定字段、多返回值。不能替换元素，但元素引用的可变对象仍可修改。
 
+### 直接构造：空元组、单元素、多元素
+
 ```python
+empty = ()                      # 构造空 tuple
+empty = tuple()                 # 同样得到空 tuple：()
 single = (10,)                   # 单元素 tuple，逗号不能省
-not_tuple = (10)                 # 整数 10
+single = 10,                     # 省略括号，仍是 (10,)
+not_tuple = (10)                 # 整数 10，括号只做分组
+point = (3, 5)                   # 构造两个元素的 tuple
+point = 3, 5                     # 省略括号，仍是 (3, 5)
+mixed = (1, 'cat', True)          # 元素可以是不同类型
+```
+
+非空元组由**逗号**构造，括号主要用于分组；空元组写成 `()`。在函数调用里要保留括号：`f((3, 5))` 传入一个元组，`f(3, 5)` 传入两个参数。
+
+### 从其他可迭代对象转换
+
+`tuple(iterable)` 按迭代顺序收集元素。可传入 list、字符串、range、生成器等。
+
+```python
+tuple([1, 2])                    # (1, 2)：从 list 转换
+tuple('cat')                     # ('c', 'a', 't')：逐字符转换
+tuple(range(3))                  # (0, 1, 2)：从 range 转换
+tuple(x * x for x in range(3))   # (0, 1, 4)：收集生成器的结果
+tuple({'a': 1, 'b': 2})          # ('a', 'b')：迭代 dict 的 key
+
+g = (x * x for x in range(3))    # 创建生成器，不是 tuple
+tuple(g)                         # (0, 1, 4)：消费生成器，构造 tuple
+tuple(g)                         # ()：生成器已耗尽
+# tuple(10)                      # TypeError：整数不可迭代
+# tuple(1, 2)                    # TypeError：不能传入两个元素参数
+```
+
+没有“元组推导式”：`(x for x in ...)` 是生成器表达式，要得到元组需写 `tuple(x for x in ...)`。转换保留元素引用，不会深拷贝内部对象。
+
+### 读取、解包与不可变性
+
+```python
 point = (3, 5)
 x, y = point                    # 解包：x 为 3，y 为 5
-point[0]                         # 3
-point[-1]                        # 5
-tuple([1, 2])                    # (1, 2)
+point[0]                         # 3：读取第一个元素
+point[-1]                        # 5：读取最后一个元素
 # point[0] = 9                   # TypeError
 
 t = ([1], 'label')
