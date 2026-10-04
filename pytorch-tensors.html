@@ -747,14 +747,68 @@ reshape(3,2)：每两个元素分为一行
 <span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">r</span><span class="o">.</span><span class="n">stride</span><span class="p">())</span>    <span class="c1"># 预期：(3, 2) (2, 1)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">()</span> <span class="o">==</span> <span class="n">x</span><span class="o">.</span><span class="n">untyped_storage</span><span class="p">()</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">())</span>  <span class="c1"># 预期：True</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>               <span class="c1"># 预期：(2, 3)，原 x 的 shape 没有改变</span>
-<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span> <span class="c1"># 预期：(2, 3)，推断唯一的 -1</span>
 <span class="c1"># x.reshape(4, 2)                   # 报错：6 个元素不能变成 8 个</span>
-<span class="c1"># x.reshape(-1, -1)                 # 报错：不能同时推断两个轴</span>
 </pre></div>
 
 
 <p>这个例子只需把 stride 从 <code>(3,1)</code> 改为 <code>(2,1)</code>，就能在同一份 storage 上得到新矩阵。<strong>这是本例的行为，不是 reshape 永远不复制的保证。</strong> 当原布局无法表达目标分组时，reshape 允许复制；不能仅根据函数名判断是否发生显存分配。</p>
-<p><code>-1</code> 用元素总数与其他轴长度推断剩下的一个轴，不代表“自动交换轴”或“自动理解 batch”。</p>
+<h3 id="reshape-1-展平成一维-自动推断长度">reshape(-1)：展平成一维，自动推断长度</h3>
+<p><strong><code>x.reshape(-1)</code> 把所有轴合成一个轴，输出 shape 是 <code>[x.numel()]</code>。</strong> 这里的 <code>-1</code> 表示“自动算出这个轴的长度”，不是负数下标。目标只有一个轴，所以它的长度就是 x 的元素总数；原 x 的 shape 不变。</p>
+<p>以 <code>x.shape = [2, 3]</code>、总共 6 个元素为例：</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>如何推断</th>
+<th>输出 shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x.reshape(-1)</code></td>
+<td>只有一个轴，长度为 6</td>
+<td><code>[6]</code>，一维</td>
+</tr>
+<tr>
+<td><code>x.reshape(2, -1)</code></td>
+<td>已指定 2，剩下的长度为 6 ÷ 2 = 3</td>
+<td><code>[2, 3]</code>，二维</td>
+</tr>
+<tr>
+<td><code>x.reshape(-1, 2)</code></td>
+<td>已指定 2，剩下的长度为 6 ÷ 2 = 3</td>
+<td><code>[3, 2]</code>，二维</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.</span><span class="p">,</span> <span class="mf">4.</span><span class="p">,</span> <span class="mf">5.</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">flat</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>             <span class="c1"># 展平全部元素，自动推断长度为 6</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[0.0, 1.0, 2.0, 3.0, 4.0, 5.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>         <span class="c1"># 预期：(6,)，只有一个轴</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>            <span class="c1"># 预期：(2, 3)，原 x 的 shape 不变</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]，每两个数一行</span>
+
+<span class="n">t</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>           <span class="c1"># 交换行列轴，改变逻辑遍历顺序</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>    <span class="c1"># 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]，按 t 当前的顺序展平</span>
+<span class="c1"># x.reshape(-1, -1)             # 报错：最多只能有一个待推断的轴</span>
+<span class="c1"># x.reshape(4, -1)              # 报错：6 个元素无法均分成 4 组</span>
+</pre></div>
+
+
+<p>对于 <code>[B, S, D]</code>，<code>reshape(-1)</code> 会连 batch 轴一起展平；要保留每个样本，明确写 <code>reshape(B, -1)</code>，得到 <code>[B, S×D]</code>：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">24</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># B=2、S=3、D=4</span>
+<span class="n">all_values</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>       <span class="c1"># 所有样本合成一维</span>
+<span class="n">per_sample</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># 保留 batch 轴，每个样本展平为一行</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">all_values</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>   <span class="c1"># 预期：(24,)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">per_sample</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>   <span class="c1"># 预期：(2, 12)</span>
+</pre></div>
+
+
+<p><code>-1</code> 只负责推断 shape，不会自动交换轴，也不会自动保留 batch。<strong><code>reshape(-1)</code> 仍遵守 reshape 的存储规则：布局兼容时共享，否则复制。</strong> 上例 x 展平可以共享，转置后的 t 展平需要复制；原因见<a href="pytorch-tensors.html#reshape-兼容时共享-不兼容时允许复制">共享与复制</a>。参数规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape 官方说明</a>。</p>
 <h3 id="permute-transpose-交换轴及其-stride">permute / transpose：交换轴及其 stride</h3>
 <p><code>permute(1,0)</code> 表示新第 0 轴来自原第 1 轴，新第 1 轴来自原第 0 轴。shape 和 stride 一起重排：</p>
 <div class="codehilite"><pre><span></span>原 x：shape=[2,3]，stride=(3,1)

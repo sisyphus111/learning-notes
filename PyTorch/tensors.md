@@ -581,14 +581,52 @@ print(r.tolist())                   # 预期：[[0.0, 1.0], [2.0, 3.0], [4.0, 5.
 print(tuple(r.shape), r.stride())    # 预期：(3, 2) (2, 1)
 print(r.untyped_storage().data_ptr() == x.untyped_storage().data_ptr())  # 预期：True
 print(tuple(x.shape))               # 预期：(2, 3)，原 x 的 shape 没有改变
-print(tuple(x.reshape(2, -1).shape)) # 预期：(2, 3)，推断唯一的 -1
 # x.reshape(4, 2)                   # 报错：6 个元素不能变成 8 个
-# x.reshape(-1, -1)                 # 报错：不能同时推断两个轴
 ```
 
 这个例子只需把 stride 从 `(3,1)` 改为 `(2,1)`，就能在同一份 storage 上得到新矩阵。**这是本例的行为，不是 reshape 永远不复制的保证。** 当原布局无法表达目标分组时，reshape 允许复制；不能仅根据函数名判断是否发生显存分配。
 
-`-1` 用元素总数与其他轴长度推断剩下的一个轴，不代表“自动交换轴”或“自动理解 batch”。
+### reshape(-1)：展平成一维，自动推断长度
+
+**`x.reshape(-1)` 把所有轴合成一个轴，输出 shape 是 `[x.numel()]`。** 这里的 `-1` 表示“自动算出这个轴的长度”，不是负数下标。目标只有一个轴，所以它的长度就是 x 的元素总数；原 x 的 shape 不变。
+
+以 `x.shape = [2, 3]`、总共 6 个元素为例：
+
+| 写法 | 如何推断 | 输出 shape |
+| --- | --- | --- |
+| `x.reshape(-1)` | 只有一个轴，长度为 6 | `[6]`，一维 |
+| `x.reshape(2, -1)` | 已指定 2，剩下的长度为 6 ÷ 2 = 3 | `[2, 3]`，二维 |
+| `x.reshape(-1, 2)` | 已指定 2，剩下的长度为 6 ÷ 2 = 3 | `[3, 2]`，二维 |
+
+```python
+import torch
+
+x = torch.tensor([[0., 1., 2.], [3., 4., 5.]], device='cuda')
+flat = x.reshape(-1)             # 展平全部元素，自动推断长度为 6
+print(flat.tolist())             # 预期：[0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+print(tuple(flat.shape))         # 预期：(6,)，只有一个轴
+print(tuple(x.shape))            # 预期：(2, 3)，原 x 的 shape 不变
+print(x.reshape(-1, 2).tolist())  # 预期：[[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]，每两个数一行
+
+t = x.transpose(0, 1)           # 交换行列轴，改变逻辑遍历顺序
+print(t.reshape(-1).tolist())    # 预期：[0.0, 3.0, 1.0, 4.0, 2.0, 5.0]，按 t 当前的顺序展平
+# x.reshape(-1, -1)             # 报错：最多只能有一个待推断的轴
+# x.reshape(4, -1)              # 报错：6 个元素无法均分成 4 组
+```
+
+对于 `[B, S, D]`，`reshape(-1)` 会连 batch 轴一起展平；要保留每个样本，明确写 `reshape(B, -1)`，得到 `[B, S×D]`：
+
+```python
+import torch
+
+x = torch.arange(24, device='cuda').reshape(2, 3, 4)  # B=2、S=3、D=4
+all_values = x.reshape(-1)       # 所有样本合成一维
+per_sample = x.reshape(x.size(0), -1)  # 保留 batch 轴，每个样本展平为一行
+print(tuple(all_values.shape))   # 预期：(24,)
+print(tuple(per_sample.shape))   # 预期：(2, 12)
+```
+
+`-1` 只负责推断 shape，不会自动交换轴，也不会自动保留 batch。**`reshape(-1)` 仍遵守 reshape 的存储规则：布局兼容时共享，否则复制。** 上例 x 展平可以共享，转置后的 t 展平需要复制；原因见[共享与复制](#reshape-兼容时共享-不兼容时允许复制)。参数规则见 [reshape 官方说明](https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html)。
 
 ### permute / transpose：交换轴及其 stride
 
