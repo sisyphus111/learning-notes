@@ -1,5 +1,7 @@
 # 常见计算与组件的 Torch 实现
 
+本页用 Tensor 运算展开常见组件的计算过程。函数、层对象、模型与参数管理先看 [神经网络基础](neural-networks.md)；shape、广播和存储布局查 [Tensor 与 GPU 内存](tensors.md)。
+
 ## 1. Linear：线性层
 
 `x: [..., in_features]`、`weight: [out_features, in_features]`、`bias: [out_features]`，返回 `[..., out_features]`。权重按 PyTorch Linear 的方向存放：`y = x @ weight.T + bias`。
@@ -26,7 +28,7 @@ print(y.tolist())                    # 预期：[[11.0, 22.0, 33.0, 46.0], [14.0
 reference = torch.nn.functional.linear(x, weight, bias)
 ```
 
-`x` 可以从 `[B, D]` 扩展成 `[B, S, D]`，不需要循环逐 token 计算。输入、权重与偏置使用相同的 GPU 和 dtype；这里是前向函数，参数注册由 `torch.nn.Linear` 等 Module 负责。
+`x` 可以从 `[B, D]` 扩展成 `[B, S, D]`，不需要循环逐 token 计算。输入、权重与偏置使用相同的 GPU 和 dtype；这里是前向函数，层对象如何持有参数见 [F.linear 与 nn.Linear](neural-networks.md#2-linear-同一个计算的两种用法)。
 
 官方接口：[torch.nn.Linear](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Linear.html)。
 

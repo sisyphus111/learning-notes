@@ -1,5 +1,7 @@
 # PyTorch Tensor：从形状到 GPU 内存
 
+本页讲解 Tensor 的创建、计算、形状变换和存储布局。网络层、模型、参数管理与训练流程见 [神经网络基础](neural-networks.md)；组件的手写实现见 [常见计算与组件](operations-and-components.md)。
+
 ## 1. 创建 Tensor
 
 ### 从具体数据创建
@@ -1211,27 +1213,21 @@ print(start.elapsed_time(end) / 100)  # 单位 ms，没有固定的预期值
 
 ## 16. autograd：Tensor 的梯度信息
 
-`requires_grad=True` 让浮点等支持求导的 Tensor 参与梯度记录。先用一个能手算的例子：`loss = x0² + x1²`，对 x 的梯度是 `[2×x0, 2×x1]`。
+`requires_grad` 表示 Tensor 是否要求梯度；在正常梯度记录模式下，涉及它的可求导运算会建立求导关系。它是 Tensor 的属性，与 shape、dtype、device 和存储共享分别描述不同事情。
 
 ```python
 import torch
 
 x = torch.tensor([2.0, 3.0], requires_grad=True, device='cuda')
-loss = x.square().sum()
-loss.backward()
-print(loss.item())               # 预期：13.0
-print(x.grad.tolist())           # 预期：[4.0, 6.0]
+y = x.square()                 # 结果保留与 x 的梯度关系
+print(x.requires_grad, y.requires_grad)  # 预期：True True
+print(x.grad)                   # 预期：None，尚未计算梯度
 d = x.detach()                  # 停止沿这个结果记录梯度，仍共享 x 的存储
 c = x.detach().clone()          # 同时脱离梯度关系并复制数据
 print(d.requires_grad, c.requires_grad)  # 预期：False False
-with torch.no_grad():
-    y = x * 2
-print(y.requires_grad)           # 预期：False
 ```
 
-`detach()` 不等于复制；`clone()` 本身也不等于停止梯度传播。`no_grad()` 是梯度记录上下文，不是设备切换或同步操作。梯度会累加进 `.grad`，训练循环需要按目标清理；这里仅执行一次 backward，不涉及完整训练循环。
-
-这部分先做到读懂输入、计算、loss、backward 和梯度的关系。更完整的图与梯度说明见 [Autograd 教程](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html)。
+`detach()` 共享数值存储，`clone()` 复制数值但保留梯度关系；完整对照见[存储独立与梯度关系](#存储独立与梯度关系是两件事)。从 loss 到 backward、梯度累加、优化器更新和 no_grad 的完整流程，见[神经网络基础：自动求导](neural-networks.md#6-自动求导-loss-backward-与-grad)。
 
 ## 17. 常见错误速查
 
@@ -1252,7 +1248,11 @@ print(y.requires_grad)           # 预期：False
 | 反复 `item()` / `tolist()` / 打印 GPU 数值 | CPU 取数，可能产生同步和传输 | 检查时少量使用，关键路径避免反复调用 |
 | 用 Python 提交时间代表 GPU 时间 | GPU 通常异步执行 | 明确计时边界，使用 event 或同步计时 |
 
-## 常见计算与组件的实现
+<span id="常见计算与组件的实现"></span>
+
+## 神经网络与组件的后续阅读
+
+[神经网络基础](neural-networks.md)：计算函数、网络层、模型、参数，以及训练和推理流程。
 
 [常见计算与组件的 Torch 实现](operations-and-components.md)：Linear、stable softmax、LayerNorm、RMSNorm、SwiGLU 与 scaled dot-product attention。
 

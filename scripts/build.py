@@ -49,6 +49,8 @@ PYTHON_REFERENCES = [
 PYTORCH_REFERENCES = [
     ('PyTorch/tensors.md', 'pytorch-tensors.html', 'Tensor 与 GPU 内存',
      'shape · 广播 · 矩阵乘法 · stride · view · CUDA 执行'),
+    ('PyTorch/neural-networks.md', 'pytorch-neural-networks.html', '神经网络基础',
+     'torch.nn · functional · Module · 参数 · 自动求导 · 训练与推理'),
     ('PyTorch/operations-and-components.md', 'pytorch-components.html', '常见计算与组件',
      'Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention'),
 ]
@@ -276,7 +278,7 @@ home = f'''<div class="home-lead"><p>从代码写法，到计算与系统原理�
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器与常用语法，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
-<section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">从具体 Tensor 计算出发，理解形状、内存布局与 GPU 执行。</p>{cards(PYTORCH_REFERENCES)}</section>
+<section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('编程札记', 'index.html', home, subtitle='算法思路、语言参考与系统学习札记。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
