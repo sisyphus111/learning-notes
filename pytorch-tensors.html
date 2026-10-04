@@ -147,7 +147,8 @@
 
 
 <p><code>numel() × element_size()</code> 是<strong>逻辑元素总字节数</strong>。对于 view，它不等于独立分配的显存大小；广播 view 可能有很多逻辑元素，却共享很小的 storage。它也不是整个进程的显存占用，后者还包括 allocator 缓存和其他资源。</p>
-<h2 id="4-索引-切片与-mask">4. 索引、切片与 mask</h2>
+<p><span id="4-索引-切片与-mask"></span></p>
+<h2 id="4-索引-切片-高级索引-index_select-与-gather">4. 索引：切片、高级索引、index_select 与 gather</h2>
 <h3 id="按位置读取-是否保留轴">按位置读取：是否保留轴</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -188,18 +189,123 @@
 
 
 <p><code>x[mask]</code> 的结果是一维选中元素，不保留原矩阵结构；选中数量由数据决定。<code>masked_fill</code> / <code>where</code> 适合保留网格形状。注意动态形状的筛选与固定形状逐元素选择有不同的执行代价。</p>
-<h3 id="用索引-tensor-选择元素">用索引 Tensor 选择元素</h3>
+<p><span id="用索引-tensor-选择元素"></span></p>
+<h3 id="三种按下标选取方式速查">三种按下标选取方式速查</h3>
+<p>下面都以二维 <code>x.shape = [B, D]</code> 为例。列下标从 0 开始；整数索引 Tensor 使用 <code>torch.long</code>，示例把它和 x 放在同一 GPU 上。</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>下标 shape</th>
+<th>选取规则</th>
+<th>输出 shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x[:, columns]</code></td>
+<td><code>[K]</code></td>
+<td>每行按同一份 columns 选列，可调换顺序、重复</td>
+<td><code>[B, K]</code></td>
+</tr>
+<tr>
+<td><code>x.index_select(1, columns)</code></td>
+<td><code>[K]</code></td>
+<td>沿列轴按同一份 columns 选列</td>
+<td><code>[B, K]</code></td>
+</tr>
+<tr>
+<td><code>x.gather(1, index)</code></td>
+<td><code>[B, K]</code></td>
+<td>每行按自己的 index 选列</td>
+<td><code>[B, K]</code></td>
+</tr>
+</tbody>
+</table>
+<p>这三种<strong>读取</strong>都会得到独立存储的结果，允许重复下标。<code>index_select</code> 把“沿哪一个轴”写得明确；<code>gather</code> 的索引表可以为每个输出位置指定来源。高级索引还支持同时指定多个轴，见下面的配对示例。</p>
+<h3 id="高级索引-每行按同一份下标选列">高级索引：每行按同一份下标选列</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
-<span class="n">cols</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">index_select</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[30, 10], [60, 40]]</span>
-<span class="n">index</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[[30, 10], [50, 50]]</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">columns</span><span class="p">]</span>             <span class="c1"># 保留所有行，按 2、0、2 的顺序选列</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[[30, 10, 30], [60, 40, 60]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>         <span class="c1"># 预期：(2, 3)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[30, 10, 30], [60, 40, 60]]</span>
 </pre></div>
 
 
-<p><code>index_select</code> 沿选定轴使用同一份一维索引；<code>gather</code> 允许每行选不同位置。这里 <code>gather(1, index)</code> 的关系是 <code>out[i, j] = x[i, index[i, j]]</code>，输出 shape 与 <code>index</code> 相同。索引必须在有效范围内；<code>gather</code> 的 input 与 index 维数相同，不自动按广播规则扩展它们。</p>
+<p>对应关系是 <code>out[i, j] = x[i, columns[j]]</code>：<code>:</code> 保留所有行，columns 的第 j 个元素决定输出第 j 列从哪里取。Python 整数 list 也能作索引，但普通二维 list 不支持 <code>x[:, columns]</code> 这种 Tensor 写法。</p>
+<p>比较三种“只取下标 1 的列”的写法，数值来源相同，shape 和存储关系不同：</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>输出 shape</th>
+<th>与 x 共享存储吗</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x[:, 1]</code></td>
+<td><code>[B]</code>，去掉列轴</td>
+<td>是，基础索引读取</td>
+</tr>
+<tr>
+<td><code>x[:, 1:2]</code></td>
+<td><code>[B, 1]</code>，保留列轴</td>
+<td>是，基础切片读取</td>
+</tr>
+<tr>
+<td><code>x[:, [1]]</code></td>
+<td><code>[B, 1]</code>，保留列轴</td>
+<td>否，高级索引读取</td>
+</tr>
+</tbody>
+</table>
+<h3 id="index_select-明确沿哪个轴选取">index_select：明确沿哪个轴选取</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">index_select</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>  <span class="c1"># 沿列轴选择，所有行共用下标</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[[30, 10, 30], [60, 40, 60]]</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">index_select</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[40, 50, 60], [10, 20, 30]]</span>
+</pre></div>
+
+
+<p>index 是一维整数 Tensor；输出维数与 x 相同，只有 dim 轴长度变为 index 的长度，其他轴保持不变。上例 <code>x.index_select(1, columns)</code> 与 <code>x[:, columns]</code> 选出相同数值。</p>
+<h3 id="gather-每行可以按不同下标选列">gather：每行可以按不同下标选列</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>  <span class="c1"># 第一行取 2、0 列；第二行取两次 1 列</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[[30, 10], [50, 50]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>         <span class="c1"># 预期：(2, 2)</span>
+
+<span class="n">columns</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">same_index</span> <span class="o">=</span> <span class="n">columns</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># 扩成每行相同的索引表</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">same_index</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[[30, 10, 30], [60, 40, 60]]</span>
+</pre></div>
+
+
+<p>沿列轴时，关系是 <code>out[i, j] = x[i, index[i, j]]</code>，输出 shape 与 index 相同。这里 <code>[2, 0]</code> 和 <code>[1, 1]</code> 是两行各自的选列规则，不是矩阵中的数值。</p>
+<p>gather 要求 input 与 index 维数相同；除 dim 外，<code>index.size(d) &lt;= input.size(d)</code>。它们<strong>不会自动广播</strong>，不能直接把一维 columns 传给二维 x 的 gather。需要相同规则时可以像上例显式扩展索引表，也可以直接用 index_select。</p>
+<h3 id="同时给行列下标-配对选点-不是选子矩阵">同时给行列下标：配对选点，不是选子矩阵</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">60</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[30, 40]，取 (0, 2)、(1, 0)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">rows</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="c1"># 预期：[[30, 10], [60, 40]]，取行列组合</span>
+</pre></div>
+
+
+<p>多个整数索引 Tensor 先按广播规则对齐，再逐位置配对：两个 <code>[2]</code> 下标选出两个点；把 rows 变成 <code>[2, 1]</code>，与 columns 的 <code>[2]</code> 广播为 <code>[2, 2]</code>，才得到所有行列组合。<strong>这个广播规则属于高级索引，不能套到 gather 上。</strong></p>
+<p>index_select / gather 的下标应满足 <code>0 &lt;= index &lt; 对应轴长度</code>；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见<a href="pytorch-tensors.html#11-赋值-修改-浅拷贝与深拷贝">赋值与修改板块</a>。接口契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html">index_select</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.gather.html">gather</a>，高级索引规则见 <a href="https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing">NumPy 索引说明</a>；PyTorch 的索引读取与存储关系见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>。</p>
 <h2 id="5-逐元素计算与比较">5. 逐元素计算与比较</h2>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -772,7 +878,75 @@ stride       (2,1)
 </table>
 <p>view/permute 等操作只改元数据，通常不用复制 GPU 数值；连续化或不兼容的 reshape 需要读旧数据、写新 buffer。即使 permute 本身不搬数据，后续算子也会按不同 stride 访问，可能影响访问效率或触发内部复制。因此不应每次转置后都机械地 contiguous，也不能只看 shape 就判断布局与性能。</p>
 <p>共享、连续布局与 view 的一般规则见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>，轴重排接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.permute.html">permute</a>。本节代码与其他 GPU 示例一样，以注释给出推导预期，不把它们当作实测性能。</p>
-<h2 id="11-赋值-view-clone-与原地修改">11. 赋值、view、clone 与原地修改</h2>
+<p><span id="11-赋值-view-clone-与原地修改"></span></p>
+<h2 id="11-赋值-修改-浅拷贝与深拷贝">11. 赋值、修改、浅拷贝与深拷贝</h2>
+<p>先区分三层：<strong>变量名引用对象，Tensor 对象描述 shape/stride 等信息，storage 保存数值。</strong> 两个名字可以引用同一个对象；两个不同 Tensor 对象也可以共享 storage。浅拷贝、深拷贝说的是复制对象及其内部引用的范围；view / clone 则明确描述 Tensor 数值是否共享。</p>
+<h3 id="赋值改名字绑定-原地修改改已有数据">赋值改名字绑定，原地修改改已有数据</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">x</span>                       <span class="c1"># 不复制；两个名字引用同一个 Tensor</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">10</span>                     <span class="c1"># 计算新 Tensor，再把 x 改绑到新对象</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[11, 12]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[1, 2]，alias 仍引用旧对象</span>
+<span class="n">current</span> <span class="o">=</span> <span class="n">x</span>                     <span class="c1"># 引用改绑后的新 Tensor</span>
+<span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>                         <span class="c1"># 对普通 Tensor 原地加；不是 x = x + 1</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[12, 13]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>         <span class="c1"># 预期：[12, 13]，原地修改影响同一对象的其他名字</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[1, 2]</span>
+<span class="n">alias</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>                  <span class="c1"># 修改旧 Tensor 的数据</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[99, 2]</span>
+</pre></div>
+
+
+<p><code>x = ...</code> 本身只改名字绑定；右侧操作决定是否分配新数据。<code>x[...] = ...</code>、<code>x.add_(...)</code> 修改已有数据，共享它的人也会看到。<code>+=</code> 的行为取决于对象类型：整数会改绑，list 通常原地扩展，普通 Tensor 通常原地相加。</p>
+<h3 id="python-容器-浅拷贝只复制外层-深拷贝递归复制">Python 容器：浅拷贝只复制外层，深拷贝递归复制</h3>
+<p>以嵌套 list 为例：</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>外层 list</th>
+<th>内层 list</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>alias = a</code></td>
+<td>同一个对象</td>
+<td>同一个对象</td>
+</tr>
+<tr>
+<td><code>shallow = a.copy()</code> / <code>copy.copy(a)</code></td>
+<td>新对象</td>
+<td>仍引用原来的内层对象</td>
+</tr>
+<tr>
+<td><code>deep = copy.deepcopy(a)</code></td>
+<td>新对象</td>
+<td>本例中也复制为独立对象</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]]</span>
+<span class="n">alias</span> <span class="o">=</span> <span class="n">a</span>                       <span class="c1"># 赋值：共享整个 list</span>
+<span class="n">shallow</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>          <span class="c1"># 浅拷贝：新外层 list，内层仍共享</span>
+<span class="n">deep</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>         <span class="c1"># 深拷贝：本例的内层 list 也复制</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">alias</span> <span class="ow">is</span> <span class="n">a</span><span class="p">,</span> <span class="n">shallow</span> <span class="ow">is</span> <span class="n">a</span><span class="p">)</span>  <span class="c1"># 预期：True False</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">deep</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># 预期：True False</span>
+
+<span class="n">shallow</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>             <span class="c1"># 修改共享的内层 list</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>                        <span class="c1"># 预期：[[99, 2], [3, 4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">deep</span><span class="p">)</span>                     <span class="c1"># 预期：[[1, 2], [3, 4]]</span>
+<span class="n">shallow</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span>            <span class="c1"># 替换新外层 list 的一个位置</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>                        <span class="c1"># 预期：[[99, 2], [3, 4]]，原外层位置不变</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">)</span>                  <span class="c1"># 预期：[[99, 2], [7, 8]]</span>
+</pre></div>
+
+
+<p>list 的 <code>a.copy()</code>、<code>a[:]</code>、<code>list(a)</code>，以及 dict 的 <code>d.copy()</code> 都是浅拷贝。深拷贝按对象的复制规则递归处理，整数、字符串等不可变对象可以复用，不等于“每个对象都必须换一个地址”。同一次 deepcopy 也会保留原对象图内部的重复引用关系。更多例子见 <a href="python-data-structures.html#赋值-浅拷贝与二维列表">Python 对象引用与拷贝</a>，定义见 <a href="https://docs.python.org/3/library/copy.html">Python copy 文档</a>。</p>
 <h3 id="不同对象也可以共享一份数据">不同对象也可以共享一份数据</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -787,18 +961,83 @@ stride       (2,1)
 </pre></div>
 
 
-<p><code>is</code> 只能判断 Python 对象身份，不能证明存储是否共享。基础索引读取通常返回 view；高级索引读取返回副本，但直接索引赋值仍修改原 Tensor：</p>
+<p><code>is</code> 只能判断 Python 对象身份，不能证明存储是否共享。view 有自己的 shape/stride 等信息，但仍读写原 storage；不要直接把它叫作 Python 容器的浅拷贝。<code>clone()</code> 复制 Tensor 数值，得到独立存储，但不是递归复制任意 Python 对象图。</p>
+<h3 id="tensor-装在容器里-复制外层不等于复制数值">Tensor 装在容器里：复制外层不等于复制数值</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'x'</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)}</span>
+<span class="n">shallow</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>          <span class="c1"># 新 dict；value 仍是同一个 Tensor</span>
+<span class="n">deep</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>     <span class="c1"># 本例 Tensor 不要求梯度，可以深拷贝</span>
+<span class="n">cloned</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'x'</span><span class="p">:</span> <span class="n">state</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()}</span>  <span class="c1"># 明确复制这个 Tensor 的数值</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">shallow</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span> <span class="ow">is</span> <span class="n">state</span><span class="p">[</span><span class="s1">'x'</span><span class="p">])</span>  <span class="c1"># 预期：True</span>
+<span class="n">shallow</span><span class="p">[</span><span class="s1">'x'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>           <span class="c1"># 修改共享 Tensor，原 state 同样变化</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[99, 2]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">deep</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[1, 2]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cloned</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>     <span class="c1"># 预期：[1, 2]</span>
+</pre></div>
+
+
+<p>需要复制一个普通 Tensor 的数值时，用 <code>clone()</code> 表达意图；需要复制嵌套容器时再考虑 deepcopy。PyTorch 的 Tensor deepcopy 有限制：当前只支持叶子 Tensor（没有上游梯度运算的 Tensor），带梯度计算产生的非叶子 Tensor 会报错；它也不是保留计算图关系的 clone 替代品。限制见 <a href="https://github.com/pytorch/pytorch/blob/v2.14.0/torch/_tensor.py">Tensor deepcopy 实现</a>。</p>
+<h3 id="存储独立与梯度关系是两件事">存储独立与梯度关系是两件事</h3>
+<p>以下按普通 Tensor 的常用行为总结；梯度列假定 x 要求梯度，并启用梯度记录。</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>与 x 的对象 / 存储关系</th>
+<th>梯度能回传到 x 吗</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>y = x</code></td>
+<td>同一对象、同一存储</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>y = x[:, 1:2]</code></td>
+<td>不同对象、共享存储</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>y = x[:, [1]]</code></td>
+<td>不同对象、独立存储</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>y = x.clone()</code></td>
+<td>不同对象、独立存储</td>
+<td>是</td>
+</tr>
+<tr>
+<td><code>y = x.detach()</code></td>
+<td>不同对象、共享存储</td>
+<td>否</td>
+</tr>
+<tr>
+<td><code>y = x.detach().clone()</code></td>
+<td>不同对象、独立存储</td>
+<td>否</td>
+</tr>
+</tbody>
+</table>
+<p>要隔离数值又保留梯度关系，用 <code>clone()</code>；要保存不参与梯度传播的独立数值快照，用 <code>detach().clone()</code>。<code>detach()</code> 单独使用仍共享数据；<code>contiguous()</code>、<code>reshape()</code>、<code>.to(...)</code> 也不能作为“保证复制”的通用写法。存储规则见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>，梯度规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.clone.html">clone</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.detach.html">detach</a>。</p>
+<h3 id="高级索引读取会复制-直接索引赋值会写回">高级索引读取会复制，直接索引赋值会写回</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
 <span class="n">selected</span> <span class="o">=</span> <span class="n">x</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span>            <span class="c1"># 高级索引读取：复制选中元素</span>
 <span class="n">selected</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">99</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[10, 20, 30]</span>
+<span class="n">x</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">88</span>              <span class="c1"># 先生成临时副本，再修改副本；不会写回 x</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[10, 20, 30]</span>
 <span class="n">x</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>                 <span class="c1"># 直接索引赋值：写回原 x</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                <span class="c1"># 预期：[-1, 20, -1]</span>
 </pre></div>
 
 
+<p>同一套索引写法放在读取右侧和赋值左侧，行为不同：<code>out = x[:, columns]</code> 复制选中数值；<code>x[:, columns] = values</code> 把值写回 x。避免链式高级索引赋值；先明确要修改原 Tensor 还是读取出的副本。写入时有重复目标下标，也不能套用读取时“重复取值”的规则，普通赋值不要依赖某次写入最后获胜。重复下标的写入限制见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.index_put_.html">index_put_</a>。</p>
 <h3 id="下划线方法常表示原地修改">下划线方法常表示原地修改</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -814,7 +1053,7 @@ stride       (2,1)
 </pre></div>
 
 
-<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。原地写入节省某些新分配，也影响共享存储的 view，并受 autograd 限制；不能只按“少分配一次”选择写法。与 Python list 不同，很多 Tensor 原地方法会返回自身，不是返回 <code>None</code>。</p>
+<p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。<code>x.copy_(src)</code> 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html">copy_</a>。原地写入也影响共享存储的 view，并受 autograd 限制，例如要求梯度的叶子 Tensor 通常不能在梯度记录模式下直接原地修改。与 Python list 不同，很多 Tensor 原地方法会返回自身，不是返回 <code>None</code>。</p>
 <h2 id="12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</h2>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -1027,7 +1266,7 @@ stride       (2,1)
 <li><a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html">CUDA semantics</a>：设备、异步、stream 与显存管理。</li>
 <li><a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>：梯度记录与 backward。</li>
 </ul>
-<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片与-mask">4. 索引、切片与 mask</a><a class="level-2" href="#5-逐元素计算与比较">5. 逐元素计算与比较</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</a><a class="level-2" href="#10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</a><a class="level-2" href="#11-赋值-view-clone-与原地修改">11. 赋值、view、clone 与原地修改</a><a class="level-2" href="#12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#常见计算与组件的实现">常见计算与组件的实现</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
+<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片-高级索引-index_select-与-gather">4. 索引：切片、高级索引、index_select 与 gather</a><a class="level-2" href="#5-逐元素计算与比较">5. 逐元素计算与比较</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</a><a class="level-2" href="#10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</a><a class="level-2" href="#11-赋值-修改-浅拷贝与深拷贝">11. 赋值、修改、浅拷贝与深拷贝</a><a class="level-2" href="#12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#常见计算与组件的实现">常见计算与组件的实现</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
