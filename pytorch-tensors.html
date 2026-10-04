@@ -307,6 +307,7 @@
 <p>多个整数索引 Tensor 先按广播规则对齐，再逐位置配对：两个 <code>[2]</code> 下标选出两个点；把 rows 变成 <code>[2, 1]</code>，与 columns 的 <code>[2]</code> 广播为 <code>[2, 2]</code>，才得到所有行列组合。<strong>这个广播规则属于高级索引，不能套到 gather 上。</strong></p>
 <p>index_select / gather 的下标应满足 <code>0 &lt;= index &lt; 对应轴长度</code>；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见<a href="pytorch-tensors.html#11-赋值-修改与数据复制">赋值与修改板块</a>。接口契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html">index_select</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.gather.html">gather</a>，高级索引规则见 <a href="https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing">NumPy 索引说明</a>；PyTorch 的索引读取与存储关系见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>。</p>
 <h2 id="5-逐元素计算与比较">5. 逐元素计算与比较</h2>
+<h3 id="加减乘除与比较">加减乘除与比较</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
@@ -321,6 +322,145 @@
 
 
 <p><code>+ - * /</code> 是逐元素运算，可以使用广播。<code>x == y</code> 返回逐元素的 bool Tensor；Python 的 <code>and</code> / <code>or</code> 不能用于多元素 Tensor 的逐元素逻辑，用 <code>&amp;</code> / <code>|</code> 并给比较表达式加括号。</p>
+<h3 id="常用逐元素数学运算">常用逐元素数学运算</h3>
+<p>这些运算对每个元素分别计算，返回 Tensor。下面以实数浮点 Tensor 为例：单输入运算保持 shape 和 device；二元运算按广播规则确定输出 shape。这里的写法都不原地修改 x。</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>对每个元素做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x.square()</code></td>
+<td>平方：等价于 <code>x * x</code>、<code>x.pow(2)</code> 或 <code>x ** 2</code></td>
+</tr>
+<tr>
+<td><code>x.pow(p)</code></td>
+<td>p 次幂；p 可以是数值或可广播的 Tensor</td>
+</tr>
+<tr>
+<td><code>x.sqrt()</code></td>
+<td>平方根：√x</td>
+</tr>
+<tr>
+<td><code>x.rsqrt()</code></td>
+<td>平方根的倒数：1 / √x，归一化中常用</td>
+</tr>
+<tr>
+<td><code>x.reciprocal()</code></td>
+<td>倒数：1 / x</td>
+</tr>
+<tr>
+<td><code>x.abs()</code></td>
+<td>绝对值：|x|</td>
+</tr>
+<tr>
+<td><code>x.neg()</code></td>
+<td>取相反数：−x</td>
+</tr>
+<tr>
+<td><code>x.exp()</code></td>
+<td>以 e 为底的指数：e 的 x 次方</td>
+</tr>
+<tr>
+<td><code>x.expm1()</code></td>
+<td>e 的 x 次方减 1；x 接近 0 时比 <code>x.exp() - 1</code> 更准确</td>
+</tr>
+<tr>
+<td><code>x.log()</code></td>
+<td>自然对数：ln(x)，底数为 e</td>
+</tr>
+<tr>
+<td><code>x.log2()</code> / <code>x.log10()</code></td>
+<td>底数分别为 2 / 10 的对数</td>
+</tr>
+<tr>
+<td><code>x.log1p()</code></td>
+<td>ln(1 + x)；x 接近 0 时比 <code>(1 + x).log()</code> 更准确</td>
+</tr>
+<tr>
+<td><code>x.sin()</code> / <code>x.cos()</code> / <code>x.tan()</code></td>
+<td>正弦 / 余弦 / 正切；输入按弧度计算</td>
+</tr>
+<tr>
+<td><code>x.tanh()</code></td>
+<td>双曲正切，常用作激活函数</td>
+</tr>
+<tr>
+<td><code>x.floor()</code></td>
+<td>向下取整，朝负无穷方向</td>
+</tr>
+<tr>
+<td><code>x.ceil()</code></td>
+<td>向上取整，朝正无穷方向</td>
+</tr>
+<tr>
+<td><code>x.trunc()</code></td>
+<td>截去小数部分，朝 0 方向</td>
+</tr>
+<tr>
+<td><code>x.round()</code></td>
+<td>取最近整数；恰好在中间时取偶数</td>
+</tr>
+<tr>
+<td><code>x.clamp(min=a, max=b)</code></td>
+<td>截断到区间 [a, b]；也可只指定一个边界</td>
+</tr>
+</tbody>
+</table>
+<p><code>x.square()</code> 与 <code>torch.square(x)</code> 的数学含义相同；其他表中运算也有对应的 <code>torch.xxx(x, ...)</code> 写法。函数入口见 <a href="https://docs.pytorch.org/docs/2.14/torch.html#pointwise-ops">逐元素运算参考</a>。</p>
+<h3 id="平方-幂-开方与倒数">平方、幂、开方与倒数</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[4.0, 0.0, 9.0]，逐元素平方</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>         <span class="c1"># 预期：[-8.0, 0.0, 27.0]，逐元素立方</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[2.0, 0.0, 3.0]，取绝对值</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>    <span class="c1"># 预期：[0.0, 0.0, 1.0]，截断到 [0, 1]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[-2.0, 0.0, 3.0]，原 x 不变</span>
+
+<span class="n">positive</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">16.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">positive</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[1.0, 2.0, 4.0]，开平方</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">positive</span><span class="o">.</span><span class="n">rsqrt</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[1.0, 0.5, 0.25]，平方根的倒数</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">positive</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="c1"># 预期：[1.0, 0.25, 0.0625]，元素本身的倒数</span>
+
+<span class="n">base</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">power</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="n">power</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[1.0, 4.0, 27.0]，每个位置用自己的指数</span>
+</pre></div>
+
+
+<p><code>.square()</code> 对整个 Tensor 的每个位置平方，shape 不变；接 <code>.mean()</code> 才会把结果归约。例如 <code>torch.tensor([1., 2., 3., 4.], device='cuda').square().mean()</code> 得到标量 Tensor，值为 7.5。接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.square.html">square</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.pow.html">pow</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.rsqrt.html">rsqrt</a>。</p>
+<h3 id="指数与对数">指数与对数</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span>                    <span class="c1"># 逐元素得到约 [1, 2.71828, 7.38906]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">log</span><span class="p">(),</span> <span class="n">x</span><span class="p">))</span>  <span class="c1"># 预期：True，对正数取自然对数还原</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">log2</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[0.0, 1.0, 2.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>    <span class="c1"># 预期：[1.0, 1.0, 1.0]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span><span class="o">.</span><span class="n">log1p</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>  <span class="c1"># 预期：[0.0, 0.0, 0.0]</span>
+</pre></div>
+
+
+<p>实数浮点 Tensor 的 <code>sqrt()</code> 对负数产生 nan；<code>log()</code> 对负数产生 nan，对 0 产生 −inf。<code>reciprocal()</code> / <code>rsqrt()</code> 在正零处产生 inf。对数和开方前应明确输入范围；并非所有运算都会对不合法的数值直接抛异常。整数 Tensor 的部分数学运算会返回浮点结果，原地版本则还要满足原 dtype 能容纳结果。</p>
+<h3 id="取整-floor-ceil-trunc-与-round">取整：floor、ceil、trunc 与 round</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">floor</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>        <span class="c1"># 预期：[-2.0, -3.0, 1.0, 2.0]，向下取整</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">ceil</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>         <span class="c1"># 预期：[-1.0, -2.0, 2.0, 3.0]，向上取整</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">trunc</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>        <span class="c1"># 预期：[-1.0, -2.0, 1.0, 2.0]，朝 0 截断</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>        <span class="c1"># 预期：[-2.0, -2.0, 2.0, 2.0]，中间值取偶数</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>           <span class="c1"># 预期：torch.float32，取整不等于转换为整数 dtype</span>
+</pre></div>
+
+
+<p><code>round()</code> 不是简单的“逢 5 就增大”：1.5 → 2，2.5 → 2，−1.5 → −2。<code>x.round(decimals=2)</code> 可保留两位小数，但浮点存储不保证十进制精确，低精度时还可能溢出。规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.round.html">round</a>。</p>
+<p><code>x.square_()</code> 等带下划线的版本会修改原 Tensor；使用前看<a href="pytorch-tensors.html#11-赋值-修改与数据复制">赋值、修改与数据复制</a>中的共享存储和 autograd 约束。</p>
+<h3 id="比较整个-tensor-的内容">比较整个 Tensor 的内容</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>

@@ -255,6 +255,8 @@ index_select / gather 的下标应满足 `0 <= index < 对应轴长度`；高级
 
 ## 5. 逐元素计算与比较
 
+### 加减乘除与比较
+
 ```python
 import torch
 
@@ -269,6 +271,92 @@ print(((x > 1) & (x < 3)).tolist())  # 预期：[False, True, False]
 ```
 
 `+ - * /` 是逐元素运算，可以使用广播。`x == y` 返回逐元素的 bool Tensor；Python 的 `and` / `or` 不能用于多元素 Tensor 的逐元素逻辑，用 `&` / `|` 并给比较表达式加括号。
+
+### 常用逐元素数学运算
+
+这些运算对每个元素分别计算，返回 Tensor。下面以实数浮点 Tensor 为例：单输入运算保持 shape 和 device；二元运算按广播规则确定输出 shape。这里的写法都不原地修改 x。
+
+| 写法 | 对每个元素做什么 |
+| --- | --- |
+| `x.square()` | 平方：等价于 `x * x`、`x.pow(2)` 或 `x ** 2` |
+| `x.pow(p)` | p 次幂；p 可以是数值或可广播的 Tensor |
+| `x.sqrt()` | 平方根：√x |
+| `x.rsqrt()` | 平方根的倒数：1 / √x，归一化中常用 |
+| `x.reciprocal()` | 倒数：1 / x |
+| `x.abs()` | 绝对值：\|x\| |
+| `x.neg()` | 取相反数：−x |
+| `x.exp()` | 以 e 为底的指数：e 的 x 次方 |
+| `x.expm1()` | e 的 x 次方减 1；x 接近 0 时比 `x.exp() - 1` 更准确 |
+| `x.log()` | 自然对数：ln(x)，底数为 e |
+| `x.log2()` / `x.log10()` | 底数分别为 2 / 10 的对数 |
+| `x.log1p()` | ln(1 + x)；x 接近 0 时比 `(1 + x).log()` 更准确 |
+| `x.sin()` / `x.cos()` / `x.tan()` | 正弦 / 余弦 / 正切；输入按弧度计算 |
+| `x.tanh()` | 双曲正切，常用作激活函数 |
+| `x.floor()` | 向下取整，朝负无穷方向 |
+| `x.ceil()` | 向上取整，朝正无穷方向 |
+| `x.trunc()` | 截去小数部分，朝 0 方向 |
+| `x.round()` | 取最近整数；恰好在中间时取偶数 |
+| `x.clamp(min=a, max=b)` | 截断到区间 [a, b]；也可只指定一个边界 |
+
+`x.square()` 与 `torch.square(x)` 的数学含义相同；其他表中运算也有对应的 `torch.xxx(x, ...)` 写法。函数入口见 [逐元素运算参考](https://docs.pytorch.org/docs/2.14/torch.html#pointwise-ops)。
+
+### 平方、幂、开方与倒数
+
+```python
+import torch
+
+x = torch.tensor([-2.0, 0.0, 3.0], device='cuda')
+print(x.square().tolist())       # 预期：[4.0, 0.0, 9.0]，逐元素平方
+print(x.pow(3).tolist())         # 预期：[-8.0, 0.0, 27.0]，逐元素立方
+print(x.abs().tolist())          # 预期：[2.0, 0.0, 3.0]，取绝对值
+print(x.clamp(0, 1).tolist())    # 预期：[0.0, 0.0, 1.0]，截断到 [0, 1]
+print(x.tolist())               # 预期：[-2.0, 0.0, 3.0]，原 x 不变
+
+positive = torch.tensor([1.0, 4.0, 16.0], device='cuda')
+print(positive.sqrt().tolist())       # 预期：[1.0, 2.0, 4.0]，开平方
+print(positive.rsqrt().tolist())      # 预期：[1.0, 0.5, 0.25]，平方根的倒数
+print(positive.reciprocal().tolist()) # 预期：[1.0, 0.25, 0.0625]，元素本身的倒数
+
+base = torch.tensor([1.0, 2.0, 3.0], device='cuda')
+power = torch.tensor([1.0, 2.0, 3.0], device='cuda')
+print(base.pow(power).tolist())  # 预期：[1.0, 4.0, 27.0]，每个位置用自己的指数
+```
+
+`.square()` 对整个 Tensor 的每个位置平方，shape 不变；接 `.mean()` 才会把结果归约。例如 `torch.tensor([1., 2., 3., 4.], device='cuda').square().mean()` 得到标量 Tensor，值为 7.5。接口见 [square](https://docs.pytorch.org/docs/2.14/generated/torch.square.html)、[pow](https://docs.pytorch.org/docs/2.14/generated/torch.pow.html)、[rsqrt](https://docs.pytorch.org/docs/2.14/generated/torch.rsqrt.html)。
+
+### 指数与对数
+
+```python
+import torch
+
+x = torch.tensor([0.0, 1.0, 2.0], device='cuda')
+y = x.exp()                    # 逐元素得到约 [1, 2.71828, 7.38906]
+print(torch.allclose(y.log(), x))  # 预期：True，对正数取自然对数还原
+print(torch.tensor([1.0, 2.0, 4.0], device='cuda').log2().tolist())  # 预期：[0.0, 1.0, 2.0]
+print(torch.zeros(3, device='cuda').exp().tolist())    # 预期：[1.0, 1.0, 1.0]
+print(torch.zeros(3, device='cuda').log1p().tolist())  # 预期：[0.0, 0.0, 0.0]
+```
+
+实数浮点 Tensor 的 `sqrt()` 对负数产生 nan；`log()` 对负数产生 nan，对 0 产生 −inf。`reciprocal()` / `rsqrt()` 在正零处产生 inf。对数和开方前应明确输入范围；并非所有运算都会对不合法的数值直接抛异常。整数 Tensor 的部分数学运算会返回浮点结果，原地版本则还要满足原 dtype 能容纳结果。
+
+### 取整：floor、ceil、trunc 与 round
+
+```python
+import torch
+
+x = torch.tensor([-1.5, -2.5, 1.5, 2.5], device='cuda')
+print(x.floor().tolist())        # 预期：[-2.0, -3.0, 1.0, 2.0]，向下取整
+print(x.ceil().tolist())         # 预期：[-1.0, -2.0, 2.0, 3.0]，向上取整
+print(x.trunc().tolist())        # 预期：[-1.0, -2.0, 1.0, 2.0]，朝 0 截断
+print(x.round().tolist())        # 预期：[-2.0, -2.0, 2.0, 2.0]，中间值取偶数
+print(x.round().dtype)           # 预期：torch.float32，取整不等于转换为整数 dtype
+```
+
+`round()` 不是简单的“逢 5 就增大”：1.5 → 2，2.5 → 2，−1.5 → −2。`x.round(decimals=2)` 可保留两位小数，但浮点存储不保证十进制精确，低精度时还可能溢出。规则见 [round](https://docs.pytorch.org/docs/2.14/generated/torch.round.html)。
+
+`x.square_()` 等带下划线的版本会修改原 Tensor；使用前看[赋值、修改与数据复制](#11-赋值-修改与数据复制)中的共享存储和 autograd 约束。
+
+### 比较整个 Tensor 的内容
 
 ```python
 import torch
