@@ -48,6 +48,52 @@ print(torch.allclose(y, x @ weight.T + bias))  # 预期：True
 
 第一项是 `1×1 + 2×0 + 3×0 + 10 = 11`，第二项是 `1+2+3+20 = 26`。F.linear 使用传入的 Tensor，不会替你创建或保存一套模型权重。
 
+### nn.Linear 的构造参数与常用写法
+
+构造接口是 `nn.Linear(in_features, out_features, bias=True, device=None, dtype=None)`。它创建一个层对象及其参数；随后用 `layer(x)` 传入 Tensor 做计算。
+
+| 参数 | 含义 | 默认值 |
+| --- | --- | --- |
+| `in_features` | 输入 Tensor 最后一轴的长度 | 必填整数 |
+| `out_features` | 输出 Tensor 最后一轴的长度 | 必填整数 |
+| `bias` | 是否创建偏置参数 | `True`；设为 False 时 `layer.bias is None` |
+| `device` | 创建 weight、bias 的设备 | `None`：使用默认设备；未改配置时通常是 CPU |
+| `dtype` | weight、bias 的数据类型 | `None`：使用默认浮点类型；未改配置时是 float32 |
+
+下面都是同一套构造接口的常用写法，均把最后一轴从 3 个特征变成 2 个：
+
+| 构造写法 | 含义 |
+| --- | --- |
+| `nn.Linear(3, 2)` | 按位置传入输入、输出特征数，包含 bias |
+| `nn.Linear(in_features=3, out_features=2)` | 用参数名写清输入、输出特征数，与上一行配置相同 |
+| `nn.Linear(3, 2, bias=False)` | 不创建 bias，只计算 `x @ weight.T` |
+| `nn.Linear(3, 2, False)` | 第三个位置参数也是 bias；通常用 `bias=False` 更易读 |
+| `nn.Linear(3, 2, device='cuda')` | 直接在当前 CUDA 设备上创建参数 |
+| `nn.Linear(3, 2, dtype=torch.float64)` | 用 float64 创建参数，设备仍由默认配置决定 |
+| `nn.Linear(3, 2, device='cuda:0', dtype=torch.float16)` | 同时指定 GPU 和参数精度 |
+| `nn.Linear(3, 2).to(device='cuda', dtype=torch.float16)` | 先按默认配置构造，再迁移、转换已有参数 |
+
+最后一行的 `.to(...)` 修改刚创建的层并返回自身；直接传 device/dtype 则在目标配置下创建参数。每次调用 `nn.Linear(...)` 都创建并初始化一套独立参数；“构造写法配置相同”不代表两层的随机权重数值相同。默认 weight 和启用的 bias 都会随机初始化，不能当作零使用；需要指定数值时，见下一小节的 copy_ 示例。
+
+```python
+import torch
+from torch import nn
+
+basic = nn.Linear(3, 2)         # 默认包含偏置，3 个输入特征变为 2 个
+print(basic)                   # 预期：Linear(in_features=3, out_features=2, bias=True)
+no_bias = nn.Linear(in_features=3, out_features=2, bias=False)
+print(tuple(no_bias.weight.shape))  # 预期：(2, 3)，先输出特征数，再输入特征数
+print(no_bias.bias is None)     # 预期：True，没有偏置参数
+
+gpu = nn.Linear(3, 2, device='cuda', dtype=torch.float16)
+print(gpu.weight.device.type, gpu.weight.dtype)  # 预期：cuda torch.float16
+x = torch.ones(4, 3, device=gpu.weight.device, dtype=gpu.weight.dtype)
+print(tuple(gpu(x).shape))      # 预期：(4, 2)，batch 数 4 由输入决定
+# nn.Linear((4, 3), 2)          # 报错：in_features 要整数，不是输入的完整 shape
+```
+
+`nn.Linear(3, 2)` 的两个数字是特征数；输入可以是 `[3]`、`[B,3]`、`[B,S,3]`，输出分别是 `[2]`、`[B,2]`、`[B,S,2]`。构造时不用传入 batch/token 数，也不传入输入 Tensor 或现成权重。参数与初始化规则见 [Linear 官方说明](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Linear.html)，迁移语义见 [Module.to](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html#torch.nn.Module.to)。
+
 ### nn.Linear：由层对象持有参数
 
 ```python
@@ -71,7 +117,7 @@ tokens = torch.ones(2, 4, 3, device='cuda')  # [B,S,in_features]
 print(tuple(layer(tokens).shape))          # 预期：(2, 4, 2)
 ```
 
-同一个 layer 每次调用都复用它持有的参数。改变 batch 或 token 数，不需要重新创建层；最后一轴的特征数必须匹配。`nn.Linear(3, 2, bias=False)` 可以省去偏置，此时 `layer.bias` 是 None。接口见 [Linear](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Linear.html) 与 [F.linear](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.linear.html)。
+同一个 layer 每次调用都复用它持有的参数。改变 batch 或 token 数，不需要重新创建层；最后一轴的特征数必须匹配。接口见 [Linear](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Linear.html) 与 [F.linear](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.linear.html)。
 
 ## 3. nn.Module：把层组织成模型
 
