@@ -7,6 +7,7 @@
 - 10 个题型，133 个题目条目；保留「焚诀」、思路推导、复杂度和原有参考链接。
 - 同一解法提供 C++ / Python 标签页，恢复 7 个记忆化搜索小节；运行时间伪造片段仍不收录。
 - Python 语法参考从基础数据结构开始，包含内置容器、deque、Counter、defaultdict、heapq 及复制/可哈希等易错点；另有生成器表达式与 `all`、`any`、`sum` 等常用函数的用法。
+- [类与对象](Python/classes-and-objects.md) 用简短表格和独立的 `assert` 示例讲解 `class`、`self`、`__init__`、实例与类属性、方法、继承 / `super()`、property、特殊方法和 dataclass。
 - Python 项目入门包含模块与包、`import`、`python -m`、入口保护、pip / venv、`pyproject.toml`、editable 安装和 `__pycache__`；语言互操作页提供可构建的 pybind11 示例，并解释数据转换、所有权、GIL、ABI 与进程通信。
 - 5 个 STL 页面：速查、对象语义、序列容器、关联容器、适配器与算法。
 - PyTorch 教学分为三页：[Tensor 与 GPU 内存](PyTorch/tensors.md) 讲 shape、计算、stride、共享存储与异步执行；[神经网络基础](PyTorch/neural-networks.md) 讲 torch.nn、functional、模型与参数、自动求导及训练/推理流程；[常见计算与组件](PyTorch/operations-and-components.md) 展开 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 和 attention 的 Torch 实现。

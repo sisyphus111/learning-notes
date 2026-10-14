@@ -41,6 +41,8 @@ PYTHON_REFERENCES = [
      '语法 · 返回值 · 原地修改 · 常见错误'),
     ('Python/iterables-and-functions.md', 'python-iterables-and-functions.html',
      '可迭代对象与常用函数', '生成器表达式 · all / any · sum · min / max · map / filter'),
+    ('Python/classes-and-objects.md', 'python-classes-and-objects.html',
+     '类与对象', 'class · self · __init__ · 属性与方法 · 继承 · 特殊方法'),
     ('Python/modules-and-packages.md', 'python-modules-and-packages.html',
      '模块、包与运行方式', 'import · package · python -m · pip / venv · __pycache__'),
     ('Python/native-interop.md', 'python-native-interop.html',
@@ -277,7 +279,7 @@ cards = lambda pages: '<div class="cards">' + ''.join(f'<a class="card" href="{o
 home = f'''<div class="home-lead"><p>从代码写法，到计算与系统原理。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
-<section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器与常用语法，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
+<section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('编程札记', 'index.html', home, subtitle='算法思路、语言参考与系统学习札记。'))
