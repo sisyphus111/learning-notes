@@ -257,7 +257,100 @@
 
 <p>如果只想注册一组层、自己在 forward 中决定调用顺序，用 <code>nn.ModuleList</code>。它负责管理子层，不像 Sequential 那样自动依次执行。接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html">Module</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.Sequential.html">Sequential</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.ModuleList.html">ModuleList</a>。</p>
 <h2 id="4-parameter-buffer-与模型的-device-dtype">4. Parameter、buffer 与模型的 device / dtype</h2>
-<p>模型的状态也由 Tensor 保存，但注册方式决定了框架怎样管理它。</p>
+<h3 id="为什么要把-tensor-保存到模型里">为什么要把 Tensor 保存到模型里</h3>
+<p>一个线性层计算 <code>y = x @ weight.T + bias</code>。每次输入 x 可以不同，但同一个层需要反复使用同一套 weight、bias：训练时逐步调整它们，推理时复用训练好的数值。因此，层把参数保存在对象里，每次调用 <code>layer(x)</code> 都读取当前的参数。</p>
+<p>模型还可能保存固定数据、运行统计量和临时结果，它们也可以用 Tensor 表示。<strong>把数据注册为参数或 buffer 后，PyTorch 才能按相应规则统一管理它们。</strong> 对包含很多子层的模型，参数查找、迁移和保存可以递归完成，不必逐层手动枚举。</p>
+<table>
+<thead>
+<tr>
+<th>要做的事</th>
+<th>使用的接口</th>
+<th>处理哪些数据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>把权重交给优化器更新</td>
+<td><code>model.parameters()</code></td>
+<td>注册参数</td>
+</tr>
+<tr>
+<td>把整个模型搬到 GPU 或转换精度</td>
+<td><code>model.to(...)</code></td>
+<td>注册参数和 buffer</td>
+</tr>
+<tr>
+<td>取得用于保存的模型状态</td>
+<td><code>model.state_dict()</code></td>
+<td>注册参数和持久 buffer，按名称组织</td>
+</tr>
+</tbody>
+</table>
+<p>计算本身也可以写成 <code>F.linear(x, weight, bias)</code>；Module 将需要复用的数据和使用这些数据的计算组织在一起。普通 Tensor 属性也能保存一份引用，但不会自动进入上面的管理流程。</p>
+<h3 id="parameter-buffer-与普通属性分别是什么">Parameter、buffer 与普通属性分别是什么</h3>
+<p>假设一个模型计算 <code>y = weight * (x - offset)</code>：weight 是准备训练调整的缩放系数，offset 是本例预先给定的固定校正量，cache 用来演示普通临时数据。</p>
+<ul>
+<li><strong>Parameter 是一种特殊 Tensor。</strong> 将 <code>nn.Parameter(t)</code> 赋给 Module 的属性，会自动登记进参数列表。<code>nn.Linear</code> 已经替你创建并注册了 weight、bias，通常不用再次手动包装。</li>
+<li><strong>buffer 也是 Tensor。</strong> <code>register_buffer('offset', t)</code> 把它登记为模型管理的状态，但不放进参数列表。用 <code>model.parameters()</code> 创建的优化器通常不会更新它；forward 或你写的代码仍可以修改 buffer，例如更新统计量。</li>
+<li><strong>普通 Tensor 属性没有这两种注册身份。</strong> <code>self.cache = t</code> 只保存引用，不会自动成为参数或 buffer。</li>
+</ul>
+<p>下面把计算和数据登记放在同一个模型中。为演示迁移，先显式在 CPU 创建三份数据：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Scale</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cpu'</span><span class="p">))</span>  <span class="c1"># 注册参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s1">'offset'</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">3.</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cpu'</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cpu'</span><span class="p">)</span>  <span class="c1"># 普通属性，演示不会自动迁移</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">)</span>    <span class="c1"># 使用模型保存的数据计算</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">Scale</span><span class="p">()</span>
+<span class="n">returned</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">returned</span> <span class="ow">is</span> <span class="n">model</span><span class="p">)</span>        <span class="c1"># 预期：True，修改同一个 Module 并返回自身</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+<span class="c1"># 预期：cuda cuda cpu</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">3.</span><span class="p">,</span> <span class="mf">5.</span><span class="p">,</span> <span class="mf">7.</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>        <span class="c1"># 预期：[2.0, 3.0, 4.0]</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()])</span>  <span class="c1"># 预期：['weight']</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()))</span>                       <span class="c1"># 预期：['weight', 'offset']</span>
+</pre></div>
+
+
+<p><code>model(x)</code> 读取 weight 和 offset，进行 Tensor 运算。训练更新 weight 后，下次调用就会使用更新后的值；offset 在本例中按固定值使用。cache 没有参与这个 forward，也没有注册，所以迁移模型时不会处理它。</p>
+<h3 id="device-dtype-怎样作用于这些数据">device / dtype 怎样作用于这些数据</h3>
+<p>device 表示数值放在哪里，例如 CPU、<code>cuda:0</code>；dtype 表示数值用什么类型保存，例如 float32、float16。上例的 <code>model.to(device='cuda', dtype=torch.float16)</code> 得到：</p>
+<table>
+<thead>
+<tr>
+<th>数据</th>
+<th>管理身份</th>
+<th>迁移后的 device / dtype</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model.weight</code></td>
+<td>参数</td>
+<td>CUDA / float16</td>
+</tr>
+<tr>
+<td><code>model.offset</code></td>
+<td>buffer</td>
+<td>CUDA / float16</td>
+</tr>
+<tr>
+<td><code>model.cache</code></td>
+<td>普通属性</td>
+<td>仍是 CPU / float32</td>
+</tr>
+</tbody>
+</table>
+<p>浮点、复数参数和 buffer 会转换为指定 dtype；整型状态只迁移设备，保留其整数 dtype。模型的输入 x 是调用时从外面传入的，不属于注册状态，仍需单独迁移，例如 <code>x = x.to(device='cuda', dtype=torch.float16)</code>。</p>
+<p>再看三种保存方式对应的管理规则：</p>
 <table>
 <thead>
 <tr>
@@ -288,25 +381,7 @@
 </tr>
 </tbody>
 </table>
-<p>Parameter 常用于可学习权重，默认 <code>requires_grad=True</code>。buffer 常用于需要保存、随模型迁移但不交给优化器更新的状态，例如 BatchNorm 的运行统计量。普通 Tensor 即使设置了 requires_grad，也不会因赋给一个属性而自动成为注册参数。</p>
-<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
-
-<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">()</span>             <span class="c1"># 这个例子只演示状态注册和迁移</span>
-<span class="n">model</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
-<span class="n">model</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s1">'offset'</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
-<span class="n">model</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>    <span class="c1"># 普通属性，初始也在 CPU</span>
-
-<span class="n">returned</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">returned</span> <span class="ow">is</span> <span class="n">model</span><span class="p">)</span>        <span class="c1"># 预期：True，修改同一个 Module 并返回自身</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
-<span class="c1"># 预期：cuda cuda cpu</span>
-<span class="nb">print</span><span class="p">([</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()])</span>  <span class="c1"># 预期：['weight']</span>
-<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()))</span>                       <span class="c1"># 预期：['weight', 'offset']</span>
-</pre></div>
-
-
-<p>这里为演示迁移而先创建 CPU 状态；实际可像 Linear 示例一样直接在 GPU 创建参数。<code>model.to(...)</code> 递归处理注册参数和 buffer；指定 dtype 时转换浮点、复数状态，整型 buffer 保留其 dtype。输入 x 仍需单独放到合适设备，例如 <code>x = x.to('cuda')</code>。浮点输入与层参数也需要匹配的 dtype，本页不展开混合精度。</p>
+<p><strong>注册身份与 requires_grad 是两个概念。</strong> requires_grad 控制是否求梯度，Parameter / buffer 的身份控制模型怎样管理 Tensor。Parameter 默认 <code>requires_grad=True</code>，也可以冻结为 False；普通 Tensor 即使要求梯度，也不会自动出现在 <code>model.parameters()</code> 中。</p>
 <p>注意调用对象的区别：<code>Tensor.to(...)</code> 返回转换结果，需要接收；目标 device/dtype 已匹配时可能返回原 Tensor。<code>Module.to(...)</code> 修改模型并返回自身。先把模型放到目标设备，再创建持有它参数的优化器。规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.parameter.Parameter.html">Parameter</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.to.html">Tensor.to</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html#torch.nn.Module.to">Module.to</a>。</p>
 <h2 id="5-常见层与-functional-写法">5. 常见层与 functional 写法</h2>
 <table>
@@ -347,21 +422,103 @@
 </table>
 <p>这些 Module 可以插入 Sequential 或自定义模型；functional 写法适合在 forward 中显式表达计算。使用 <code>F.dropout</code> 时需要传入 <code>training=self.training</code>，它默认 <code>training=True</code>，不会自动读取所属模型的模式。接口见 <a href="https://docs.pytorch.org/docs/2.14/nn.functional.html">functional</a>；softmax、归一化与 SiLU 的具体计算见 <a href="pytorch-components.html">常见计算与组件</a>。</p>
 <h2 id="6-自动求导-loss-backward-与-grad">6. 自动求导：loss、backward 与 grad</h2>
-<p>自动求导本身作用于 Tensor 运算；在神经网络中，它负责求出损失相对于模型参数的梯度。loss 是衡量预测误差的量，梯度描述参数变化对 loss 的局部影响。</p>
-<p>先用一个可手算的例子：<code>loss = x0² + x1²</code>，对 x 的梯度为 <code>[2×x0, 2×x1]</code>。</p>
+<h3 id="从损失值到梯度">从损失值到梯度</h3>
+<p><strong>先计算一个希望降低的损失值，再计算它对各个数的变化有多敏感，把结果存到 <code>.grad</code> 中。</strong> 在神经网络中，loss 通常衡量预测与目标的差距，自动求导负责计算 loss 相对于模型参数的梯度。</p>
+<table>
+<thead>
+<tr>
+<th>名字</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loss</code></td>
+<td>希望降低的目标值，本例是一个标量 Tensor</td>
+</tr>
+<tr>
+<td><code>loss.backward()</code></td>
+<td>从 loss 反向计算梯度</td>
+</tr>
+<tr>
+<td><code>x.grad</code></td>
+<td>保存计算出来的 loss 对 x 的梯度</td>
+</tr>
+</tbody>
+</table>
+<p>先把 x 当作两个需要求梯度的数，用 <code>loss = x0² + x1²</code> 演示求导。这个目标可以理解为让它们接近 0，不需要先引入整个模型。</p>
+<h3 id="前向计算-算出-loss-并记录求导关系">前向计算：算出 loss，并记录求导关系</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
-<span class="n">loss</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>         <span class="c1"># 计算一个标量 loss，并记录求导所需关系</span>
-<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>                <span class="c1"># 求梯度，累加到叶子 Tensor 的 .grad</span>
+<span class="n">squared</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>           <span class="c1"># 前向计算：[4, 9]</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">squared</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>           <span class="c1"># 前向计算：4 + 9 = 13</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>              <span class="c1"># 预期：13.0</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>                   <span class="c1"># 预期：None，算出 loss 还没有求梯度</span>
+
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>                <span class="c1"># 反向求梯度，累加到 x.grad</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[4.0, 6.0]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>               <span class="c1"># 预期：[2.0, 3.0]，backward 没有更新数值</span>
 </pre></div>
 
 
-<p>直接创建且要求梯度的 x 是叶子 Tensor；由带梯度运算产生的中间结果通常不是叶子，默认不保留自己的 <code>.grad</code>。模型参数一般是要求梯度的叶子 Tensor，backward 会为参与计算的参数累加梯度。上例是标量 loss，所以直接调用 backward；非标量输出需要明确传入上游梯度或先归约。</p>
-<p>重复计算并 backward，梯度会继续累加，下一步训练通常需要先清理。自动求导与叶子规则见 <a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>和 <a href="https://docs.pytorch.org/docs/2.14/notes/autograd.html">Autograd mechanics</a>。</p>
+<p>requires_grad=True 表示需要计算涉及 x 的梯度。前向运算既算出数值，也记录相关运算的求导关系；只运行 square、sum 时，x.grad 仍是 None。上例把结果 sum 成一个标量，因此可以直接调用无参数 backward；非标量输出需要传入上游梯度或先做归约。</p>
+<h3 id="梯度-4-6-表示什么">梯度 [4, 6] 表示什么</h3>
+<p>梯度表示：保持其他数不变，某个数小幅变化时，loss 大约会变化多少。平方函数的导数是 <code>2x</code>，所以 loss 对 x0 的导数为 <code>2×2=4</code>，对 x1 的导数为 <code>2×3=6</code>。</p>
+<table>
+<thead>
+<tr>
+<th>当前的数</th>
+<th>对应梯度</th>
+<th>小幅变化时的含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x0=2</code></td>
+<td><code>4</code></td>
+<td>x0 增加 0.01，loss 大约增加 0.04</td>
+</tr>
+<tr>
+<td><code>x1=3</code></td>
+<td><code>6</code></td>
+<td>x1 增加 0.01，loss 大约增加 0.06</td>
+</tr>
+</tbody>
+</table>
+<p>x 的数值 <code>[2,3]</code>、loss 的数值 <code>13</code>、x.grad 的数值 <code>[4,6]</code> 描述不同事情。梯度是局部变化率，不是新的 x，也不是 loss 的各个组成项。</p>
+<h3 id="backward-沿计算关系反向应用求导规则">backward：沿计算关系反向应用求导规则</h3>
+<div class="codehilite"><pre><span></span>前向计算：x=[2,3] → square → [4,9] → sum → loss=13
+反向求导：从 loss 开始 → 穿过 sum → 穿过 square → x.grad=[4,6]
+</pre></div>
+
+
+<p>每种运算有自己的求导规则。调用 backward 时，PyTorch 沿前向记录的关系反向组合这些规则，得到 loss 对 x 的梯度。这里 sum 对每个输入项的导数为 1，square 对输入的导数为 2x，组合后就是 <code>[4,6]</code>。</p>
+<p><strong>backward 只计算并累加梯度，不更新原来的数值。</strong> 如果用学习率 0.1 做最简单的梯度下降，更新规则是 <code>新数值 = 原数值 - 学习率×梯度</code>：</p>
+<div class="codehilite"><pre><span></span>x0：2 - 0.1×4 = 1.6
+x1：3 - 0.1×6 = 2.4
+新的平方和：1.6² + 2.4² = 8.32，低于原来的 13
+</pre></div>
+
+
+<p>上面是手算更新，不是 backward 自动执行的操作。在正常模型训练中，优化器的 step 根据参数的 .grad 完成更新，见<a href="pytorch-neural-networks.html#7-一次训练更新-谁计算-谁改参数">一次训练更新</a>。</p>
+<h3 id="梯度保存在哪里-为什么要清理">梯度保存在哪里，为什么要清理</h3>
+<p>本例直接创建且要求梯度的 x 是叶子 Tensor，squared、loss 是带梯度计算产生的中间结果。默认把梯度累加到要求梯度的叶子 Tensor 的 .grad；中间结果仍参与反向传播，只是通常不保留自己的 .grad。</p>
+<p>梯度会累加。下面每次都重新做前向计算，产生新的求导关系；没有清理旧梯度时，两次相同计算得到的梯度会相加：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.</span><span class="p">,</span> <span class="mf">3.</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>     <span class="c1"># 第一次前向与反向</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[4.0, 6.0]</span>
+<span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>     <span class="c1"># 重新前向，再反向；累加到已有梯度</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[8.0, 12.0]</span>
+<span class="n">x</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="kc">None</span>                  <span class="c1"># 清理本例普通 Tensor 的旧梯度</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>                   <span class="c1"># 预期：None</span>
+</pre></div>
+
+
+<p>真实训练中，主要需要梯度的是模型的 weight、bias 等参数；输入数据一般不必设置 requires_grad=True。模型参数的梯度由 optimizer.zero_grad 清理，再由 loss.backward 计算并累加，最后由 optimizer.step 更新参数。</p>
+<p>自动求导与叶子规则见 <a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>，累加行为见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.backward.html">Tensor.backward</a>。</p>
 <h2 id="7-一次训练更新-谁计算-谁改参数">7. 一次训练更新：谁计算，谁改参数</h2>
 <p>常见训练顺序是：清理旧梯度 → 前向预测 → 计算 loss → backward 求梯度 → optimizer.step 更新参数。优化器通过 <code>model.parameters()</code> 获得要更新的参数。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>

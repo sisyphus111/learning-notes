@@ -163,7 +163,70 @@ print(tuple(model(torch.ones(2, 3, device='cuda')).shape))  # 预期：(2, 2)
 
 ## 4. Parameter、buffer 与模型的 device / dtype
 
-模型的状态也由 Tensor 保存，但注册方式决定了框架怎样管理它。
+### 为什么要把 Tensor 保存到模型里
+
+一个线性层计算 `y = x @ weight.T + bias`。每次输入 x 可以不同，但同一个层需要反复使用同一套 weight、bias：训练时逐步调整它们，推理时复用训练好的数值。因此，层把参数保存在对象里，每次调用 `layer(x)` 都读取当前的参数。
+
+模型还可能保存固定数据、运行统计量和临时结果，它们也可以用 Tensor 表示。**把数据注册为参数或 buffer 后，PyTorch 才能按相应规则统一管理它们。** 对包含很多子层的模型，参数查找、迁移和保存可以递归完成，不必逐层手动枚举。
+
+| 要做的事 | 使用的接口 | 处理哪些数据 |
+| --- | --- | --- |
+| 把权重交给优化器更新 | `model.parameters()` | 注册参数 |
+| 把整个模型搬到 GPU 或转换精度 | `model.to(...)` | 注册参数和 buffer |
+| 取得用于保存的模型状态 | `model.state_dict()` | 注册参数和持久 buffer，按名称组织 |
+
+计算本身也可以写成 `F.linear(x, weight, bias)`；Module 将需要复用的数据和使用这些数据的计算组织在一起。普通 Tensor 属性也能保存一份引用，但不会自动进入上面的管理流程。
+
+### Parameter、buffer 与普通属性分别是什么
+
+假设一个模型计算 `y = weight * (x - offset)`：weight 是准备训练调整的缩放系数，offset 是本例预先给定的固定校正量，cache 用来演示普通临时数据。
+
+- **Parameter 是一种特殊 Tensor。** 将 `nn.Parameter(t)` 赋给 Module 的属性，会自动登记进参数列表。`nn.Linear` 已经替你创建并注册了 weight、bias，通常不用再次手动包装。
+- **buffer 也是 Tensor。** `register_buffer('offset', t)` 把它登记为模型管理的状态，但不放进参数列表。用 `model.parameters()` 创建的优化器通常不会更新它；forward 或你写的代码仍可以修改 buffer，例如更新统计量。
+- **普通 Tensor 属性没有这两种注册身份。** `self.cache = t` 只保存引用，不会自动成为参数或 buffer。
+
+下面把计算和数据登记放在同一个模型中。为演示迁移，先显式在 CPU 创建三份数据：
+
+```python
+import torch
+from torch import nn
+
+class Scale(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(3, device='cpu'))  # 注册参数
+        self.register_buffer('offset', torch.tensor([1., 2., 3.], device='cpu'))
+        self.cache = torch.zeros(3, device='cpu')  # 普通属性，演示不会自动迁移
+
+    def forward(self, x):
+        return self.weight * (x - self.offset)    # 使用模型保存的数据计算
+
+model = Scale()
+returned = model.to(device='cuda', dtype=torch.float16)
+print(returned is model)        # 预期：True，修改同一个 Module 并返回自身
+print(model.weight.device.type, model.offset.device.type, model.cache.device.type)
+# 预期：cuda cuda cpu
+x = torch.tensor([3., 5., 7.], device='cuda', dtype=torch.float16)
+print(model(x).tolist())        # 预期：[2.0, 3.0, 4.0]
+print([name for name, _ in model.named_parameters()])  # 预期：['weight']
+print(list(model.state_dict()))                       # 预期：['weight', 'offset']
+```
+
+`model(x)` 读取 weight 和 offset，进行 Tensor 运算。训练更新 weight 后，下次调用就会使用更新后的值；offset 在本例中按固定值使用。cache 没有参与这个 forward，也没有注册，所以迁移模型时不会处理它。
+
+### device / dtype 怎样作用于这些数据
+
+device 表示数值放在哪里，例如 CPU、`cuda:0`；dtype 表示数值用什么类型保存，例如 float32、float16。上例的 `model.to(device='cuda', dtype=torch.float16)` 得到：
+
+| 数据 | 管理身份 | 迁移后的 device / dtype |
+| --- | --- | --- |
+| `model.weight` | 参数 | CUDA / float16 |
+| `model.offset` | buffer | CUDA / float16 |
+| `model.cache` | 普通属性 | 仍是 CPU / float32 |
+
+浮点、复数参数和 buffer 会转换为指定 dtype；整型状态只迁移设备，保留其整数 dtype。模型的输入 x 是调用时从外面传入的，不属于注册状态，仍需单独迁移，例如 `x = x.to(device='cuda', dtype=torch.float16)`。
+
+再看三种保存方式对应的管理规则：
 
 | 保存方式 | 在 `parameters()` 中 | 随 `model.to(...)` 迁移 | 在默认 `state_dict()` 中 |
 | --- | --- | --- | --- |
@@ -171,26 +234,7 @@ print(tuple(model(torch.ones(2, 3, device='cuda')).shape))  # 预期：(2, 2)
 | `self.register_buffer('offset', t)` | 否 | 是 | 是；`persistent=False` 可排除 |
 | 普通 Tensor 属性 `self.cache = t` | 否 | 否 | 否 |
 
-Parameter 常用于可学习权重，默认 `requires_grad=True`。buffer 常用于需要保存、随模型迁移但不交给优化器更新的状态，例如 BatchNorm 的运行统计量。普通 Tensor 即使设置了 requires_grad，也不会因赋给一个属性而自动成为注册参数。
-
-```python
-import torch
-from torch import nn
-
-model = nn.Module()             # 这个例子只演示状态注册和迁移
-model.weight = nn.Parameter(torch.ones(3))
-model.register_buffer('offset', torch.zeros(3))
-model.cache = torch.zeros(3)    # 普通属性，初始也在 CPU
-
-returned = model.to(device='cuda', dtype=torch.float32)
-print(returned is model)        # 预期：True，修改同一个 Module 并返回自身
-print(model.weight.device.type, model.offset.device.type, model.cache.device.type)
-# 预期：cuda cuda cpu
-print([name for name, _ in model.named_parameters()])  # 预期：['weight']
-print(list(model.state_dict()))                       # 预期：['weight', 'offset']
-```
-
-这里为演示迁移而先创建 CPU 状态；实际可像 Linear 示例一样直接在 GPU 创建参数。`model.to(...)` 递归处理注册参数和 buffer；指定 dtype 时转换浮点、复数状态，整型 buffer 保留其 dtype。输入 x 仍需单独放到合适设备，例如 `x = x.to('cuda')`。浮点输入与层参数也需要匹配的 dtype，本页不展开混合精度。
+**注册身份与 requires_grad 是两个概念。** requires_grad 控制是否求梯度，Parameter / buffer 的身份控制模型怎样管理 Tensor。Parameter 默认 `requires_grad=True`，也可以冻结为 False；普通 Tensor 即使要求梯度，也不会自动出现在 `model.parameters()` 中。
 
 注意调用对象的区别：`Tensor.to(...)` 返回转换结果，需要接收；目标 device/dtype 已匹配时可能返回原 Tensor。`Module.to(...)` 修改模型并返回自身。先把模型放到目标设备，再创建持有它参数的优化器。规则见 [Parameter](https://docs.pytorch.org/docs/2.14/generated/torch.nn.parameter.Parameter.html)、[Tensor.to](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.to.html) 与 [Module.to](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html#torch.nn.Module.to)。
 
@@ -208,24 +252,87 @@ print(list(model.state_dict()))                       # 预期：['weight', 'off
 
 ## 6. 自动求导：loss、backward 与 grad
 
-自动求导本身作用于 Tensor 运算；在神经网络中，它负责求出损失相对于模型参数的梯度。loss 是衡量预测误差的量，梯度描述参数变化对 loss 的局部影响。
+### 从损失值到梯度
 
-先用一个可手算的例子：`loss = x0² + x1²`，对 x 的梯度为 `[2×x0, 2×x1]`。
+**先计算一个希望降低的损失值，再计算它对各个数的变化有多敏感，把结果存到 `.grad` 中。** 在神经网络中，loss 通常衡量预测与目标的差距，自动求导负责计算 loss 相对于模型参数的梯度。
+
+| 名字 | 作用 |
+| --- | --- |
+| `loss` | 希望降低的目标值，本例是一个标量 Tensor |
+| `loss.backward()` | 从 loss 反向计算梯度 |
+| `x.grad` | 保存计算出来的 loss 对 x 的梯度 |
+
+先把 x 当作两个需要求梯度的数，用 `loss = x0² + x1²` 演示求导。这个目标可以理解为让它们接近 0，不需要先引入整个模型。
+
+### 前向计算：算出 loss，并记录求导关系
 
 ```python
 import torch
 
 x = torch.tensor([2.0, 3.0], requires_grad=True, device='cuda')
-loss = x.square().sum()         # 计算一个标量 loss，并记录求导所需关系
-loss.backward()                # 求梯度，累加到叶子 Tensor 的 .grad
+squared = x.square()           # 前向计算：[4, 9]
+loss = squared.sum()           # 前向计算：4 + 9 = 13
 print(loss.item())              # 预期：13.0
+print(x.grad)                   # 预期：None，算出 loss 还没有求梯度
+
+loss.backward()                # 反向求梯度，累加到 x.grad
 print(x.grad.tolist())          # 预期：[4.0, 6.0]
 print(x.tolist())               # 预期：[2.0, 3.0]，backward 没有更新数值
 ```
 
-直接创建且要求梯度的 x 是叶子 Tensor；由带梯度运算产生的中间结果通常不是叶子，默认不保留自己的 `.grad`。模型参数一般是要求梯度的叶子 Tensor，backward 会为参与计算的参数累加梯度。上例是标量 loss，所以直接调用 backward；非标量输出需要明确传入上游梯度或先归约。
+requires_grad=True 表示需要计算涉及 x 的梯度。前向运算既算出数值，也记录相关运算的求导关系；只运行 square、sum 时，x.grad 仍是 None。上例把结果 sum 成一个标量，因此可以直接调用无参数 backward；非标量输出需要传入上游梯度或先做归约。
 
-重复计算并 backward，梯度会继续累加，下一步训练通常需要先清理。自动求导与叶子规则见 [Autograd 教程](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html)和 [Autograd mechanics](https://docs.pytorch.org/docs/2.14/notes/autograd.html)。
+### 梯度 [4, 6] 表示什么
+
+梯度表示：保持其他数不变，某个数小幅变化时，loss 大约会变化多少。平方函数的导数是 `2x`，所以 loss 对 x0 的导数为 `2×2=4`，对 x1 的导数为 `2×3=6`。
+
+| 当前的数 | 对应梯度 | 小幅变化时的含义 |
+| --- | --- | --- |
+| `x0=2` | `4` | x0 增加 0.01，loss 大约增加 0.04 |
+| `x1=3` | `6` | x1 增加 0.01，loss 大约增加 0.06 |
+
+x 的数值 `[2,3]`、loss 的数值 `13`、x.grad 的数值 `[4,6]` 描述不同事情。梯度是局部变化率，不是新的 x，也不是 loss 的各个组成项。
+
+### backward：沿计算关系反向应用求导规则
+
+```text
+前向计算：x=[2,3] → square → [4,9] → sum → loss=13
+反向求导：从 loss 开始 → 穿过 sum → 穿过 square → x.grad=[4,6]
+```
+
+每种运算有自己的求导规则。调用 backward 时，PyTorch 沿前向记录的关系反向组合这些规则，得到 loss 对 x 的梯度。这里 sum 对每个输入项的导数为 1，square 对输入的导数为 2x，组合后就是 `[4,6]`。
+
+**backward 只计算并累加梯度，不更新原来的数值。** 如果用学习率 0.1 做最简单的梯度下降，更新规则是 `新数值 = 原数值 - 学习率×梯度`：
+
+```text
+x0：2 - 0.1×4 = 1.6
+x1：3 - 0.1×6 = 2.4
+新的平方和：1.6² + 2.4² = 8.32，低于原来的 13
+```
+
+上面是手算更新，不是 backward 自动执行的操作。在正常模型训练中，优化器的 step 根据参数的 .grad 完成更新，见[一次训练更新](#7-一次训练更新-谁计算-谁改参数)。
+
+### 梯度保存在哪里，为什么要清理
+
+本例直接创建且要求梯度的 x 是叶子 Tensor，squared、loss 是带梯度计算产生的中间结果。默认把梯度累加到要求梯度的叶子 Tensor 的 .grad；中间结果仍参与反向传播，只是通常不保留自己的 .grad。
+
+梯度会累加。下面每次都重新做前向计算，产生新的求导关系；没有清理旧梯度时，两次相同计算得到的梯度会相加：
+
+```python
+import torch
+
+x = torch.tensor([2., 3.], requires_grad=True, device='cuda')
+x.square().sum().backward()     # 第一次前向与反向
+print(x.grad.tolist())          # 预期：[4.0, 6.0]
+x.square().sum().backward()     # 重新前向，再反向；累加到已有梯度
+print(x.grad.tolist())          # 预期：[8.0, 12.0]
+x.grad = None                  # 清理本例普通 Tensor 的旧梯度
+print(x.grad)                   # 预期：None
+```
+
+真实训练中，主要需要梯度的是模型的 weight、bias 等参数；输入数据一般不必设置 requires_grad=True。模型参数的梯度由 optimizer.zero_grad 清理，再由 loss.backward 计算并累加，最后由 optimizer.step 更新参数。
+
+自动求导与叶子规则见 [Autograd 教程](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html)，累加行为见 [Tensor.backward](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.backward.html)。
 
 ## 7. 一次训练更新：谁计算，谁改参数
 
