@@ -1166,19 +1166,26 @@ print([p.tolist() for p in chunks]) # 预期：[[0, 1, 2], [3, 4, 5], [6]]
 
 ## 14. 排序与 top-k
 
+`sort` 默认升序；传入 **`descending=True` 就是降序**。`dim=-1` 沿最后一轴排序，对二维矩阵就是每行分别排序。
+
 ```python
 import torch
 
 x = torch.tensor([[3.0, 1.0, 5.0], [2.0, 9.0, 4.0]], device='cuda')
-values, indices = x.sort(dim=-1)
+values, indices = x.sort(dim=-1)  # 每行升序，等价于 descending=False
 print(values.tolist())           # 预期：[[1.0, 3.0, 5.0], [2.0, 4.0, 9.0]]
 print(indices.tolist())          # 预期：[[1, 0, 2], [0, 2, 1]]
+desc_values, desc_indices = x.sort(dim=-1, descending=True)  # 每行降序
+print(desc_values.tolist())      # 预期：[[5.0, 3.0, 1.0], [9.0, 4.0, 2.0]]
+print(desc_indices.tolist())     # 预期：[[2, 0, 1], [1, 2, 0]]，仍是原输入的列下标
 top_values, top_indices = x.topk(2, dim=-1)
 print(top_values.tolist())       # 预期：[[5.0, 3.0], [9.0, 4.0]]
 print(top_indices.tolist())      # 预期：[[2, 0], [1, 2]]
 ```
 
-下标指向原输入在该轴上的位置。`sort` 默认升序；`topk` 默认选最大的 k 个并排序。值相同时不要假设 topk 的下标顺序稳定；算法若要求稳定排序，需要明确排序契约。
+`torch.sort(x, dim=-1, descending=True)` 与上面的 `x.sort(...)` 写法等价。sort 返回排序后的值和它们在原输入对应轴上的下标，不原地修改 x；降序 sort 会排出全部元素，topk 默认只取最大的 k 个并排序。
+
+需要让 sort 中相等元素保持原先的相对顺序，可传 `stable=True`，例如 `x.sort(dim=-1, descending=True, stable=True)`；不要假设 topk 中并列元素的下标顺序稳定。接口见 [sort 官方说明](https://docs.pytorch.org/docs/2.14/generated/torch.sort.html)。
 
 ## 15. CPU / GPU 传输与异步执行
 

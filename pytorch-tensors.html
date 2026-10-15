@@ -1423,19 +1423,24 @@ stride       (2,1)
 
 <p><code>split(3)</code> 的 3 是每段长度，<code>chunk(3)</code> 的 3 是期望段数；chunk 在某些大小下会返回少于请求数量的段。固定段数的需求可以查看 <code>tensor_split</code>。</p>
 <h2 id="14-排序与-top-k">14. 排序与 top-k</h2>
+<p><code>sort</code> 默认升序；传入 <strong><code>descending=True</code> 就是降序</strong>。<code>dim=-1</code> 沿最后一轴排序，对二维矩阵就是每行分别排序。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
-<span class="n">values</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">values</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># 每行升序，等价于 descending=False</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[[1.0, 3.0, 5.0], [2.0, 4.0, 9.0]]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">indices</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>          <span class="c1"># 预期：[[1, 0, 2], [0, 2, 1]]</span>
+<span class="n">desc_values</span><span class="p">,</span> <span class="n">desc_indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">descending</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># 每行降序</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">desc_values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[[5.0, 3.0, 1.0], [9.0, 4.0, 2.0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">desc_indices</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>     <span class="c1"># 预期：[[2, 0, 1], [1, 2, 0]]，仍是原输入的列下标</span>
 <span class="n">top_values</span><span class="p">,</span> <span class="n">top_indices</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">top_values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>       <span class="c1"># 预期：[[5.0, 3.0], [9.0, 4.0]]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">top_indices</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>      <span class="c1"># 预期：[[2, 0], [1, 2]]</span>
 </pre></div>
 
 
-<p>下标指向原输入在该轴上的位置。<code>sort</code> 默认升序；<code>topk</code> 默认选最大的 k 个并排序。值相同时不要假设 topk 的下标顺序稳定；算法若要求稳定排序，需要明确排序契约。</p>
+<p><code>torch.sort(x, dim=-1, descending=True)</code> 与上面的 <code>x.sort(...)</code> 写法等价。sort 返回排序后的值和它们在原输入对应轴上的下标，不原地修改 x；降序 sort 会排出全部元素，topk 默认只取最大的 k 个并排序。</p>
+<p>需要让 sort 中相等元素保持原先的相对顺序，可传 <code>stable=True</code>，例如 <code>x.sort(dim=-1, descending=True, stable=True)</code>；不要假设 topk 中并列元素的下标顺序稳定。接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.sort.html">sort 官方说明</a>。</p>
 <h2 id="15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</h2>
 <h3 id="to-不会自动改变原变量"><code>.to(...)</code> 不会自动改变原变量</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
