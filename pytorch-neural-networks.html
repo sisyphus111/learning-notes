@@ -404,6 +404,11 @@
 <td><code>x * sigmoid(x)</code>，shape 不变</td>
 </tr>
 <tr>
+<td><code>nn.GELU()</code></td>
+<td><code>F.gelu(x)</code></td>
+<td>平滑的逐元素激活，shape 不变</td>
+</tr>
+<tr>
 <td><code>nn.Softmax(dim=-1)</code></td>
 <td><code>F.softmax(x, dim=-1)</code></td>
 <td>沿指定轴变成和为 1 的权重</td>
@@ -421,6 +426,115 @@
 </tbody>
 </table>
 <p>这些 Module 可以插入 Sequential 或自定义模型；functional 写法适合在 forward 中显式表达计算。使用 <code>F.dropout</code> 时需要传入 <code>training=self.training</code>，它默认 <code>training=True</code>，不会自动读取所属模型的模式。接口见 <a href="https://docs.pytorch.org/docs/2.14/nn.functional.html">functional</a>；softmax、归一化与 SiLU 的具体计算见 <a href="pytorch-components.html">常见计算与组件</a>。</p>
+<h2 id="激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控：ReLU、SiLU、GELU 与 SwiGLU</h2>
+<p>激活函数通常放在 Linear 等层之后，对中间激活值做非线性变换。只堆叠 Linear 仍等价于一次线性加偏置的变换；加入非线性，模型才能表达更复杂的关系。<strong>PyTorch 已提供 ReLU、SiLU、GELU 的现成接口，不需要自己写公式才能使用。</strong></p>
+<h3 id="常用激活接口速查">常用激活接口速查</h3>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>层对象写法</th>
+<th>函数写法</th>
+<th>每个元素做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReLU</td>
+<td><code>nn.ReLU()</code></td>
+<td><code>F.relu(x)</code></td>
+<td><code>max(0, x)</code>：负数变成 0，正数保留</td>
+</tr>
+<tr>
+<td>SiLU</td>
+<td><code>nn.SiLU()</code></td>
+<td><code>F.silu(x)</code></td>
+<td><code>x * sigmoid(x)</code>；也称 Swish（β=1）</td>
+</tr>
+<tr>
+<td>GELU</td>
+<td><code>nn.GELU()</code></td>
+<td><code>F.gelu(x)</code></td>
+<td><code>x * Φ(x)</code>，Φ 是标准正态分布的累积分布函数；按输入值平滑缩放</td>
+</tr>
+<tr>
+<td>Sigmoid</td>
+<td><code>nn.Sigmoid()</code></td>
+<td><code>torch.sigmoid(x)</code></td>
+<td><code>1 / (1 + exp(-x))</code>，把实数映射到 (0, 1)</td>
+</tr>
+<tr>
+<td>Tanh</td>
+<td><code>nn.Tanh()</code></td>
+<td><code>torch.tanh(x)</code></td>
+<td>双曲正切，把实数映射到 (-1, 1)</td>
+</tr>
+</tbody>
+</table>
+<p>这些接口都返回 Tensor，<strong>支持任意维数，逐元素计算，不需要 dim，输出 shape 与输入相同</strong>。例如输入 <code>[B, S, D]</code>，每个 <code>x[b, s, d]</code> 分别经过激活，输出仍是 <code>[B, S, D]</code>。表中层对象没有可学习参数；输入在 GPU 上，就在 GPU 上计算，不需要给 <code>nn.ReLU()</code> 等构造器传 device。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 负数置零，预期：[[0.0, 0.0, 1.0]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">silu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>                <span class="c1"># 逐元素 SiLU，预期：torch.Size([1, 3])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">gelu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>                <span class="c1"># 逐元素 GELU，预期：torch.Size([1, 3])</span>
+<span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">SiLU</span><span class="p">()(</span><span class="n">x</span><span class="p">),</span> <span class="n">F</span><span class="o">.</span><span class="n">silu</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>  <span class="c1"># 层对象与函数的计算一致</span>
+<span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">silu</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">x</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+    <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>                  <span class="c1"># 最后一轴：4 → 8</span>
+    <span class="n">nn</span><span class="o">.</span><span class="n">GELU</span><span class="p">(),</span>                        <span class="c1"># 加入非线性，保留所有轴的长度</span>
+    <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>                  <span class="c1"># 最后一轴：8 → 4</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>                 <span class="c1"># 预期：(2, 3, 4)</span>
+</pre></div>
+
+
+<p>ReLU 会直接截掉负数；SiLU、GELU 对负数也可能输出负值，不是“负数全部清零”。它们的计算本身不随 train/eval 切换，也不会像 Dropout 一样随机丢弃激活。这里默认返回计算结果，不修改输入；ReLU、SiLU 可显式设置 <code>inplace=True</code> 做原地计算，但仍须遵守自动求导的原地修改限制。</p>
+<p>GELU 默认 <code>approximate='none'</code>，也提供 tanh 近似；复现模型时应与原模型设置保持一致：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">gelu</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">approximate</span><span class="o">=</span><span class="s1">'none'</span><span class="p">)</span>      <span class="c1"># 默认公式</span>
+<span class="n">y_approx</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">gelu</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">approximate</span><span class="o">=</span><span class="s1">'tanh'</span><span class="p">)</span>  <span class="c1"># tanh 近似，数值可能有差别</span>
+<span class="n">layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">GELU</span><span class="p">(</span><span class="n">approximate</span><span class="o">=</span><span class="s1">'tanh'</span><span class="p">)</span>     <span class="c1"># 同一个选项也能传给层对象</span>
+<span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">layer</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y_approx</span><span class="p">)</span>
+</pre></div>
+
+
+<p>接口与公式见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.ReLU.html">ReLU</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.SiLU.html">SiLU</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.GELU.html">GELU</a>；其他激活接口见 <a href="https://docs.pytorch.org/docs/2.14/nn.html#non-linear-activations-weighted-sum-nonlinearity">nn 非线性激活函数</a>。</p>
+<h3 id="swiglu-silu-激活一路-再与另一路逐元素相乘">SwiGLU：SiLU 激活一路，再与另一路逐元素相乘</h3>
+<p>SiLU 接收一个 Tensor；SwiGLU 的门控核心接收两路同 shape 的激活值：<code>hidden = F.silu(gate) * up</code>。gate（门控分支）经过 SiLU 后，逐位置缩放 up（另一条特征分支）。这里的“门”不是随机开关，也不保证缩放系数在 0 到 1 之间。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="n">gate</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">up</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">20.</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">hidden</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">silu</span><span class="p">(</span><span class="n">gate</span><span class="p">)</span> <span class="o">*</span> <span class="n">up</span>             <span class="c1"># 对应位置相乘，不是矩阵乘法</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">hidden</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>            <span class="c1"># 预期：(1, 2)</span>
+<span class="c1"># 第一个位置：SiLU(0) * 10 = 0</span>
+<span class="c1"># 第二个位置：SiLU(1) * 20 ≈ 14.6212</span>
+
+<span class="n">packed</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">gate</span><span class="p">,</span> <span class="n">up</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># 两路拼接，shape：(1, 4)</span>
+<span class="n">gate2</span><span class="p">,</span> <span class="n">up2</span> <span class="o">=</span> <span class="n">packed</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>   <span class="c1"># 沿末轴拆成等宽两路</span>
+<span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">silu</span><span class="p">(</span><span class="n">gate2</span><span class="p">)</span> <span class="o">*</span> <span class="n">up2</span><span class="p">,</span> <span class="n">hidden</span><span class="p">)</span>
+</pre></div>
+
+
+<p>在常见的 SwiGLU FFN 中，gate 和 up 来自同一个输入的两次独立 Linear 投影；相乘后，再用第三个 Linear 投影回模型维度：</p>
+<div class="codehilite"><pre><span></span>x [..., D] → gate_proj → gate [..., H] → SiLU ─┐
+           → up_proj   → up   [..., H] ────────┴→ 逐元素乘 → [..., H] → down_proj → [..., D]
+</pre></div>
+
+
+<p>H 是中间特征数。这三个 Linear 持有可学习权重；SiLU 和逐元素乘法本身没有可学习参数。完整实现见 <a href="pytorch-components.html#5-swiglu-ffn-门控前馈组件">SwiGLU FFN</a>。</p>
+<p>在本文核对的 PyTorch 2.14 标准 <code>torch.nn</code> / <code>F</code> 激活接口中，没有直接对应的 <code>nn.SwiGLU()</code> / <code>F.swiglu()</code>；用现成的 Linear、<code>F.silu</code> 和 <code>*</code> 就能组合，自动求导会处理这些计算。<code>nn.GLU(dim=-1)</code> / <code>F.glu(x, dim=-1)</code> 虽然是现成接口，但它把输入拆成 a、b，计算 <code>a * sigmoid(b)</code>，<strong>不等于 SwiGLU</strong>；输入末轴为 <code>2H</code> 时，它的输出末轴为 H。</p>
+<p>GLU 的契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.GLU.html">nn.GLU</a>，标准激活实现见 <a href="https://github.com/pytorch/pytorch/blob/v2.14.0/torch/nn/modules/activation.py">PyTorch activation.py</a>；SwiGLU 的门控结构见 <a href="https://arxiv.org/abs/2002.05202">GLU Variants Improve Transformer</a>。</p>
 <h2 id="6-自动求导-loss-backward-与-grad">6. 自动求导：loss、backward 与 grad</h2>
 <h3 id="从损失值到梯度">从损失值到梯度</h3>
 <p><strong>先计算一个希望降低的损失值，再计算它对各个数的变化有多敏感，把结果存到 <code>.grad</code> 中。</strong> 在神经网络中，loss 通常衡量预测与目标的差距，自动求导负责计算 loss 相对于模型参数的梯度。</p>
@@ -659,7 +773,7 @@ x1：3 - 0.1×6 = 2.4
 </table>
 <h2 id="接下来读什么">接下来读什么</h2>
 <p><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a>解释每一步计算怎样处理 shape、dtype、device 和 storage；<a href="pytorch-components.html">常见计算与组件</a>展开 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 与 attention 的 Tensor 实现。</p>
-<p>本文核对官方接口，示例做静态语法检查，网页做构建与链接检查。注释数值为推导预期；<strong>未执行 CUDA 示例，也未提供训练性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-torch-nn-与-f-的关系">1. torch、nn 与 F 的关系</a><a class="level-2" href="#2-linear-同一个计算的两种用法">2. Linear：同一个计算的两种用法</a><a class="level-2" href="#3-nn-module-把层组织成模型">3. nn.Module：把层组织成模型</a><a class="level-2" href="#4-parameter-buffer-与模型的-device-dtype">4. Parameter、buffer 与模型的 device / dtype</a><a class="level-2" href="#5-常见层与-functional-写法">5. 常见层与 functional 写法</a><a class="level-2" href="#6-自动求导-loss-backward-与-grad">6. 自动求导：loss、backward 与 grad</a><a class="level-2" href="#7-一次训练更新-谁计算-谁改参数">7. 一次训练更新：谁计算，谁改参数</a><a class="level-2" href="#8-train-eval-与-no_grad-模式和梯度分开控制">8. train / eval 与 no_grad：模式和梯度分开控制</a><a class="level-2" href="#9-state_dict-保存和恢复模型状态">9. state_dict：保存和恢复模型状态</a><a class="level-2" href="#常见错误速查">常见错误速查</a><a class="level-2" href="#接下来读什么">接下来读什么</a></nav></aside></div>
+<p>本文核对官方接口，示例做静态语法检查，网页做构建与链接检查。注释数值为推导预期；<strong>未执行 CUDA 示例，也未提供训练性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-torch-nn-与-f-的关系">1. torch、nn 与 F 的关系</a><a class="level-2" href="#2-linear-同一个计算的两种用法">2. Linear：同一个计算的两种用法</a><a class="level-2" href="#3-nn-module-把层组织成模型">3. nn.Module：把层组织成模型</a><a class="level-2" href="#4-parameter-buffer-与模型的-device-dtype">4. Parameter、buffer 与模型的 device / dtype</a><a class="level-2" href="#5-常见层与-functional-写法">5. 常见层与 functional 写法</a><a class="level-2" href="#激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控：ReLU、SiLU、GELU 与 SwiGLU</a><a class="level-2" href="#6-自动求导-loss-backward-与-grad">6. 自动求导：loss、backward 与 grad</a><a class="level-2" href="#7-一次训练更新-谁计算-谁改参数">7. 一次训练更新：谁计算，谁改参数</a><a class="level-2" href="#8-train-eval-与-no_grad-模式和梯度分开控制">8. train / eval 与 no_grad：模式和梯度分开控制</a><a class="level-2" href="#9-state_dict-保存和恢复模型状态">9. state_dict：保存和恢复模型状态</a><a class="level-2" href="#常见错误速查">常见错误速查</a><a class="level-2" href="#接下来读什么">接下来读什么</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>

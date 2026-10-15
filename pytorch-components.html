@@ -113,6 +113,7 @@
 <p>对照官方结果时显式指定相同的 eps，不能把不同默认 eps 的结果直接比较。本实现的低精度中间计算与转换顺序是明确的教学选择，不保证与所有后端逐位一致。</p>
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.RMSNorm.html">RMSNorm</a>。</p>
 <h2 id="5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</h2>
+<p>ReLU、SiLU、GELU 的现成接口，以及 SwiGLU 与普通 GLU 的区别，见 <a href="pytorch-neural-networks.html#激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控</a>。</p>
 <p><code>x: [..., D]</code>，<code>w_gate / w_up: [F, D]</code>，<code>w_down: [D, F]</code>，返回 <code>[..., D]</code>。F 是中间特征数；gate 与 up 都从同一个 x 产生。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>

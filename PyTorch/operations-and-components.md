@@ -117,6 +117,8 @@ reference = torch.nn.functional.rms_norm(x, (3,), weight, eps=1e-6)
 
 ## 5. SwiGLU FFN：门控前馈组件
 
+ReLU、SiLU、GELU 的现成接口，以及 SwiGLU 与普通 GLU 的区别，见 [激活函数与门控](neural-networks.md#激活函数与门控-relu-silu-gelu-与-swiglu)。
+
 `x: [..., D]`，`w_gate / w_up: [F, D]`，`w_down: [D, F]`，返回 `[..., D]`。F 是中间特征数；gate 与 up 都从同一个 x 产生。
 
 ```python

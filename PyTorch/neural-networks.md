@@ -244,11 +244,100 @@ device 表示数值放在哪里，例如 CPU、`cuda:0`；dtype 表示数值用�
 | --- | --- | --- |
 | `nn.ReLU()` | `F.relu(x)` | 负数置零，shape 不变 |
 | `nn.SiLU()` | `F.silu(x)` | `x * sigmoid(x)`，shape 不变 |
+| `nn.GELU()` | `F.gelu(x)` | 平滑的逐元素激活，shape 不变 |
 | `nn.Softmax(dim=-1)` | `F.softmax(x, dim=-1)` | 沿指定轴变成和为 1 的权重 |
 | `nn.LayerNorm(D)` | `F.layer_norm(x, (D,), weight, bias)` | 对末轴 D 做归一化，层可持有缩放与偏移参数 |
 | `nn.Dropout(p=0.5)` | `F.dropout(x, p=0.5, training=...)` | 训练时随机置零并缩放保留值；评估时直接返回输入 |
 
 这些 Module 可以插入 Sequential 或自定义模型；functional 写法适合在 forward 中显式表达计算。使用 `F.dropout` 时需要传入 `training=self.training`，它默认 `training=True`，不会自动读取所属模型的模式。接口见 [functional](https://docs.pytorch.org/docs/2.14/nn.functional.html)；softmax、归一化与 SiLU 的具体计算见 [常见计算与组件](operations-and-components.md)。
+
+## 激活函数与门控：ReLU、SiLU、GELU 与 SwiGLU
+
+激活函数通常放在 Linear 等层之后，对中间激活值做非线性变换。只堆叠 Linear 仍等价于一次线性加偏置的变换；加入非线性，模型才能表达更复杂的关系。**PyTorch 已提供 ReLU、SiLU、GELU 的现成接口，不需要自己写公式才能使用。**
+
+### 常用激活接口速查
+
+| 名称 | 层对象写法 | 函数写法 | 每个元素做什么 |
+| --- | --- | --- | --- |
+| ReLU | `nn.ReLU()` | `F.relu(x)` | `max(0, x)`：负数变成 0，正数保留 |
+| SiLU | `nn.SiLU()` | `F.silu(x)` | `x * sigmoid(x)`；也称 Swish（β=1） |
+| GELU | `nn.GELU()` | `F.gelu(x)` | `x * Φ(x)`，Φ 是标准正态分布的累积分布函数；按输入值平滑缩放 |
+| Sigmoid | `nn.Sigmoid()` | `torch.sigmoid(x)` | `1 / (1 + exp(-x))`，把实数映射到 (0, 1) |
+| Tanh | `nn.Tanh()` | `torch.tanh(x)` | 双曲正切，把实数映射到 (-1, 1) |
+
+这些接口都返回 Tensor，**支持任意维数，逐元素计算，不需要 dim，输出 shape 与输入相同**。例如输入 `[B, S, D]`，每个 `x[b, s, d]` 分别经过激活，输出仍是 `[B, S, D]`。表中层对象没有可学习参数；输入在 GPU 上，就在 GPU 上计算，不需要给 `nn.ReLU()` 等构造器传 device。
+
+```python
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+x = torch.tensor([[-1., 0., 1.]], device='cuda')
+print(F.relu(x).tolist())             # 负数置零，预期：[[0.0, 0.0, 1.0]]
+print(F.silu(x).shape)                # 逐元素 SiLU，预期：torch.Size([1, 3])
+print(F.gelu(x).shape)                # 逐元素 GELU，预期：torch.Size([1, 3])
+assert torch.allclose(nn.SiLU()(x), F.silu(x))  # 层对象与函数的计算一致
+assert torch.allclose(F.silu(x), x * torch.sigmoid(x))
+
+model = nn.Sequential(
+    nn.Linear(4, 8),                  # 最后一轴：4 → 8
+    nn.GELU(),                        # 加入非线性，保留所有轴的长度
+    nn.Linear(8, 4),                  # 最后一轴：8 → 4
+).to('cuda')
+y = model(torch.randn(2, 3, 4, device='cuda'))
+print(tuple(y.shape))                 # 预期：(2, 3, 4)
+```
+
+ReLU 会直接截掉负数；SiLU、GELU 对负数也可能输出负值，不是“负数全部清零”。它们的计算本身不随 train/eval 切换，也不会像 Dropout 一样随机丢弃激活。这里默认返回计算结果，不修改输入；ReLU、SiLU 可显式设置 `inplace=True` 做原地计算，但仍须遵守自动求导的原地修改限制。
+
+GELU 默认 `approximate='none'`，也提供 tanh 近似；复现模型时应与原模型设置保持一致：
+
+```python
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+x = torch.randn(2, 3, 4, device='cuda')
+y = F.gelu(x, approximate='none')      # 默认公式
+y_approx = F.gelu(x, approximate='tanh')  # tanh 近似，数值可能有差别
+layer = nn.GELU(approximate='tanh')     # 同一个选项也能传给层对象
+assert torch.allclose(layer(x), y_approx)
+```
+
+接口与公式见 [ReLU](https://docs.pytorch.org/docs/2.14/generated/torch.nn.ReLU.html)、[SiLU](https://docs.pytorch.org/docs/2.14/generated/torch.nn.SiLU.html)、[GELU](https://docs.pytorch.org/docs/2.14/generated/torch.nn.GELU.html)；其他激活接口见 [nn 非线性激活函数](https://docs.pytorch.org/docs/2.14/nn.html#non-linear-activations-weighted-sum-nonlinearity)。
+
+### SwiGLU：SiLU 激活一路，再与另一路逐元素相乘
+
+SiLU 接收一个 Tensor；SwiGLU 的门控核心接收两路同 shape 的激活值：`hidden = F.silu(gate) * up`。gate（门控分支）经过 SiLU 后，逐位置缩放 up（另一条特征分支）。这里的“门”不是随机开关，也不保证缩放系数在 0 到 1 之间。
+
+```python
+import torch
+import torch.nn.functional as F
+
+gate = torch.tensor([[0., 1.]], device='cuda')
+up = torch.tensor([[10., 20.]], device='cuda')
+hidden = F.silu(gate) * up             # 对应位置相乘，不是矩阵乘法
+print(tuple(hidden.shape))            # 预期：(1, 2)
+# 第一个位置：SiLU(0) * 10 = 0
+# 第二个位置：SiLU(1) * 20 ≈ 14.6212
+
+packed = torch.cat([gate, up], dim=-1) # 两路拼接，shape：(1, 4)
+gate2, up2 = packed.chunk(2, dim=-1)   # 沿末轴拆成等宽两路
+assert torch.allclose(F.silu(gate2) * up2, hidden)
+```
+
+在常见的 SwiGLU FFN 中，gate 和 up 来自同一个输入的两次独立 Linear 投影；相乘后，再用第三个 Linear 投影回模型维度：
+
+```text
+x [..., D] → gate_proj → gate [..., H] → SiLU ─┐
+           → up_proj   → up   [..., H] ────────┴→ 逐元素乘 → [..., H] → down_proj → [..., D]
+```
+
+H 是中间特征数。这三个 Linear 持有可学习权重；SiLU 和逐元素乘法本身没有可学习参数。完整实现见 [SwiGLU FFN](operations-and-components.md#5-swiglu-ffn-门控前馈组件)。
+
+在本文核对的 PyTorch 2.14 标准 `torch.nn` / `F` 激活接口中，没有直接对应的 `nn.SwiGLU()` / `F.swiglu()`；用现成的 Linear、`F.silu` 和 `*` 就能组合，自动求导会处理这些计算。`nn.GLU(dim=-1)` / `F.glu(x, dim=-1)` 虽然是现成接口，但它把输入拆成 a、b，计算 `a * sigmoid(b)`，**不等于 SwiGLU**；输入末轴为 `2H` 时，它的输出末轴为 H。
+
+GLU 的契约见 [nn.GLU](https://docs.pytorch.org/docs/2.14/generated/torch.nn.GLU.html)，标准激活实现见 [PyTorch activation.py](https://github.com/pytorch/pytorch/blob/v2.14.0/torch/nn/modules/activation.py)；SwiGLU 的门控结构见 [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202)。
 
 ## 6. 自动求导：loss、backward 与 grad
 
