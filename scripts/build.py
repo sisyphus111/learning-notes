@@ -41,6 +41,8 @@ REFERENCES = [
 PYTHON_REFERENCES = [
     ('Python/data-structures.md', 'python-data-structures.html', 'Python 数据结构速查',
      '语法 · 返回值 · 原地修改 · 常见错误'),
+    ('Python/math-operations.md', 'python-math.html', '数学运算速查',
+     '整除与取余 · 乘方 · 取整 · math · 浮点误差'),
     ('Python/iterables-and-functions.md', 'python-iterables-and-functions.html',
      '可迭代对象与常用函数', '生成器表达式 · all / any · sum · min / max · map / filter'),
     ('Python/classes-and-objects.md', 'python-classes-and-objects.html',
