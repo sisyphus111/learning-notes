@@ -255,7 +255,7 @@ print(x[rows[:, None], columns].tolist()) # 预期：[[30, 10], [60, 40]]，取�
 
 index_select / gather 的下标应满足 `0 <= index < 对应轴长度`；高级索引也支持有效范围内的负数下标。读取结果与直接索引赋值的区别见[赋值与修改板块](#11-赋值-修改与数据复制)。接口契约见 [index_select](https://docs.pytorch.org/docs/2.14/generated/torch.index_select.html)、[gather](https://docs.pytorch.org/docs/2.14/generated/torch.gather.html)，高级索引规则见 [NumPy 索引说明](https://numpy.org/doc/stable/user/basics.indexing.html#advanced-indexing)；PyTorch 的索引读取与存储关系见 [Tensor Views](https://docs.pytorch.org/docs/2.14/tensor_view.html)。
 
-## 5. 逐元素计算与比较
+## 5. Tensor 加减乘除与逐元素乘法
 
 ### 加减乘除与比较
 
@@ -264,15 +264,19 @@ import torch
 
 x = torch.tensor([1.0, 2.0, 3.0], device='cuda')
 y = torch.tensor([10.0, 20.0, 30.0], device='cuda')
-print((x + y).tolist())          # 预期：[11.0, 22.0, 33.0]
-print((x * y).tolist())          # 预期：[10.0, 40.0, 90.0]
-print((x / 2).tolist())          # 预期：[0.5, 1.0, 1.5]
+print((x + y).tolist())          # 逐元素相加，预期：[11.0, 22.0, 33.0]
+print((x - y).tolist())          # 逐元素相减，预期：[-9.0, -18.0, -27.0]
+print((x * y).tolist())          # 逐元素相乘，预期：[10.0, 40.0, 90.0]
+print((x / y).tolist())          # 逐元素相除，预期：[0.1, 0.1, 0.1]
+print((x / 2).tolist())          # 每个元素除以 2，预期：[0.5, 1.0, 1.5]
 print(x.square().tolist())       # 预期：[1.0, 4.0, 9.0]
 print((x > 1).tolist())          # 预期：[False, True, True]
 print(((x > 1) & (x < 3)).tolist())  # 预期：[False, True, False]
 ```
 
-`+ - * /` 是逐元素运算，可以使用广播。`x == y` 返回逐元素的 bool Tensor；Python 的 `and` / `or` 不能用于多元素 Tensor 的逐元素逻辑，用 `&` / `|` 并给比较表达式加括号。
+`+ - * /` 是逐元素运算，可以使用广播。**多维 Tensor 也逐位置计算，不需要指定 dim**：shape 相同时，`out[i, j, ...] = x[i, j, ...] * y[i, j, ...]`；shape 不同时，先按[广播规则](#7-broadcasting-对齐轴-复用较小的数据)对齐。`*` 不会沿某个轴求和；矩阵乘法使用 `@`，见[矩阵乘法板块](#8-矩阵乘法-收缩内轴-保留外轴)。
+
+`x == y` 返回逐元素的 bool Tensor；Python 的 `and` / `or` 不能用于多元素 Tensor 的逐元素逻辑，用 `&` / `|` 并给比较表达式加括号。
 
 ## 常用逐元素数学运算
 
@@ -552,7 +556,7 @@ print((x + row_bias[:, None]).tolist())  # 预期：[[11, 12, 13], [24, 25, 26]]
 
 ## 8. 矩阵乘法：收缩内轴，保留外轴
 
-### `*` 与 `@` 的关系
+### `*` 逐元素乘法与 `@` 矩阵乘法
 
 ```python
 import torch
