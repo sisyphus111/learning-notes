@@ -21,3 +21,9 @@ article h1{font-size:25px;line-height:1.5;border-bottom:1px solid var(--line);ma
 :root[data-theme=dark] .codehilite .kn,:root[data-theme=dark] .codehilite .kd,:root[data-theme=dark] .codehilite .kc,:root[data-theme=dark] .codehilite .ow{color:#95c9ed}
 :root[data-theme=dark] .codehilite .nb,:root[data-theme=dark] .codehilite .bp{color:#b9d993}
 :root[data-theme=dark] .codehilite .mi,:root[data-theme=dark] .codehilite .mf,:root[data-theme=dark] .codehilite .mh{color:#e0c48a}
+article .rule-card{margin:24px 0;padding:18px 22px;background:var(--wash);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px}
+article .rule-card h3{margin:0 0 12px;color:var(--accent);font-size:16px}
+article .rule-card ol{margin:0;padding-left:24px}
+article .rule-card li{margin:8px 0}
+article .rule-card li::marker{color:var(--accent);font-weight:650}
+article .rule-card>:last-child{margin-bottom:0}

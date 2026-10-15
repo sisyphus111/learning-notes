@@ -2,6 +2,7 @@
 """Render the Markdown notes to static HTML and a section-level search index."""
 from pathlib import Path
 from html import escape, unescape
+from hashlib import sha256
 import json
 import re
 import unicodedata
@@ -17,6 +18,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import CppLexer, PythonLexer, TextLexer
 
 ROOT = Path(__file__).resolve().parents[1]
+STYLE_VERSION = sha256((ROOT / 'assets/style.css').read_bytes()).hexdigest()[:10]
 CHAPTERS = [
     ('数组/fuck数组.md', 'arrays.html', '数组', '哈希表 · 双指针 · 滑窗 · 前缀和 · 二分'),
     ('链表/fuck链表.md', 'linked-lists.html', '链表', '基础操作 · 快慢指针 · 递归'),
@@ -219,7 +221,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 <title>{escape(title if title == '编程札记' else title + ' · 编程札记')}</title><meta name="description" content="{escape(subtitle)}">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v={STYLE_VERSION}"><link rel="stylesheet" href="assets/code.css">
 <script>try{{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}}catch(e){{}}</script>
 <script defer src="assets/site.js"></script>
 <script>window.MathJax={{tex:{{inlineMath:[['\\\\(','\\\\)']],displayMath:[['\\\\[','\\\\]']]}},options:{{skipHtmlTags:['script','noscript','style','textarea','pre','code']}}}};</script>

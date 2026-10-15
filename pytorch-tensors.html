@@ -3,7 +3,7 @@
 <title>Tensor 与 GPU 内存 · 编程札记</title><meta name="description" content="shape · 广播 · 矩阵乘法 · stride · view · CUDA 执行">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=ab2264ecc4"><link rel="stylesheet" href="assets/code.css">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
 <script defer src="assets/site.js"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
@@ -672,7 +672,16 @@
 
 <p><code>max(dim=...)</code> 同时返回最大值及其轴内下标，<code>amax</code> 只返回值，<code>argmax</code> 只返回下标。不要把 <code>x.max(dim=1)</code> 的整个返回对象当成一张数值 Tensor。</p>
 <h2 id="7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</h2>
-<p>广播让不同 shape 的 Tensor 做逐元素运算。<strong>从右往左对齐轴</strong>：长度相同可以配对；其中一个长度为 1 可以扩展；缺少的前导轴按长度 1 理解。其他组合报错。</p>
+<p>广播让不同 shape 的 Tensor 做逐元素运算。</p>
+<aside aria-label="广播规则" class="rule-card">
+<h3 id="广播的四条规则">广播的四条规则</h3>
+<ol>
+<li><strong>从右往左对齐轴</strong>，从最后一轴开始比较长度。</li>
+<li><strong>缺少的前导轴按长度 1 补齐</strong>，例如 <code>[3]</code> 与 <code>[2,3]</code> 对齐时按 <code>[1,3]</code> 理解。</li>
+<li><strong>每一对轴必须长度相同，或其中一个长度为 1</strong>；其他组合无法广播，运算报错。</li>
+<li><strong>确定输出长度</strong>：长度相同就保留；一方为 1，就扩展成另一方的长度。</li>
+</ol>
+</aside>
 <p>先看“给每列加一个偏置”：</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -755,6 +764,15 @@ result  [2, 3]
 </pre></div>
 
 
+<aside aria-label="高维矩阵乘法的广播规则" class="rule-card">
+<h3 id="高维-matmul-的配对规则">高维 matmul 的配对规则</h3>
+<ol>
+<li><strong>最后两轴做矩阵乘法</strong>：两边都至少二维时，<code>[M,K] @ [K,N] → [M,N]</code>，内轴 K 必须相等。</li>
+<li><strong>前导轴按广播规则配对</strong>：只对前导轴从右向左对齐，长度相同或一方为 1；缺少的前导轴补 1。</li>
+<li><strong>输出保留广播后的前导轴，再接 <code>[M,N]</code></strong>。前导轴决定哪几张矩阵相乘，不参与 K 轴上的求和。</li>
+</ol>
+<p>例如 <code>[2,1,3,4] @ [1,6,4,5] → [2,6,3,5]</code>：分组轴 <code>[2,1]</code> 和 <code>[1,6]</code> 广播成 <code>[2,6]</code>，每组执行 <code>[3,4] @ [4,5]</code>。</p>
+</aside>
 <h3 id="向量与批量矩阵">向量与批量矩阵</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
