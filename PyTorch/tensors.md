@@ -274,7 +274,7 @@ print(((x > 1) & (x < 3)).tolist())  # 预期：[False, True, False]
 
 `+ - * /` 是逐元素运算，可以使用广播。`x == y` 返回逐元素的 bool Tensor；Python 的 `and` / `or` 不能用于多元素 Tensor 的逐元素逻辑，用 `&` / `|` 并给比较表达式加括号。
 
-### 常用逐元素数学运算
+## 常用逐元素数学运算
 
 这些运算对每个元素分别计算，返回 Tensor。下面以实数浮点 Tensor 为例：单输入运算保持 shape 和 device；二元运算按广播规则确定输出 shape。这里的写法都不原地修改 x。
 
