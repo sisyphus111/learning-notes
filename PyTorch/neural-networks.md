@@ -423,6 +423,78 @@ print(x.grad)                   # 预期：None
 
 自动求导与叶子规则见 [Autograd 教程](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html)，累加行为见 [Tensor.backward](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.backward.html)。
 
+## 局部输入求导：detach、requires_grad_ 与 autograd.grad
+
+有时需要的是“loss 对输入的梯度”，并把梯度作为函数结果返回；同时不改变调用方输入的求导标记，也不往原输入或权重的 `.grad` 中累加。可以用 **`detach()` 分离历史 → `requires_grad_(True)` 开始局部跟踪 → `autograd.grad()` 取回梯度**。
+
+### detach()：分离求导历史，不复制数值
+
+`local = x.detach()` 返回新的 Tensor 对象，数值、shape、dtype、device 与 x 相同，但不再连接 x 原来的计算图，且 `local.requires_grad` 为 False。它不会修改原 x 的 requires_grad 或已有 `.grad`。
+
+**detach 后仍与原 x 共享底层 storage。** 对 local 原地修改数值，也可能修改原 x；分离求导关系不等于复制数据。只读取 local 并做非原地计算时，无需额外复制；需要独立修改数值时用 `x.detach().clone()`。存储对照见 [Tensor 的复制与梯度关系](tensors.md#存储独立与梯度关系是两件事)。
+
+### requires_grad_(True)：从局部 Tensor 开始记录后续计算
+
+`requires_grad` 是 bool 属性；`requires_grad_(True)` 是方法，修改调用对象的标记并返回该对象自身。下划线表示这里原地修改的是标记，不是 Tensor 的数值。
+
+```python
+import torch
+
+x = torch.tensor([2., 3.], device='cuda')
+x_local = x.detach().requires_grad_(True)  # 分离历史，再开启局部梯度跟踪
+print(x.requires_grad)                    # 预期：False，原对象的标记不变
+print(x_local.requires_grad)              # 预期：True
+print(x_local.is_leaf)                    # 预期：True，局部计算图的叶子输入
+print(x_local.grad)                       # 预期：None，尚未计算梯度
+```
+
+这个标记让正常梯度记录模式下的后续可求导运算建立求导关系，**不会立刻计算梯度，也不会恢复 detach 前的历史**。直接调用 `x.requires_grad_(True)` 会修改原对象；若要求保留原 x 的标记，应像上面一样先 detach。它也不会覆盖外层 `torch.no_grad()` 的设置。
+
+### autograd.grad 与 backward：返回梯度，还是累加到 .grad
+
+| 写法 | 返回什么 | 梯度放在哪里 |
+| --- | --- | --- |
+| `loss.backward()` | `None` | 默认累加到参与求导且要求梯度的叶子 Tensor 的 `.grad` |
+| `torch.autograd.grad(loss, x_local)` | tuple，包含所请求的梯度 | 直接返回，不累加到输入的 `.grad` |
+
+`grad_x = torch.autograd.grad(loss, x_local)[0]` 表示求 loss 对 x_local 的梯度。返回 tuple 是因为可以请求多个输入的梯度，例如 `grad_a, grad_b = torch.autograd.grad(loss, (a, b))`；只请求一个时，`[0]` 取出对应的梯度 Tensor，shape 与该输入相同。
+
+这两个接口都会在调用时执行反向求导；读取 `.grad` 只是读取已有字段，不会触发懒计算。这里 loss 是实数标量，可以省略 `grad_outputs`；多元素输出通常需要显式提供它，指定各输出在反向求导中的权重。
+
+### 完整例子：返回输入梯度，保留调用方的状态
+
+```python
+import torch
+
+def input_gradient(x, weight):
+    """正常梯度记录模式下求输入梯度，不修改原输入、权重或它们的 .grad。"""
+    x_local = x.detach().requires_grad_(True)  # [B, Din]，新的局部求导起点
+    weight_local = weight.detach()            # [Dout, Din]，本次把权重当常量
+    y = x_local @ weight_local.T              # [B, Dout]，前向必须使用 x_local
+    loss = y.square().mean()                  # []，对所有输出元素求平方均值
+    grad_x = torch.autograd.grad(loss, x_local)[0]  # [B, Din]，直接取回梯度
+    return loss, grad_x
+
+x = torch.tensor([[2.]], requires_grad=True, device='cuda')
+weight = torch.tensor([[3.]], requires_grad=True, device='cuda')
+x.grad = torch.full_like(x, 7.)               # 模拟调用方已有的梯度
+weight.grad = torch.full_like(weight, 11.)
+loss, grad_x = input_gradient(x, weight)
+print(loss.item(), grad_x.item())             # 手算预期：36.0 36.0
+assert torch.equal(x, torch.full_like(x, 2.))  # 原输入数值不变
+assert x.requires_grad and weight.requires_grad
+assert torch.equal(x.grad, torch.full_like(x, 7.))
+assert torch.equal(weight.grad, torch.full_like(weight, 11.))
+```
+
+手算：`y = 2×3 = 6`，`loss = (3x)² = 9x²`，所以在 x=2 处输入梯度为 `18×2 = 36`。权重 detach 后只是本次不对它求导，它的数值仍参与输入梯度的计算。即使不 detach 权重，仅请求输入梯度的 `autograd.grad` 也不会给 weight 累加 `.grad`。
+
+**常见错误：创建了 x_local，却仍写 `y = x @ weight.T`。** 这样 loss 没有依赖 x_local 的计算路径，对 x_local 求导默认会报错；两个 Tensor 数值相同、共享存储，并不会自动建立求导关系。正确路径是 `x_local → y → loss`。
+
+默认求导后，计算图为反向保存的中间数据会释放；不要直接对同一个 loss 再调用一次 backward 或 grad，通常应重新前向计算。这里返回的 grad_x 默认也不建立供高阶求导使用的计算图；需要继续对梯度求导时才考虑 `create_graph=True`。
+
+接口见 [Tensor.detach](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.detach.html)、[Tensor.requires_grad_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.requires_grad_.html)、[autograd.grad](https://docs.pytorch.org/docs/2.14/generated/torch.autograd.grad.html)。
+
 ## 7. 一次训练更新：谁计算，谁改参数
 
 常见训练顺序是：清理旧梯度 → 前向预测 → 计算 loss → backward 求梯度 → optimizer.step 更新参数。优化器通过 `model.parameters()` 获得要更新的参数。

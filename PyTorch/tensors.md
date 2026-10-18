@@ -1263,6 +1263,8 @@ print(d.requires_grad, c.requires_grad)  # 预期：False False
 
 `detach()` 共享数值存储，`clone()` 复制数值但保留梯度关系；完整对照见[存储独立与梯度关系](#存储独立与梯度关系是两件事)。从 loss 到 backward、梯度累加、优化器更新和 no_grad 的完整流程，见[神经网络基础：自动求导](neural-networks.md#6-自动求导-loss-backward-与-grad)。
 
+用 `x.detach().requires_grad_(True)` 建立局部求导输入，再用 `torch.autograd.grad` 直接返回梯度而不累加到 `.grad`，见 [局部输入求导](neural-networks.md#局部输入求导-detach-requires_grad_-与-autograd-grad)。
+
 ## 17. 常见错误速查
 
 | 写法或判断 | 问题 | 处理方式 |
