@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 790" role="img" aria-labelledby="title desc">
+  <title id="title">算子图编译与 CUDA Graph 重放</title>
+  <desc id="desc">上半部分展示 Python 函数由 Dynamo 捕获为算子图，再由 Inductor 编译成可能融合的 GPU kernel。下半部分展示已有 GPU 工作由 CUDA capture 记录为执行图，再通过 graph launch 重放。两条路径可以组合，CUDA Graph 不负责自动融合已有 kernels。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#62768d"/>
+    </marker>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:#26364e}
+      .title{font-size:29px;font-weight:650}.label{font-size:25px;font-weight:600}
+      .body{font-size:23px}.note{font-size:22px;fill:#5f728b}.edge{font-size:20px;fill:#5f728b}
+    </style>
+  </defs>
+  <rect width="1200" height="790" rx="12" fill="#fff"/>
+  <rect x="24" y="24" width="1152" height="332" rx="12" fill="#f2f6fc" stroke="#cbd9ec" stroke-width="2"/>
+  <text x="48" y="70" class="title" fill="#285da8">算子图：为编译优化保留计算含义</text>
+  <rect x="48" y="128" width="264" height="116" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="180" y="167" text-anchor="middle" class="label">Python 函数</text>
+  <text x="180" y="208" text-anchor="middle" class="body">f(a, b)</text>
+  <rect x="432" y="128" width="300" height="116" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="582" y="167" text-anchor="middle" class="label">FX 算子图</text>
+  <text x="582" y="208" text-anchor="middle" class="body">add → multiply → relu</text>
+  <rect x="888" y="128" width="264" height="116" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="1020" y="167" text-anchor="middle" class="label">GPU 实现</text>
+  <text x="1020" y="208" text-anchor="middle" class="body">可能融合成 1 个 kernel</text>
+  <path d="M312 186H432" stroke="#62768d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="372" y="167" text-anchor="middle" class="edge">Dynamo</text>
+  <path d="M732 186H888" stroke="#62768d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="810" y="167" text-anchor="middle" class="edge">Inductor</text>
+  <text x="48" y="295" class="body">优化目标：生成计算实现，减少中间存储与执行开销。</text>
+  <text x="48" y="329" class="note">图中的一个节点不等于一个 kernel；融合结果取决于后端与约束。</text>
+
+  <rect x="24" y="384" width="1152" height="332" rx="12" fill="#f0f8f3" stroke="#cce2d4" stroke-width="2"/>
+  <text x="48" y="430" class="title" fill="#328a59">CUDA Graph：记录 GPU 工作与执行依赖</text>
+  <rect x="48" y="488" width="264" height="116" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="180" y="527" text-anchor="middle" class="label">已有 GPU 工作</text>
+  <text x="180" y="568" text-anchor="middle" class="body">kernel A → B → C</text>
+  <rect x="432" y="488" width="300" height="116" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="582" y="527" text-anchor="middle" class="label">图与执行对象</text>
+  <text x="582" y="568" text-anchor="middle" class="body">工作、参数与依赖</text>
+  <rect x="888" y="488" width="264" height="116" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="1020" y="527" text-anchor="middle" class="label">一次 graph launch</text>
+  <text x="1020" y="568" text-anchor="middle" class="body">重放 A → B → C</text>
+  <path d="M312 546H432" stroke="#62768d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="372" y="514" text-anchor="middle" class="edge">capture</text>
+  <text x="372" y="534" text-anchor="middle" class="edge">实例化</text>
+  <path d="M732 546H888" stroke="#62768d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="810" y="527" text-anchor="middle" class="edge">replay</text>
+  <text x="48" y="655" class="body">优化目标：复用执行安排，减少重复的 CPU 提交开销。</text>
+  <text x="48" y="689" class="note">这里仍有 3 个 kernels；CUDA Graph 不负责把它们自动融合。</text>
+  <text x="48" y="762" class="body">可组合：先编译生成 kernels，再用 CUDA Graph 记录并重放这些工作。</text>
+</svg>

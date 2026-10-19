@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>计算图、编译与 CUDA Graph · 编程札记</title><meta name="description" content="torch.compile · Dynamo · Inductor · 算子融合 · capture / replay">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=ab2264ecc4"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>编程札记<small>算法 · 语言 · 系统</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html" aria-current="page">计算图、编译与 CUDA Graph</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">编程札记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">GPU 软件栈</p><h1>计算图、编译与 CUDA Graph</h1><p class="subtitle">torch.compile · Dynamo · Inductor · 算子融合 · capture / replay</p></div>
+<article><p>计算图用节点和边描述计算及依赖。编译器可以据此改变计算实现；执行系统也可以据此批量提交已有工作。<strong>“把工作组织成图”不自动意味着融合成一个 kernel，也不自动意味着所有节点并行执行。</strong></p>
+<p><code>torch.compile</code> 是编译入口，TorchDynamo 捕获算子图，TorchInductor 优化并生成实现。CUDA Graph 记录 CUDA 工作与依赖，重点是复用执行安排、减少 CPU 提交开销。GPU 软件库的定位见 <a href="gpu-software-stack.html">GPU 软件栈</a>。</p>
+<h2 id="1-三种常见的图分别记录什么">1. 三种常见的图分别记录什么</h2>
+<table>
+<thead>
+<tr>
+<th>图</th>
+<th>节点主要表达什么</th>
+<th>边主要表达什么</th>
+<th>使用者</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>算子图，例如 FX graph</td>
+<td>Tensor 算子、函数调用与参数</td>
+<td>数据依赖</td>
+<td>图转换与编译后端</td>
+</tr>
+<tr>
+<td>autograd 图</td>
+<td>反向求导所需的操作与状态</td>
+<td>梯度传播依赖</td>
+<td>PyTorch 自动求导系统</td>
+</tr>
+<tr>
+<td>CUDA Graph</td>
+<td>CUDA kernel、复制及其他支持的工作</td>
+<td>执行依赖</td>
+<td>CUDA 执行系统</td>
+</tr>
+</tbody>
+</table>
+<p>算子图中的一个 matmul 节点，后端可能实现为一个或多个 kernels；几个逐元素节点也可能合并成一个 kernel。图节点的数量不能直接当作 kernel 数量。</p>
+<p>autograd 图服务于梯度计算。<code>torch.compile</code> 也支持不求梯度的推理函数，因此编译图并不依赖程序必须先有一张反向求导图。训练路径中的 AOTAutograd 会准备前向、反向图，再交给后端编译。<a href="https://docs.pytorch.org/docs/2.9/torch.compiler.html">PyTorch 编译组件</a></p>
+<h2 id="2-用同一个函数区分优化与重放">2. 用同一个函数区分优化与重放</h2>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">t</span> <span class="o">*</span> <span class="mf">0.5</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+</pre></div>
+
+
+<p>假设 a/b 是同形状、连续的 CUDA 浮点 Tensor。普通 eager 路径通常逐个提交加法、乘法和 ReLU。输出依赖前一步，因此不能只因为画成图就把三个操作同时执行。</p>
+<p><img alt="算子图编译与 CUDA Graph 重放的职责" src="assets/gpu-compilation-and-replay.svg" loading="lazy" /></p>
+<p>图中上半部分改变计算实现，下半部分复用提交安排。两者能够组合：先编译得到 kernel，再记录这些 kernel 的执行图。</p>
+<h3 id="算子图提供优化机会">算子图提供优化机会</h3>
+<p>算子图可以表达为：</p>
+<div class="codehilite"><pre><span></span>a ─┐
+   add → multiply(0.5) → relu → output
+b ─┘
+</pre></div>
+
+
+<p>编译器看到完整的数据依赖后，可能生成一个逐元素融合 kernel：</p>
+<div class="codehilite"><pre><span></span>读 a[i]、b[i]
+    → 在局部临时值中计算 max((a[i] + b[i]) * 0.5, 0)
+    → 写 output[i]
+</pre></div>
+
+
+<p>融合可以减少 kernel 启动，也可以消除 t/u 两个中间 Tensor 的物化。它改变了执行实现与数据移动。能否融合取决于算子支持、布局、依赖和后端策略。上面的一个 kernel 是说明用的可能结果，没有实机验证。</p>
+<h3 id="cuda-graph-提供执行重放">CUDA Graph 提供执行重放</h3>
+<p>如果记录的是已有的三个 kernels，重放时仍然执行这三个 kernels：</p>
+<div class="codehilite"><pre><span></span>逐个提交：CPU → launch A；CPU → launch B；CPU → launch C
+
+图重放：  CPU → graph launch → A → B → C
+</pre></div>
+
+
+<p>CUDA Graph 保存工作、参数和依赖，并在实例化后复用执行安排。它不负责把上述三个逐元素 kernel 改写成一个融合 kernel。重放减少了重复的 host 端参数准备和逐项提交开销；GPU 上仍有对应的执行与调度成本。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html">CUDA Graph 官方说明</a></p>
+<h2 id="3-torch-compile-dynamo-与-inductor-的关系">3. torch.compile、Dynamo 与 Inductor 的关系</h2>
+<div class="codehilite"><pre><span></span>torch.compile(f)                         用户入口
+    ↓
+TorchDynamo                             捕获 Tensor 计算，建立 guards
+    ↓
+FX graph                                算子及数据依赖
+    ↓
+AOTAutograd / 图转换                     按路径准备待编译计算
+    ↓
+TorchInductor（默认后端）                优化、组织计算并生成实现
+    ↓
+生成的 GPU kernels / 对已有计算库的调用
+    ↓
+符合条件时再使用 CUDA Graph             复用执行安排
+</pre></div>
+
+
+<h3 id="torchdynamo-捕获可编译的程序区域">TorchDynamo 捕获可编译的程序区域</h3>
+<p>Dynamo 参与 Python 执行，提取 Tensor 操作及依赖，交给编译后端。Dynamo 本身不负责完成所有底层 kernel 优化，也不等于 CUDA Graph 的 stream capture。</p>
+<p>为复用捕获和编译结果，Dynamo 建立 guards，即结果适用的条件。条件可以涉及 Tensor 的 dtype、device、shape 或程序状态；动态 shape 也可能使用符号条件。满足条件的后续调用可复用编译结果。Tensor 内的普通数值变化通常不要求重新编译。<a href="https://docs.pytorch.org/docs/2.9/torch.compiler_dynamo_overview.html">Dynamo 概览</a></p>
+<p>例如，某个编译结果只支持 BF16 CUDA 输入，调用方换成 CPU FP32 输入时，原条件不再成立。系统可能编译另一份实现。guard 是判断实现是否适用的条件，不是每次检查所有 Tensor 元素。</p>
+<h3 id="torchinductor-生成和组织计算实现">TorchInductor 生成和组织计算实现</h3>
+<p>Inductor 接收图，组织融合、调度和代码生成。它可以生成 Triton kernel，也可以调用已有的 matmul 库。后端仍可以保留多个 kernels，不要求把整个模型塞进一个 kernel。</p>
+<div class="codehilite"><pre><span></span><span class="n">compiled_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"inductor"</span><span class="p">)</span>
+<span class="c1"># 在 CUDA 输入上调用时，首次调用可能触发捕获与编译。</span>
+<span class="c1"># 后续满足 guards 的调用可复用编译结果。</span>
+</pre></div>
+
+
+<p>这里不承诺固定 kernel 数或固定耗时。<code>torch.compile</code> 可以选择其他后端；Dynamo 和 Inductor 是不同职责的组件。<a href="https://docs.pytorch.org/docs/2.9/generated/torch.compile.html">torch.compile 接口</a></p>
+<h3 id="graph-break-与重编译">graph break 与重编译</h3>
+<p>graph break 表示捕获的计算在某处中断，程序可能分成多个编译区域，并由 Python 执行连接它们。依赖 Tensor 数值的 Python 控制流可能触发 graph break；例如把 <code>x.sum().item()</code> 取回 CPU，再决定 Python 分支。</p>
+<p>guard 不满足则可能触发重编译。graph break 与重编译不是同一件事：前者关乎区域如何切分，后者关乎已有实现能否复用。</p>
+<p><code>torch.compile(f, fullgraph=True)</code> 要求函数捕获为单一图区域；遇到不支持的 graph break 会产生错误。<strong>单一算子图仍可以编译成多个 GPU kernels。</strong> <a href="https://docs.pytorch.org/docs/2.9/torch.compiler.html#torch-compile-programming-model">Dynamo 的 graph breaks、guards 与重编译</a></p>
+<h2 id="4-cuda-graph-的创建与重放">4. CUDA Graph 的创建与重放</h2>
+<p>CUDA Graph 可以通过显式 API 构建，也可以通过 stream capture 记录工作。capture 记录提交的工作，不表示已经完成本次 GPU 计算。典型阶段为：</p>
+<ol>
+<li>创建或捕获图，描述工作与依赖。</li>
+<li>实例化图，准备可重复提交的执行对象。</li>
+<li>重放图，用新的输入内容执行工作。</li>
+</ol>
+<p>CUDA Graph 节点不只包含 kernels，CUDA API 还支持复制及其他节点。普通 PyTorch stream capture 不会把任意 Python 控制流或 CPU 副作用自动转成可重放工作。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html">CUDA Graph 创建与执行</a></p>
+<h3 id="数据可变-基础捕获模型中的地址保持稳定">数据可变，基础捕获模型中的地址保持稳定</h3>
+<p>在普通 PyTorch CUDA Graph 捕获与重放中，指针参数仍指向捕获时的地址。新 batch 可以复制到这些输入缓冲区，再重放图。换一个 Tensor 对象并重新绑定 Python 变量，不会自动改变图里的指针。</p>
+<div class="codehilite"><pre><span></span>static_a 原来指向地址 P
+    ↓ capture
+图中的输入指针为 P
+
+static_a.copy_(new_a)     更新 P 中的数据，重放能读到新内容
+static_a = new_a         只改 Python 绑定，图仍然读取 P
+</pre></div>
+
+
+<p>因此需要让输入/输出缓冲区持续存活。底层 CUDA 有图更新机制，上层编译系统也能管理多份捕获。地址稳定的描述针对这里的基础重放模型。<a href="https://docs.pytorch.org/docs/2.9/notes/cuda.html#cuda-graphs">PyTorch CUDA Graph 内存语义</a></p>
+<h3 id="pytorch-手动捕获示意">PyTorch 手动捕获示意</h3>
+<p>下面代码与上文 f 配合使用。它是 CUDA 示例，未运行；warmup 在 side stream 上执行，保留静态输入和输出引用。</p>
+<div class="codehilite"><pre><span></span><span class="n">static_a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+<span class="n">static_b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+
+<span class="n">warmup_stream</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>
+<span class="n">warmup_stream</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">current_stream</span><span class="p">())</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">warmup_stream</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">f</span><span class="p">(</span><span class="n">static_a</span><span class="p">,</span> <span class="n">static_b</span><span class="p">)</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">current_stream</span><span class="p">()</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">warmup_stream</span><span class="p">)</span>
+
+<span class="n">graph</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">CUDAGraph</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">graph</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
+    <span class="n">static_output</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">static_a</span><span class="p">,</span> <span class="n">static_b</span><span class="p">)</span>
+
+<span class="n">new_a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">static_a</span><span class="p">)</span>
+<span class="n">new_b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">static_b</span><span class="p">)</span>
+<span class="n">static_a</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">new_a</span><span class="p">)</span>
+<span class="n">static_b</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">new_b</span><span class="p">)</span>
+<span class="n">graph</span><span class="o">.</span><span class="n">replay</span><span class="p">()</span>
+<span class="c1"># static_output 是这次重放的输出；后续重放会复用其存储。</span>
+</pre></div>
+
+
+<p>重放的目标是复用已经准备的工作。捕获、实例化、warmup、输入复制与执行本身仍有成本。Python 中的打印或日志不会因为放进捕获上下文，就在每次 replay 时重新执行。</p>
+<h2 id="5-编译优化与-cuda-graph-能组合-但互不等同">5. 编译优化与 CUDA Graph 能组合，但互不等同</h2>
+<table>
+<thead>
+<tr>
+<th>使用方式</th>
+<th>在这个逐元素示例中可能发生什么</th>
+<th>主要改变</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>eager</td>
+<td>分别提交加法、乘法、ReLU</td>
+<td>按算子直接执行</td>
+</tr>
+<tr>
+<td>只用图编译优化</td>
+<td>三个操作可能融合成一个 kernel</td>
+<td>计算实现、kernel 数与中间存储</td>
+</tr>
+<tr>
+<td>只记录原始工作为 CUDA Graph</td>
+<td>一个 graph launch 提交原来的三个 kernels</td>
+<td>CPU 提交方式</td>
+</tr>
+<tr>
+<td>编译后再使用 CUDA Graph</td>
+<td>重放编译产生的工作</td>
+<td>同时复用优化实现与执行安排</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><span class="n">compiled_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"reduce-overhead"</span><span class="p">)</span>
+</pre></div>
+
+
+<p>这个模式会尝试利用 CUDA Graph 降低开销，但受设备、计算内容和捕获约束影响。不能仅凭使用了这个模式，就宣称每次执行都成功重放 CUDA Graph。编译器也可能跳过不安全的区域。<a href="https://docs.pytorch.org/docs/2.9/torch.compiler_cudagraph_trees.html">CUDA Graph Trees</a></p>
+<p>一份可处理动态 shape 的编译图，可以对应多份具体 shape 的 CUDA Graph 捕获。推理系统也可能把 batch 大小归入有限的 buckets，分别维护捕获与静态缓冲区。因此“编译图支持动态 shape”与“单份基础 CUDA Graph 的参数固定”能够同时成立。</p>
+<h2 id="6-计算图怎样影响性能">6. 计算图怎样影响性能</h2>
+<p>计算图为后端提供计算关系。后端可以利用这些关系融合算子、消除中间存储、调整调度或规划内存。能实现哪些优化取决于后端和计算。CUDA Graph 则复用工作与依赖的执行安排，减少重复提交。</p>
+<p>如果一个大 GEMM 已经持续使用 GPU，减少 host 提交开销不一定显著改变总耗时。如果程序由多个短 kernels 构成，且 CPU 提交造成间隙，CUDA Graph 更可能带来收益。这里是在说明机制，不能替代实际时间线和受控测量。</p>
+<p>profiler 可以记录 kernel 数量、CPU 提交与 GPU 工作之间的空隙、graph replay 及总延迟。对照编译前后的记录，才能确认实际收益。本页没有执行编译、图捕获、CUDA 用例或性能测试。</p></article><footer>GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-三种常见的图分别记录什么">1. 三种常见的图分别记录什么</a><a class="level-2" href="#2-用同一个函数区分优化与重放">2. 用同一个函数区分优化与重放</a><a class="level-2" href="#3-torch-compile-dynamo-与-inductor-的关系">3. torch.compile、Dynamo 与 Inductor 的关系</a><a class="level-2" href="#4-cuda-graph-的创建与重放">4. CUDA Graph 的创建与重放</a><a class="level-2" href="#5-编译优化与-cuda-graph-能组合-但互不等同">5. 编译优化与 CUDA Graph 能组合，但互不等同</a><a class="level-2" href="#6-计算图怎样影响性能">6. 计算图怎样影响性能</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>
