@@ -73,6 +73,8 @@ GPU_REFERENCES = [
      'cuBLAS · cuDNN · CUTLASS · CuTe DSL · Triton · 编译与运行'),
     ('GPU/graphs-and-compilation.md', 'gpu-graphs-and-compilation.html', '计算图、编译与 CUDA Graph',
      'torch.compile · Dynamo · Inductor · 算子融合 · capture / replay'),
+    ('GPU/precision-and-quantization.md', 'gpu-precision-and-quantization.html', '浮点格式、混合精度与量化',
+     'FP16 / BF16 · TF32 · FP8 · E8M0 · MXFP8 / NVFP4 · scale'),
 ]
 PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + GPU_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}

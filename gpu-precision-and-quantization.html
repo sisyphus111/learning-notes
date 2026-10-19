@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>浮点格式、混合精度与量化 · 编程札记</title><meta name="description" content="FP16 / BF16 · TF32 · FP8 · E8M0 · MXFP8 / NVFP4 · scale">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=ab2264ecc4"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>编程札记<small>算法 · 语言 · 系统</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html" aria-current="page">浮点格式、混合精度与量化</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">编程札记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">GPU 软件栈</p><h1>浮点格式、混合精度与量化</h1><p class="subtitle">FP16 / BF16 · TF32 · FP8 · E8M0 · MXFP8 / NVFP4 · scale</p></div>
+<article><p>FP32、FP16、BF16 描述数值格式；TF32 描述常见的矩阵乘法计算精度；E4M3、E5M2 明确指数与小数部分的位数。<strong>E8M0 在 MX 格式中通常保存共享缩放因子，不是带正负号和零的普通 FP8 数据格式。</strong></p>
+<p>一次矩阵计算还要分别说明输入存储、乘法精度、累加类型、输出存储和量化比例。Tensor Core 与软件选择实现的关系见 <a href="gpu-software-stack.html">GPU 软件栈与工具</a>，程序怎样变成设备指令见 <a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a>。</p>
+<h2 id="1-float-fp16-bf16-这些名字指什么">1. float、FP16、BF16 这些名字指什么</h2>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>常见含义</th>
+<th>在 PyTorch / CUDA 中怎样看</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>float / FP32 / single</td>
+<td>32 位浮点</td>
+<td><code>torch.float32</code>、别名 <code>torch.float</code>；CUDA C++ 的 <code>float</code></td>
+</tr>
+<tr>
+<td>double / FP64</td>
+<td>64 位浮点</td>
+<td><code>torch.float64</code>、<code>torch.double</code>；CUDA C++ 的 <code>double</code></td>
+</tr>
+<tr>
+<td>half / FP16</td>
+<td>16 位浮点</td>
+<td><code>torch.float16</code>、<code>torch.half</code>；5 位指数、10 位小数部分</td>
+</tr>
+<tr>
+<td>BF16 / bfloat16</td>
+<td>另一种 16 位浮点</td>
+<td><code>torch.bfloat16</code>；8 位指数、7 位小数部分</td>
+</tr>
+<tr>
+<td>TF32 / TensorFloat-32</td>
+<td>NVIDIA 矩阵计算模式</td>
+<td>通常使用 FP32 Tensor 存储，乘法保留较少有效位</td>
+</tr>
+<tr>
+<td>FP8</td>
+<td>8 位浮点格式家族</td>
+<td>必须继续说明 E4M3、E5M2 或具体变体</td>
+</tr>
+<tr>
+<td>FP6 / FP4</td>
+<td>6 位 / 4 位浮点格式家族</td>
+<td>通常配合块级 scale 和专用 kernel 使用</td>
+</tr>
+</tbody>
+</table>
+<p>Python 内置的 <code>float</code> 在常见 CPython 平台使用 64 位双精度。<code>torch.float</code> 则是 <code>torch.float32</code> 的别名。PyTorch 初始默认浮点 dtype 通常是 FP32，但允许修改；不要只看“float”这个词就断定所有环境都是同一种类型。<a href="https://docs.python.org/3/tutorial/floatingpoint.html">Python 浮点说明</a>、<a href="https://docs.pytorch.org/docs/2.9/tensor_attributes.html">PyTorch dtype</a></p>
+<p>BF16 与 FP16 都占 16 bit，但不是同一种编码。只有总位数相同，不能说明范围、误差或二进制表示相同。</p>
+<h2 id="2-符号-指数与小数部分怎样组成一个数">2. 符号、指数与小数部分怎样组成一个数</h2>
+<p>常见二进制浮点包含三个字段：</p>
+<div class="codehilite"><pre><span></span>S：符号位
+E：指数编码
+F：小数部分编码，存储 M 个 bit
+</pre></div>
+
+
+<p>对普通规格化数，可以写成：</p>
+<div class="math display-math">\[
+x=(-1)^S\times 2^{E-\mathrm{bias}}\times\left(1+\frac{F}{2^M}\right)
+\]</div>
+
+<p>例如十进制 5.625：</p>
+<div class="codehilite"><pre><span></span>5.625 = 二进制 101.101
+      = 二进制 1.01101 × 2²
+</pre></div>
+
+
+<p>在 FP16 中，S=0，指数编码为 <code>2+15=17</code>，小数部分编码为 <code>0110100000</code>。规格化数的开头 <code>1</code> 不需要显式存储，因此 10 个小数部分 bit 提供 11 个有效二进制位。</p>
+<p><img alt="FP32、BF16、FP16、TF32、FP8 与 E8M0 的位分配" src="assets/gpu-floating-point-formats.svg" loading="lazy" /></p>
+<p>指数决定量级，小数部分决定同一量级中能细分多少个位置。这里把 F 字段称为“小数部分”。资料中的 mantissa bits 往往也指这个存储字段，完整有效数还包括规格化数的隐含首位。</p>
+<p>零和特殊值有各自的编码规则，subnormal、Inf 和 NaN 都需要分别解释。不能把所有 bit 模式都直接代入规格化公式。特殊值规则也可能随格式变化。<a href="https://docs.nvidia.com/cuda/floating-point/index.html">NVIDIA 浮点与 IEEE 754</a></p>
+<h2 id="3-范围与精细程度是两件事">3. 范围与精细程度是两件事</h2>
+<p>下表的步长指 <strong>1 到下一个更大可表示数的距离</strong>。最小正规格化数与最小正数不同，后者还可能是 subnormal。</p>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>S / E / F 位数</th>
+<th>最大有限正值</th>
+<th>最小正规格化正值</th>
+<th>1 附近向上的步长</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FP64</td>
+<td>1 / 11 / 52</td>
+<td>约 1.798×10³⁰⁸</td>
+<td>2⁻¹⁰²²</td>
+<td>2⁻⁵²</td>
+</tr>
+<tr>
+<td>FP32</td>
+<td>1 / 8 / 23</td>
+<td>约 3.403×10³⁸</td>
+<td>2⁻¹²⁶</td>
+<td>2⁻²³</td>
+</tr>
+<tr>
+<td>BF16</td>
+<td>1 / 8 / 7</td>
+<td>约 3.390×10³⁸</td>
+<td>2⁻¹²⁶</td>
+<td>2⁻⁷ = 0.0078125</td>
+</tr>
+<tr>
+<td>FP16</td>
+<td>1 / 5 / 10</td>
+<td>65504</td>
+<td>2⁻¹⁴</td>
+<td>2⁻¹⁰ = 0.0009765625</td>
+</tr>
+<tr>
+<td>FP8 E4M3</td>
+<td>1 / 4 / 3</td>
+<td>448</td>
+<td>2⁻⁶</td>
+<td>2⁻³ = 0.125</td>
+</tr>
+<tr>
+<td>FP8 E5M2</td>
+<td>1 / 5 / 2</td>
+<td>57344</td>
+<td>2⁻¹⁴</td>
+<td>2⁻² = 0.25</td>
+</tr>
+</tbody>
+</table>
+<p>BF16 的指数范围接近 FP32，小数部分却短于 FP16。因此，BF16 更能容纳不同量级的数；在共同覆盖的量级中，FP16 的网格通常更细。<a href="https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/struct____nv__bfloat16.html">CUDA BF16 定义</a></p>
+<p>以常见的最近舍入方式看：</p>
+<div class="codehilite"><pre><span></span>1.001：
+    FP16 → 1.0009765625
+    BF16 → 1.0
+
+100000：
+    超过 FP16 的最大有限值
+    BF16 仍能表示这一量级，但会舍入，例如约为 99840
+</pre></div>
+
+
+<p>“7 位小数部分”不是保留 7 位十进制小数。浮点间距还会随量级变化。例如 FP16 在 <code>[1,2)</code> 的间距是 2⁻¹⁰，在 <code>[2048,4096)</code> 的间距变成 2。</p>
+<h3 id="舍入-溢出与-subnormal">舍入、溢出与 subnormal</h3>
+<table>
+<thead>
+<tr>
+<th>术语</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rounding / 舍入</td>
+<td>精确结果落在网格之间，需要选择一个可表示值</td>
+</tr>
+<tr>
+<td>round-to-nearest, ties-to-even</td>
+<td>选最近值；正好在中间时，取保留有效数最低位为 0 的结果</td>
+</tr>
+<tr>
+<td>overflow / 溢出</td>
+<td>结果超出可表示范围，按转换规则得到 Inf、NaN 或饱和值</td>
+</tr>
+<tr>
+<td>underflow / 下溢</td>
+<td>结果靠近零，可能进入 subnormal、舍入为零或被指令清零</td>
+</tr>
+<tr>
+<td>subnormal / 非规格化数</td>
+<td>不使用隐含首位 1，表达正规格化范围与零之间的部分小值</td>
+</tr>
+</tbody>
+</table>
+<p>例如 FP16 最小正规格化正值是 2⁻¹⁴，但最小正 subnormal 是 2⁻²⁴。编码能表达某个值，不保证每种硬件指令都以相同方式处理它；还要看计算与转换模式。</p>
+<h2 id="4-fp8-的-e4m3-e5m2-指什么">4. FP8 的 E4M3、E5M2 指什么</h2>
+<p>对这里的 FP8 数据格式，ExMy 中的 x/y 分别表示指数与小数部分 bit 数，另有 1 个符号 bit：</p>
+<div class="codehilite"><pre><span></span>E4M3：1 + 4 + 3 = 8 bit
+E5M2：1 + 5 + 2 = 8 bit
+</pre></div>
+
+
+<p>E4M3 提供更细的有效数网格，E5M2 提供更大的指数范围。两者每元素都占 1 byte，但适用的数值分布可能不同。</p>
+<p>本文表中的 E4M3 按 OCP 编码理解：最大有限值 448，没有 Inf，但保留 NaN。E5M2 的最大有限值是 57344，并支持 Inf。相同总位数不意味着特殊值规则一致。<a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf">OCP MX 规范中的 FP8 编码表</a></p>
+<p>PyTorch 中还会看到 <code>float8_e4m3fn</code>、<code>float8_e4m3fnuz</code>。这类后缀区分特殊值和编码规则。不能只按 E/M 位数就假设所有变体二进制兼容。本文的 448 范围对应这里说明的 OCP E4M3，而不是任意 E4M3 变体。</p>
+<h2 id="5-tf32-存储为-fp32-乘法可以使用另一种精度">5. TF32：存储为 FP32，乘法可以使用另一种精度</h2>
+<p>TF32 的计算格式包含 1 个符号位、8 个指数位和 10 个小数部分位。其指数范围接近 FP32，乘法有效数精度接近 FP16。它通常仍从 FP32 Tensor 读取，结果可用 FP32 累加并写回 FP32。</p>
+<div class="codehilite"><pre><span></span>FP32 输入存储
+    → 乘法按 TF32 精度使用操作数
+    → FP32 累加
+    → FP32 输出存储
+</pre></div>
+
+
+<p>因此 <code>y.dtype == torch.float32</code> 不能证明乘法保留了完整 FP32 有效位。启用 TF32 也不把原来的 FP32 Tensor 变成每元素 19 bit 的紧凑存储。</p>
+<p>在支持相应新接口的 PyTorch 版本中，可以设置：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">matmul</span><span class="o">.</span><span class="n">fp32_precision</span> <span class="o">=</span> <span class="s2">"ieee"</span>  <span class="c1"># 要求 FP32 内部精度</span>
+<span class="c1"># 或设置为 "tf32"，允许 TF32 内部精度；不要与旧控制接口混用。</span>
+</pre></div>
+
+
+<p>这里控制的是允许的计算精度，具体实现仍由后端选择。其他接口中的 <code>high</code> 也不等于唯一指定 TF32，可能允许其他低精度分解算法。<a href="https://docs.pytorch.org/docs/2.9/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices">PyTorch TF32 与精度控制</a></p>
+<h2 id="6-输入-乘法-累加和输出分别决定什么">6. 输入、乘法、累加和输出分别决定什么</h2>
+<p>矩阵乘法的一个输出是：</p>
+<div class="math display-math">\[
+c_{ij}=\sum_k a_{ik}b_{kj}
+\]</div>
+
+<table>
+<thead>
+<tr>
+<th>模式示例</th>
+<th>输入存储</th>
+<th>乘法操作数精度</th>
+<th>累加类型</th>
+<th>输出可以怎样保存</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FP16 混合计算</td>
+<td>FP16</td>
+<td>FP16</td>
+<td>FP32</td>
+<td>按接口写回 FP16 或 FP32</td>
+</tr>
+<tr>
+<td>BF16 混合计算</td>
+<td>BF16</td>
+<td>BF16</td>
+<td>FP32</td>
+<td>按接口写回 BF16 或 FP32</td>
+</tr>
+<tr>
+<td>TF32 路径</td>
+<td>FP32</td>
+<td>TF32</td>
+<td>FP32</td>
+<td>FP32</td>
+</tr>
+<tr>
+<td>INT8 矩阵计算</td>
+<td>INT8</td>
+<td>INT8</td>
+<td>INT32</td>
+<td>整数结果或经缩放转换的结果</td>
+</tr>
+<tr>
+<td>块缩放 FP8</td>
+<td>FP8 元素与 scales</td>
+<td>对应 FP8 矩阵操作，结合 scales</td>
+<td>常见为 FP32</td>
+<td>按接口与 epilogue 转换</td>
+</tr>
+</tbody>
+</table>
+<p>“FP16 输入、FP32 累加”不表示每个乘积必须先舍入成 FP16，再转换为 FP32。矩阵指令规定乘法与累加行为，不能仅凭输入 Tensor 的 dtype 推断中间步骤。<a href="https://docs.nvidia.com/cuda/cublas/index.html">cuBLAS 计算类型</a></p>
+<h3 id="较宽的累加器为什么有用">较宽的累加器为什么有用</h3>
+<p>按最近舍入、遇中点取偶数计算：</p>
+<div class="codehilite"><pre><span></span>FP16 中，2048 的下一个更大值是 2050。
+2048 + 1 的精确结果是 2049，舍入后回到 2048。
+
+如果每次都把部分和舍入为 FP16：
+    从 2048 开始，加 1 共 1024 次，部分和可以一直停在 2048。
+
+如果使用 FP32 累加：
+    这组整数加法可以精确累加到 3072。
+</pre></div>
+
+
+<p>较宽的累加器减少求和中的误差，但不能恢复输入转换时已经丢失的信息。把 1.001 转成 BF16 得到 1.0 后，再用 FP32 累加，也不能自动恢复原来的 0.001。</p>
+<h3 id="fma-mma-与计算顺序">FMA、MMA 与计算顺序</h3>
+<p>FMA 是 Fused Multiply-Add，表达一次融合乘加。标准 FMA 对精确的 <code>a*b+c</code> 作最终舍入，避免先把乘积单独舍入、再与 c 相加。MMA 是矩阵乘加。整条矩阵指令的累加顺序和数值规则还需要看指令定义，不能只凭名称推断逐步行为。</p>
+<p>浮点加法也不保证结合律。假设每一步都按 FP32 最近舍入：</p>
+<div class="codehilite"><pre><span></span>(100000000 + (-100000000)) + 1 → 1
+100000000 + ((-100000000) + 1) → 0
+</pre></div>
+
+
+<p>第二行中，<code>-100000000 + 1</code> 在 FP32 网格上舍入回 <code>-100000000</code>。不同的归约顺序、拆分策略和计算模式可能产生不同结果。不能只检查输出 dtype 就宣称计算完全等价。<a href="https://docs.nvidia.com/cuda/floating-point/index.html">浮点运算顺序与 FMA</a></p>
+<h2 id="7-量化-数值元素与-scale-一起表达原值">7. 量化：数值元素与 scale 一起表达原值</h2>
+<p>低比特格式只提供有限的数值网格。量化算法选择比例，把数据放到这个网格中。以不带 zero point 的形式表示：</p>
+<div class="math display-math">\[
+q=Q(x/s),\qquad \hat{x}=s\,q
+\]</div>
+
+<p>Q 表示按目标格式舍入，并按规则处理超范围值；反量化得到的近似值是 <span class="math">\(\hat{x}\)</span>。本文的 s 按反量化方向定义，实际 API 也可能保存它的倒数。</p>
+<p>例如 FP4 E2M1 能表示 0.5、1、1.5。选择 scale=2，可以表达：</p>
+<div class="codehilite"><pre><span></span>原值：       [1,   2,   3]
+FP4 元素：   [0.5, 1, 1.5]
+共享 scale： 2
+反量化：     [1,   2,   3]
+</pre></div>
+
+
+<p>这个示例恰好没有误差；一般输入会受到舍入和裁剪影响。scale 扩大范围，也会改变原值空间中的网格间距，并不凭空增加低比特元素的有效位。</p>
+<p>对带 zero point 的整数仿射量化，常见形式为 <span class="math">\(\hat{x}=s(q-z)\)</span>。z 用来表示偏移。不能把 INT8 量化、FP8 量化和任意模型的 4-bit 编码都看成同一种格式。</p>
+<h3 id="scale-可以在哪个范围共享">scale 可以在哪个范围共享</h3>
+<table>
+<thead>
+<tr>
+<th>粒度</th>
+<th>共享范围</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>per-tensor</td>
+<td>一张 Tensor</td>
+<td>scale 数量少，极值可能压缩其他元素的有效网格</td>
+</tr>
+<tr>
+<td>per-channel</td>
+<td>一个通道或指定轴的一片</td>
+<td>不同通道使用不同范围</td>
+</tr>
+<tr>
+<td>per-group / per-block</td>
+<td>一组指定元素</td>
+<td>更局部地适配分布，需要保存更多 scales</td>
+</tr>
+</tbody>
+</table>
+<p>“group”或“block”还必须说明轴和长度。沿一行分组与沿一列分组，会让不同元素共享 scale；不能仅改变 shape，就认为量化结果相同。</p>
+<h2 id="8-e8m0-通常用作-scale-的指数编码">8. E8M0：通常用作 scale 的指数编码</h2>
+<p>OCP 的 E8M0 没有符号位，也没有小数部分。对编码 e=0 至 254（含），其有限值为：</p>
+<div class="math display-math">\[
+s=2^{e-127}
+\]</div>
+
+<table>
+<thead>
+<tr>
+<th>8 位编码的无符号整数值</th>
+<th>表达的 scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>125</td>
+<td>2⁻² = 0.25</td>
+</tr>
+<tr>
+<td>126</td>
+<td>2⁻¹ = 0.5</td>
+</tr>
+<tr>
+<td>127</td>
+<td>2⁰ = 1</td>
+</tr>
+<tr>
+<td>128</td>
+<td>2¹ = 2</td>
+</tr>
+<tr>
+<td>129</td>
+<td>2² = 4</td>
+</tr>
+<tr>
+<td>255</td>
+<td>NaN 编码</td>
+</tr>
+</tbody>
+</table>
+<p>编码 0 表示 <span class="math">\(2^{-127}\)</span>，不是数值零。E8M0 没有零、负数或 Inf 的编码；全零数据块仍可以由元素 q=0 表示，搭配算法选择的合法 scale。有限 scale 从 <span class="math">\(2^{-127}\)</span> 到 <span class="math">\(2^{127}\)</span>，但只能取 2 的整数次幂。<a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf">OCP E8M0 定义，第 14 页</a></p>
+<p>因此，E8M0 名字中的 E/M 不能按“另有一个符号位”计算成 9 bit。它是此处 ExMy 记法的特殊情形。CUDA 文档中的 UE8M0 也强调其无符号用途。</p>
+<p>MXFP8 中的数据元素仍然可以为负数：正负号保存在 FP8 元素中，E8M0 保存正的共享 scale。不要把 scale 的格式当成所有激活值直接使用的格式。</p>
+<h2 id="9-mxfp8-mxfp4-与-nvfp4-怎样组合数据和-scale">9. MXFP8、MXFP4 与 NVFP4 怎样组合数据和 scale</h2>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>元素格式</th>
+<th>典型共享块</th>
+<th>scale 格式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OCP MXFP8</td>
+<td>FP8 E4M3 或 E5M2</td>
+<td>32 个元素</td>
+<td>一个 E8M0</td>
+</tr>
+<tr>
+<td>OCP MXFP6</td>
+<td>FP6 E3M2 或 E2M3</td>
+<td>32 个元素</td>
+<td>一个 E8M0</td>
+</tr>
+<tr>
+<td>OCP MXFP4</td>
+<td>FP4 E2M1</td>
+<td>32 个元素</td>
+<td>一个 E8M0</td>
+</tr>
+<tr>
+<td>NVIDIA NVFP4 的常见表示</td>
+<td>FP4 E2M1</td>
+<td>16 个元素</td>
+<td>局部 E4M3，结合 Tensor 级 FP32 scale</td>
+</tr>
+</tbody>
+</table>
+<p>FP6 E3M2 的位分配为 1/3/2，E2M3 为 1/2/3。FP4 E2M1 的位分配为 1/2/1，非负有限值集合为 <code>{0, 0.5, 1, 1.5, 2, 3, 4, 6}</code>，另有相应的符号表示。实际可表达的量级还要结合 scale。</p>
+<p>OCP 表定义元素与块缩放格式。Transformer Engine 的具体 recipe 还会约束使用方式，不能把一个实现的全部限制当作所有 MX 格式的定义。<a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf">OCP MX 格式表</a>、<a href="https://github.com/NVIDIA/TransformerEngine/blob/main/docs/features/low_precision_training/mxfp8/mxfp8.rst">Transformer Engine MXFP8</a></p>
+<p>NVFP4 的反量化可以按概念式理解：</p>
+<div class="math display-math">\[
+\hat{x}=q_{\mathrm{E2M1}}\,s_{\mathrm{block,E4M3}}\,s_{\mathrm{global,FP32}}
+\]</div>
+
+<p>局部 E4M3 scale 不限于 2 的整数次幂，Tensor 级比例再调整全局范围。具体转换算法、scale 的方向和存储布局仍由接口决定。<a href="https://github.com/NVIDIA/TransformerEngine/blob/main/docs/features/low_precision_training/nvfp4/nvfp4.rst">Transformer Engine NVFP4</a></p>
+<h3 id="存储量要把-scale-算进去">存储量要把 scale 算进去</h3>
+<p>只统计连续元素和理想 scale 开销，忽略 padding 与其他元数据：</p>
+<div class="codehilite"><pre><span></span>MXFP8：8 + 8/32 = 8.25 bit / 元素
+MXFP4：4 + 8/32 = 4.25 bit / 元素
+NVFP4：4 + 8/16 = 4.5 bit / 元素，另加 Tensor 级 scale
+</pre></div>
+
+
+<p>实际模型还可能保存转置布局、其他副本和辅助数据，运行时也要分配激活、KV cache 与 workspace。模型标为 4-bit，不表示整个推理过程只占“参数数量 × 0.5 byte”。</p>
+<h3 id="块级-scale-怎样进入矩阵乘法">块级 scale 怎样进入矩阵乘法</h3>
+<p>若 A/B 沿 K 轴分块，每块分别有比例，则一个输出可以按下式理解：</p>
+<div class="math display-math">\[
+\hat{C}_{ij}=\sum_t s^A_{it}s^B_{tj}\sum_{k\in K_t}q^A_{ik}q^B_{kj}
+\]</div>
+
+<p>t 表示 K 轴上的块。每块的部分和需要乘上对应的两侧 scale，再合并。不能先把所有低比特乘积加完，再随意乘一个全局比例。硬件可以在矩阵指令中支持块缩放，软件也可以通过其他实现组织这些操作。<a href="https://docs.nvidia.com/cuda/cublas/index.html">cuBLAS 块缩放接口</a></p>
+<h2 id="10-格式-混合精度-amp-与-w4a16-的区别">10. 格式、混合精度、AMP 与 W4A16 的区别</h2>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>描述哪一层</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FP16、BF16、E4M3</td>
+<td>一个元素如何编码</td>
+</tr>
+<tr>
+<td>mixed precision / 混合精度</td>
+<td>不同计算阶段或不同操作使用不同类型</td>
+</tr>
+<tr>
+<td>AMP / autocast</td>
+<td>框架按算子策略选择计算 dtype 的机制</td>
+</tr>
+<tr>
+<td>quantization / 量化</td>
+<td>选择低比特网格、scales、可选偏移及转换规则</td>
+</tr>
+<tr>
+<td>W8A8</td>
+<td>权重与激活使用 8-bit 表示，还需说明是整数还是浮点及量化方案</td>
+</tr>
+<tr>
+<td>W4A16</td>
+<td>权重使用 4-bit 表示，激活使用 16-bit；不规定累加类型</td>
+</tr>
+</tbody>
+</table>
+<p>W4A16 可能把打包权重反量化为 FP16/BF16 再参与矩阵计算，也可能使用专用低比特实现。不能仅凭“4-bit”推断 kernel 一定使用原生 FP4 Tensor Core 指令。KV cache 的存储类型还可以单独选择。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">autocast</span><span class="p">(</span><span class="n">device_type</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">@</span> <span class="n">w</span>
+<span class="c1"># autocast 按算子策略选择计算类型，不等于永久转换所有模型参数。</span>
+</pre></div>
+
+
+<p>autocast 的算子策略和精度控制属于框架行为。训练中的 GradScaler 用来应对特定低精度梯度的范围限制，不是启用推理低精度计算的必需步骤。<a href="https://docs.pytorch.org/docs/2.9/amp.html">PyTorch AMP</a></p>
+<h2 id="11-h100-b200-与-pytorch-dtype-各自承诺什么">11. H100、B200 与 PyTorch dtype 各自承诺什么</h2>
+<p>H100 支持的矩阵类型包括 FP16、BF16、TF32，并增加 FP8 E4M3/E5M2 Tensor Core 能力。Blackwell 的 B200 提供块缩放计算的硬件路径，例如 MXFP8 和 NVFP4。具体支持仍要匹配指令、kernel、库接口、布局和尺寸。<a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/">Hopper 架构</a>、<a href="https://github.com/NVIDIA/TransformerEngine/blob/main/docs/features/low_precision_training/mxfp8/mxfp8.rst">MXFP8 硬件支持</a></p>
+<p>H100 也能通过软件处理 scale，不能据此推断它具有与 B200 相同的原生块缩放指令。反过来，B200 支持某个格式，也不保证任意 Python 运算都会自动采用该格式的最快路径。</p>
+<p>PyTorch 会暴露 <code>torch.float8_e4m3fn</code>、<code>torch.float8_e5m2</code>、<code>torch.float8_e8m0fnu</code>，以及打包的 <code>torch.float4_e2m1fn_x2</code>。其中部分是 shell dtype，只支持选定的操作。存在一个 dtype 名字，不代表普通 <code>+</code>、<code>@</code>、转换和所有设备都支持它。<a href="https://docs.pytorch.org/docs/2.9/tensor_attributes.html">PyTorch shell dtype 说明</a></p>
+<p>本页按所链接的格式规范和接口说明讲解，CUDA 示例仅作静态检查。没有运行转换、矩阵计算或精度/性能实验；数值示例来自编码与舍入规则的推导。</p></article><footer>GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-float-fp16-bf16-这些名字指什么">1. float、FP16、BF16 这些名字指什么</a><a class="level-2" href="#2-符号-指数与小数部分怎样组成一个数">2. 符号、指数与小数部分怎样组成一个数</a><a class="level-2" href="#3-范围与精细程度是两件事">3. 范围与精细程度是两件事</a><a class="level-2" href="#4-fp8-的-e4m3-e5m2-指什么">4. FP8 的 E4M3、E5M2 指什么</a><a class="level-2" href="#5-tf32-存储为-fp32-乘法可以使用另一种精度">5. TF32：存储为 FP32，乘法可以使用另一种精度</a><a class="level-2" href="#6-输入-乘法-累加和输出分别决定什么">6. 输入、乘法、累加和输出分别决定什么</a><a class="level-2" href="#7-量化-数值元素与-scale-一起表达原值">7. 量化：数值元素与 scale 一起表达原值</a><a class="level-2" href="#8-e8m0-通常用作-scale-的指数编码">8. E8M0：通常用作 scale 的指数编码</a><a class="level-2" href="#9-mxfp8-mxfp4-与-nvfp4-怎样组合数据和-scale">9. MXFP8、MXFP4 与 NVFP4 怎样组合数据和 scale</a><a class="level-2" href="#10-格式-混合精度-amp-与-w4a16-的区别">10. 格式、混合精度、AMP 与 W4A16 的区别</a><a class="level-2" href="#11-h100-b200-与-pytorch-dtype-各自承诺什么">11. H100、B200 与 PyTorch dtype 各自承诺什么</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>

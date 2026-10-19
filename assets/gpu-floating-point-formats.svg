@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+<title id="title">浮点格式的符号、指数与小数部分</title>
+<desc id="desc">各字段宽度按 bit 数成比例。BF16 与 FP32 都有八位指数，FP16 用五位指数和十位小数部分。TF32 是计算格式，通常从 FP32 Tensor 读取。E8M0 用八位指数编码正的共享 scale，没有符号位和小数部分。</desc>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:#26364e}.title{font-size:29px;font-weight:650}.row{font-size:28px;font-weight:600}.field{font-size:23px}.note{font-size:22px;fill:#5f728b}</style>
+<rect width="1200" height="1200" fill="#fff" />
+<text x="32" y="48" class="title">同样的 bit 数，分配给指数与小数部分的比例可以不同</text>
+<text x="32" y="86" class="note">灰色 S：符号　蓝色 E：指数　绿色 F：小数部分；字段宽度按 bit 数成比例。</text>
+<text x="32" y="184" class="row">FP32</text>
+<rect x="250" y="145" width="24" height="60" fill="#edf0f4" stroke="#8090a4" stroke-width="1.5" />
+<text x="262" y="184" text-anchor="middle" class="field">S</text>
+<rect x="274" y="145" width="192" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="370" y="184" text-anchor="middle" class="field">E 8</text>
+<rect x="466" y="145" width="552" height="60" fill="#edf7f0" stroke="#328a59" stroke-width="1.5" />
+<text x="742" y="184" text-anchor="middle" class="field">F 23</text>
+<text x="1042" y="184" class="note">32 bit</text>
+<text x="32" y="299" class="row">BF16</text>
+<rect x="250" y="260" width="24" height="60" fill="#edf0f4" stroke="#8090a4" stroke-width="1.5" />
+<text x="262" y="299" text-anchor="middle" class="field">S</text>
+<rect x="274" y="260" width="192" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="370" y="299" text-anchor="middle" class="field">E 8</text>
+<rect x="466" y="260" width="168" height="60" fill="#edf7f0" stroke="#328a59" stroke-width="1.5" />
+<text x="550" y="299" text-anchor="middle" class="field">F 7</text>
+<text x="1042" y="299" class="note">16 bit</text>
+<text x="32" y="414" class="row">FP16</text>
+<rect x="250" y="375" width="24" height="60" fill="#edf0f4" stroke="#8090a4" stroke-width="1.5" />
+<text x="262" y="414" text-anchor="middle" class="field">S</text>
+<rect x="274" y="375" width="120" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="334" y="414" text-anchor="middle" class="field">E 5</text>
+<rect x="394" y="375" width="240" height="60" fill="#edf7f0" stroke="#328a59" stroke-width="1.5" />
+<text x="514" y="414" text-anchor="middle" class="field">F 10</text>
+<text x="1042" y="414" class="note">16 bit</text>
+<text x="32" y="529" class="row">TF32 计算格式</text>
+<rect x="250" y="490" width="24" height="60" fill="#edf0f4" stroke="#8090a4" stroke-width="1.5" />
+<text x="262" y="529" text-anchor="middle" class="field">S</text>
+<rect x="274" y="490" width="192" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="370" y="529" text-anchor="middle" class="field">E 8</text>
+<rect x="466" y="490" width="240" height="60" fill="#edf7f0" stroke="#328a59" stroke-width="1.5" />
+<text x="586" y="529" text-anchor="middle" class="field">F 10</text>
+<text x="1042" y="529" class="note">19 个格式位 *</text>
+<text x="32" y="644" class="row">FP8 E4M3</text>
+<rect x="250" y="605" width="24" height="60" fill="#edf0f4" stroke="#8090a4" stroke-width="1.5" />
+<text x="262" y="644" text-anchor="middle" class="field">S</text>
+<rect x="274" y="605" width="96" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="322" y="644" text-anchor="middle" class="field">E 4</text>
+<rect x="370" y="605" width="72" height="60" fill="#edf7f0" stroke="#328a59" stroke-width="1.5" />
+<text x="406" y="644" text-anchor="middle" class="field">F 3</text>
+<text x="1042" y="644" class="note">8 bit</text>
+<text x="32" y="759" class="row">FP8 E5M2</text>
+<rect x="250" y="720" width="24" height="60" fill="#edf0f4" stroke="#8090a4" stroke-width="1.5" />
+<text x="262" y="759" text-anchor="middle" class="field">S</text>
+<rect x="274" y="720" width="120" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="334" y="759" text-anchor="middle" class="field">E 5</text>
+<rect x="394" y="720" width="48" height="60" fill="#edf7f0" stroke="#328a59" stroke-width="1.5" />
+<text x="418" y="759" text-anchor="middle" class="field">F 2</text>
+<text x="1042" y="759" class="note">8 bit</text>
+<text x="32" y="874" class="row">E8M0 scale</text>
+<rect x="250" y="835" width="192" height="60" fill="#eaf1fb" stroke="#285da8" stroke-width="1.5" />
+<text x="346" y="874" text-anchor="middle" class="field">E 8</text>
+<text x="1042" y="874" class="note">8 bit</text>
+<text x="32" y="1010" class="note">* TF32 不表示 Tensor 按 19 bit 紧凑存储；输入通常仍是 FP32。</text>
+<text x="32" y="1060" class="note">E8M0 在这里用作共享 scale：有限值为 2 的整数次幂，没有零和负数。</text>
+<text x="32" y="1110" class="note">普通规格化数还具有隐含首位 1；特殊值与 subnormal 按各格式规则解释。</text>
+</svg>

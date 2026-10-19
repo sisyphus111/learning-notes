@@ -4,6 +4,8 @@ cuBLAS、cuDNN 提供可调用的计算实现。CUTLASS、CuTe DSL 和 Triton �
 
 本页覆盖 LLM 推理和 GPU kernel 开发中常见的名称。设备与用户态/内核态的关系见 [驱动、运行时与框架](driver-runtime-framework.md)。计算图与编译流程见 [计算图、编译与 CUDA Graph](graphs-and-compilation.md)。Tensor 和模型层的基础见 [神经网络基础](../PyTorch/neural-networks.md)。
 
+数值类型与计算模式见 [浮点格式、混合精度与量化](precision-and-quantization.md)：FP16、BF16、TF32、FP8、E8M0 和块缩放格式不能只按名字中的 bit 数混同。
+
 ## 1. 从一层 Linear 放置各个工具
 
 计算 `y = x @ weight.T + bias` 时，开发者有两条常见路径：

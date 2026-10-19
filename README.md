@@ -13,6 +13,7 @@
 - PyTorch 教学分为三页：[Tensor 与 GPU 内存](PyTorch/tensors.md) 讲 shape、计算、stride、共享存储与异步执行；[神经网络基础](PyTorch/neural-networks.md) 讲 torch.nn、functional、模型与参数、自动求导及训练/推理流程；[常见计算与组件](PyTorch/operations-and-components.md) 展开 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 和 attention 的 Torch 实现。
 - CUDA 教学独立成板块：[执行层级与硬件映射](CUDA/execution-hierarchy.md) 讲线程分组、SM / GPC 放置、资源驻留与同步范围；[PTX、SASS 与编译流程](CUDA/compilation-and-instructions.md) 讲三类 kernel 的编译路径、ptxas / PTX Compiler 库和 AOT / JIT。
 - GPU 软件栈独立成板块：[驱动、运行时与框架](GPU/driver-runtime-framework.md) 从 H100 设备讲到内核驱动、libcuda / libcudart、PyTorch、容器和版本；[GPU 软件栈与工具](GPU/software-stack.md) 区分计算库、CUTLASS / CuTe、编译工具与推理框架；[计算图、编译与 CUDA Graph](GPU/graphs-and-compilation.md) 解释图捕获、编译优化、kernel 融合与执行重放。
+- [浮点格式、混合精度与量化](GPU/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、与个人主页相同的太阳/月亮主题图标及手机阅读。
 
 ## 内容来源
