@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1240" viewBox="-20 0 1240 1240" role="img" aria-labelledby="title desc">
+  <title id="title">从 PyTorch 到 H100：软件层与执行位置</title>
+  <desc id="desc">CPU 用户态依次展示 PyTorch、算子实现、CUDA Runtime 与用户态 CUDA Driver。算子实现也可绕过 Runtime 直接调用 Driver API。CPU 内核态是 NVIDIA Linux 内核模块，设备侧是 H100 硬件与 GSP 管理固件。箭头表示职责依赖，不表示每次调用都进入内核态。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#62768d"/>
+    </marker>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:#26364e}
+      .title{font-size:30px;font-weight:650}.label{font-size:26px;font-weight:600}
+      .group{font-size:24px;font-weight:600}.detail{font-size:22px;fill:#5f728b}.small{font-size:20px;fill:#5f728b}
+      .link{fill:none;stroke:#62768d;stroke-width:2.4;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect x="-20" width="1240" height="1240" fill="#fff"/>
+  <text x="32" y="48" class="title">从 PyTorch 到 H100：软件层与执行位置</text>
+  <text x="32" y="84" class="detail">Linux 主机示意：用户态库、内核模块与设备程序分开看。</text>
+
+  <rect x="24" y="110" width="1152" height="540" rx="12" fill="#f2f6fc" stroke="#cbd9ec" stroke-width="2"/>
+  <text x="44" y="157" class="group">CPU 用户态</text>
+  <text x="44" y="192" class="small">应用进程内的</text>
+  <text x="44" y="219" class="small">库与调用接口</text>
+  <rect x="268" y="136" width="722" height="90" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="290" y="171" class="label">PyTorch / 推理框架</text>
+  <text x="290" y="207" class="detail">Python + C++：组织模型、分发算子、管理 Tensor</text>
+
+  <rect x="268" y="266" width="722" height="90" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="290" y="301" class="label">算子实现与计算库的 host 端</text>
+  <text x="290" y="337" class="detail">原生实现 / cuBLAS / cuDNN / FlashInfer</text>
+
+  <rect x="268" y="396" width="722" height="90" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="290" y="431" class="label">CUDA Runtime · libcudart</text>
+  <text x="290" y="467" class="detail">cudaMalloc / cudaMemcpyAsync / kernel launch</text>
+
+  <rect x="268" y="526" width="722" height="90" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="290" y="561" class="label">用户态 CUDA Driver · libcuda.so</text>
+  <text x="290" y="597" class="detail">context / module / memory / cuLaunchKernel</text>
+
+  <path d="M629 226V266" class="link"/>
+  <path d="M629 356V396" class="link"/>
+  <path d="M629 486V526" class="link"/>
+  <path d="M990 311H1130V571H990" class="link"/>
+  <text x="1006" y="411" class="small">也可直接调用</text>
+  <text x="1006" y="441" class="small">Driver API</text>
+
+  <text x="44" y="688" class="small">用户态 / 内核态</text>
+  <path d="M268 700H1176" fill="none" stroke="#8c9caf" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="24" y="736" width="1152" height="138" rx="12" fill="#fcf4ec" stroke="#e8d8c6" stroke-width="2"/>
+  <text x="44" y="780" class="group">CPU 内核态</text>
+  <text x="44" y="815" class="small">Linux 内核</text>
+  <rect x="268" y="760" width="722" height="90" rx="9" fill="#fff" stroke="#cc742b" stroke-width="2"/>
+  <text x="290" y="795" class="label">NVIDIA Linux 内核模块</text>
+  <text x="290" y="831" class="detail">nvidia.ko / nvidia-uvm.ko；资源、映射与系统协作</text>
+  <path d="M629 616V760" class="link"/>
+  <text x="656" y="674" class="detail">驱动 / OS 交互</text>
+
+  <text x="44" y="911" class="small">主机 / GPU 设备</text>
+  <path d="M268 923H1176" fill="none" stroke="#8c9caf" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="24" y="958" width="1152" height="174" rx="12" fill="#f0f8f3" stroke="#cce2d4" stroke-width="2"/>
+  <text x="44" y="1002" class="group">GPU 设备</text>
+  <text x="44" y="1037" class="small">执行设备程序</text>
+  <rect x="268" y="982" width="722" height="122" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="290" y="1017" class="label">H100：SM / HBM / 数据传输硬件</text>
+  <text x="290" y="1053" class="detail">SM 执行 kernel，HBM 保存设备数据</text>
+  <text x="290" y="1084" class="detail">GSP 固件承担初始化与管理任务</text>
+  <path d="M629 850V982" class="link"/>
+
+  <text x="32" y="1177" class="detail">箭头表示主要依赖；具体算子可以选择不同实现，编译工具另属代码准备阶段。</text>
+  <text x="32" y="1213" class="detail">图不是逐调用跟踪：不表示每次 API 调用都经过全部层，或都发生系统调用。</text>
+</svg>

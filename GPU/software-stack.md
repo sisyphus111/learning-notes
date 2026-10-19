@@ -2,7 +2,7 @@
 
 cuBLAS、cuDNN 提供可调用的计算实现。CUTLASS、CuTe DSL 和 Triton 帮助开发者编写 kernel。编译器生成 GPU 指令，运行时和驱动负责加载程序、提交工作与管理资源。它们承担不同职责，也会在同一个模型中组合使用。
 
-本页覆盖 LLM 推理和 GPU kernel 开发中常见的名称。计算图与编译流程见 [计算图、编译与 CUDA Graph](graphs-and-compilation.md)。Tensor 和模型层的基础见 [神经网络基础](../PyTorch/neural-networks.md)。
+本页覆盖 LLM 推理和 GPU kernel 开发中常见的名称。设备与用户态/内核态的关系见 [驱动、运行时与框架](driver-runtime-framework.md)。计算图与编译流程见 [计算图、编译与 CUDA Graph](graphs-and-compilation.md)。Tensor 和模型层的基础见 [神经网络基础](../PyTorch/neural-networks.md)。
 
 ## 1. 从一层 Linear 放置各个工具
 

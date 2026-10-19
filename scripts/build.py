@@ -67,6 +67,8 @@ CUDA_REFERENCES = [
      'CUDA C++ · Triton · CuTe DSL · ptxas · cubin · AOT / JIT'),
 ]
 GPU_REFERENCES = [
+    ('GPU/driver-runtime-framework.md', 'gpu-driver-runtime-framework.html', '驱动、运行时与框架',
+     'H100 · libcuda / libcudart · 内核模块 · PyTorch · 容器与版本'),
     ('GPU/software-stack.md', 'gpu-software-stack.html', 'GPU 软件栈与工具',
      'cuBLAS · cuDNN · CUTLASS · CuTe DSL · Triton · 编译与运行'),
     ('GPU/graphs-and-compilation.md', 'gpu-graphs-and-compilation.html', '计算图、编译与 CUDA Graph',
@@ -302,7 +304,7 @@ home = f'''<div class="home-lead"><p>从代码写法，到计算与系统原理�
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
 <section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">把线程分组对应到 SM 与 GPC，再理解 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
-<section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">区分现成计算库、kernel 开发工具与编译器，再连接算子图优化和 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
+<section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">从 H100 的驱动与运行时开始，区分计算库、kernel 开发工具和编译器，再连接算子图优化与 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('编程札记', 'index.html', home, subtitle='算法思路、语言参考与系统学习札记。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
