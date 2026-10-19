@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 580" role="img" aria-labelledby="title desc">
+<title id="title">K 分段贡献到同一块输出</title><desc id="desc">两个 K tile 分别产生 BM×BN 的部分和，随后累加到同一输出 tile。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:#26364e;font-size:23px}.title{font-size:28px;font-weight:650}.label{font-size:25px;font-weight:600}.small{font-size:21px;fill:#5b6b80}</style>
+<rect width="1040" height="580" rx="12" fill="white"/>
+<text x="28" y="44" class="title">输出位置固定；沿 K 加载不同输入片段</text>
+<rect x="24" y="76" width="476" height="278" rx="8" fill="#eef4fd" stroke="#d4dce8" stroke-width="1.5"/>
+<text x="46" y="114" class="label" style="fill:#285da8">K tile 0：第 0 段 K</text>
+<rect x="48" y="140" width="172" height="84" rx="8" fill="white" stroke="#285da8" stroke-width="1.5"/>
+<rect x="300" y="140" width="172" height="84" rx="8" fill="white" stroke="#285da8" stroke-width="1.5"/>
+<text x="134" y="174" class="label" text-anchor="middle">A0</text>
+<text x="134" y="207" class="small" text-anchor="middle">[BM, BK]</text>
+<text x="259" y="192" class="title" text-anchor="middle">×</text>
+<text x="386" y="174" class="label" text-anchor="middle">B0</text>
+<text x="386" y="207" class="small" text-anchor="middle">[BK, BN]</text>
+<path d="M260 224 V260" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="260" y="298" class="label" text-anchor="middle">部分和 P0：[BM, BN]</text>
+<text x="260" y="331" class="small" text-anchor="middle">对应同一组 M/N 坐标</text>
+<rect x="540" y="76" width="476" height="278" rx="8" fill="#eef8f1" stroke="#d4dce8" stroke-width="1.5"/>
+<text x="562" y="114" class="label" style="fill:#328a59">K tile 1：第 1 段 K</text>
+<rect x="564" y="140" width="172" height="84" rx="8" fill="white" stroke="#328a59" stroke-width="1.5"/>
+<rect x="816" y="140" width="172" height="84" rx="8" fill="white" stroke="#328a59" stroke-width="1.5"/>
+<text x="650" y="174" class="label" text-anchor="middle">A1</text>
+<text x="650" y="207" class="small" text-anchor="middle">[BM, BK]</text>
+<text x="775" y="192" class="title" text-anchor="middle">×</text>
+<text x="902" y="174" class="label" text-anchor="middle">B1</text>
+<text x="902" y="207" class="small" text-anchor="middle">[BK, BN]</text>
+<path d="M776 224 V260" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="776" y="298" class="label" text-anchor="middle">部分和 P1：[BM, BN]</text>
+<text x="776" y="331" class="small" text-anchor="middle">对应同一组 M/N 坐标</text>
+<path d="M260 354 V390 H460 V423" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M776 354 V390 H580 V423" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="185" y="424" width="670" height="90" rx="8" fill="#fff6ec" stroke="#d9a46e" stroke-width="1.5"/>
+<text x="520" y="460" class="title" text-anchor="middle">acc ← acc + P0 + P1 + …</text>
+<text x="520" y="495" class="small" text-anchor="middle">完整遍历 K 后，写回这一个输出 tile</text>
+<text x="28" y="553" class="small">其他输出 tiles 可并行；K 分段的部分结果必须累加。</text>
+</svg>

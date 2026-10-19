@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GEMM 计算与优化 · 编程札记</title><meta name="description" content="分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=ab2264ecc4"><link rel="stylesheet" href="assets/code.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}catch(e){}</script>
+<script defer src="assets/site.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>编程札记<small>算法 · 语言 · 系统</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html" aria-current="page">GEMM 计算与优化</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a></nav><a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">编程札记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">CUDA 教学</p><h1>GEMM 计算与优化</h1><p class="subtitle">分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局</p></div>
+<article><h2 id="1-先固定矩阵与维度的含义">1. 先固定矩阵与维度的含义</h2>
+<p>GEMM 是 General Matrix Multiplication，常见接口计算 <span class="math">\(D=\alpha AB+\beta C\)</span>。其中 <span class="math">\(\alpha\)</span>、<span class="math">\(\beta\)</span> 是标量，<span class="math">\(C\)</span> 是原有输入，<span class="math">\(D\)</span> 是新输出。先令 <span class="math">\(\alpha=1\)</span>、<span class="math">\(\beta=0\)</span>，只看 <span class="math">\(D=AB\)</span>：</p>
+<table>
+<thead>
+<tr>
+<th>矩阵</th>
+<th>逻辑形状</th>
+<th>维度含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="math">\(A\)</span></td>
+<td><span class="math">\([M,K]\)</span></td>
+<td>M 行输入，每行 K 个参与点积的数</td>
+</tr>
+<tr>
+<td><span class="math">\(B\)</span></td>
+<td><span class="math">\([K,N]\)</span></td>
+<td>N 列，每列 K 个参与点积的数</td>
+</tr>
+<tr>
+<td><span class="math">\(D\)</span></td>
+<td><span class="math">\([M,N]\)</span></td>
+<td>M×N 个点积结果</td>
+</tr>
+</tbody>
+</table>
+<div class="math display-math">\[
+D[m,n]=\sum_{k=0}^{K-1}A[m,k]B[k,n]
+\]</div>
+
+<p><strong>M、N 决定有多少输出，K 决定每个输出要累加多少项。</strong> 因而 M/N 方向上的不同输出可以独立计算；K 方向上的不同部分最终要相加。</p>
+<p>LLM 的 Linear 经常保存 <code>W.shape = [N, K]</code>，计算 <code>X @ W.T</code>。此时数学上的 <span class="math">\(B=W^T\)</span>，不要把存储权重 W 的形状直接当成 B 的形状。后文先采用 <span class="math">\(A[M,K]\)</span>、<span class="math">\(B[K,N]\)</span>，到 scale 部分再显式换成 W 的约定。</p>
+<p>来源：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#matrix-multiplication-background">NVIDIA 矩阵乘法背景</a>。</p>
+<h2 id="2-一个点积为什么要分段计算">2. 一个点积为什么要分段计算</h2>
+<p>用六个元素的点积说明 K 分段：</p>
+<div class="codehilite"><pre><span></span>[1, 2, 3, 4, 5, 6] · [1, 2, 3, 4, 5, 6]
+
+第 0 段：1×1 + 2×2 =  5
+第 1 段：3×3 + 4×4 = 25
+第 2 段：5×5 + 6×6 = 61
+
+最终结果：5 + 25 + 61 = 91
+</pre></div>
+
+
+<p>三段得到同一个输出的三个部分和。真实 GEMM 的 K 可能有几千，寄存器和 shared memory 容量有限，把整段输入全部留在片上通常不合适。kernel 因而加载一段、计算一段，把部分和保留在累加器里。</p>
+<p><strong>K 分段是一次求和的拆分，和把不同输出分给不同线程块，是两种分工。</strong> 数学上可以改变分段顺序，也可以并行求部分和再归约。浮点加法不满足严格结合律，所以不同累加顺序可能产生舍入差异。</p>
+<h2 id="3-最朴素的实现-一个线程计算一个输出">3. 最朴素的实现：一个线程计算一个输出</h2>
+<p>概念上，为每个 <code>(m,n)</code> 分配一个线程：</p>
+<div class="codehilite"><pre><span></span><span class="c1"># Python 样式的计算语义；这里的并行分工由 GPU kernel 实现。</span>
+<span class="n">acc</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+    <span class="n">acc</span> <span class="o">+=</span> <span class="n">A</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">B</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">]</span>
+<span class="n">D</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">acc</span>
+</pre></div>
+
+
+<p>问题在于复用：计算 <code>D[m,0]</code>、<code>D[m,1]</code> 的线程都需要 A 的第 m 行；计算 <code>D[0,n]</code>、<code>D[1,n]</code> 的线程都需要 B 的第 n 列。若各线程独立加载，相同数据会被反复请求。</p>
+<p>Cache 可以吸收部分重复访问，但 kernel 仍需要组织加载指令和地址计算。还要考虑相邻线程的访问位置：row-major B 的同一列在内存中有 stride；若 warp 的相邻 lanes 改为取同一行的相邻列，就更适合合并访问。<strong>不能只看单个线程沿哪个方向走，还要看同一条访存指令中整个 warp 访问了哪些地址。</strong></p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-ab">CUDA Best Practices：矩阵乘法与 shared memory</a>。</p>
+<h2 id="4-cta-tiling-一个-block-负责一块输出">4. CTA tiling：一个 block 负责一块输出</h2>
+<p>CTA 是 Cooperative Thread Array，在这里就是 CUDA thread block。把输出 D 分成 <code>BM×BN</code> 的 tile；在一个基础实现中，每个 block 负责其中一块。</p>
+<p>对于从 <code>(m0,n0)</code> 开始的输出 tile，每一轮 K 循环需要：</p>
+<div class="codehilite"><pre><span></span>A_tile：A[m0:m0+BM, k0:k0+BK]    形状 [BM, BK]
+B_tile：B[k0:k0+BK, n0:n0+BN]    形状 [BK, BN]
+acc：                           形状 [BM, BN]
+
+acc += A_tile @ B_tile
+</pre></div>
+
+
+<p><img alt="同一输出 tile 沿 K 累加多组 A/B tile" src="assets/gemm-tiling.svg" loading="lazy" /></p>
+<p>图中两段 K 都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；图中箭头表示数据参与计算，没有规定这些 blocks 的启动先后顺序。</p>
+<p>用 <code>M=N=K=1024</code>、<code>BM=BN=128</code>、<code>BK=32</code> 做一次手算：</p>
+<table>
+<thead>
+<tr>
+<th>对象</th>
+<th>数量或形状</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>输出 tile 的行列数</td>
+<td>8×8</td>
+</tr>
+<tr>
+<td>基础实现中的 blocks 数</td>
+<td>64</td>
+</tr>
+<tr>
+<td>每个 block 的 K 循环次数</td>
+<td>1024 / 32 = 32</td>
+</tr>
+<tr>
+<td>每轮的 A_tile、B_tile</td>
+<td><code>[128,32]</code>、<code>[32,128]</code></td>
+</tr>
+<tr>
+<td>每轮更新的 acc</td>
+<td>同一块 <code>[128,128]</code></td>
+</tr>
+</tbody>
+</table>
+<p>32 次 K 循环不会把 grid 变成 64×32 个 blocks。它们发生在负责该输出 tile 的 block 内；后面的 Split-K 才会把 K 工作进一步分给不同 blocks。</p>
+<p>下面是分工的概念代码，未处理边界：</p>
+<div class="codehilite"><pre><span></span><span class="c1"># 不同 (m0, n0) 对应的输出 tile 可以并行计算。</span>
+<span class="n">acc</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">((</span><span class="n">BM</span><span class="p">,</span> <span class="n">BN</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">k0</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">BK</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">load_tile</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="p">(</span><span class="n">m0</span><span class="p">,</span> <span class="n">BM</span><span class="p">),</span> <span class="n">cols</span><span class="o">=</span><span class="p">(</span><span class="n">k0</span><span class="p">,</span> <span class="n">BK</span><span class="p">))</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">load_tile</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="p">(</span><span class="n">k0</span><span class="p">,</span> <span class="n">BK</span><span class="p">),</span> <span class="n">cols</span><span class="o">=</span><span class="p">(</span><span class="n">n0</span><span class="p">,</span> <span class="n">BN</span><span class="p">))</span>
+    <span class="n">acc</span> <span class="o">+=</span> <span class="n">a</span> <span class="o">@</span> <span class="n">b</span>
+<span class="n">store_tile</span><span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">m0</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">n0</span><span class="p">)</span>
+</pre></div>
+
+
+<p>这是常见 GEMM mainloop 的基本结构。<code>load_tile</code>、<code>zeros</code> 是示意函数，不是可直接运行的 Torch/CUDA API。<a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html#motivations">Triton 官方矩阵乘法教程</a></p>
+<h2 id="5-shared-memory-把重复读取变成-block-内复用">5. Shared memory：把重复读取变成 block 内复用</h2>
+<p>一个 K tile 中，A 的每个元素会参与 BN 个输出的计算，B 的每个元素会参与 BM 个输出的计算。block 可以协作把 A/B tile 加载到 shared memory，再让计算线程重复使用。</p>
+<p>以 <code>BM=BN=128</code>、<code>BK=32</code> 为例，单轮需要：</p>
+<div class="codehilite"><pre><span></span>A：128×32 = 4096 个元素
+B：32×128 = 4096 个元素
+合计：8192 个元素
+
+完成的乘加：128×128×32 = 524288 次 FMA
+</pre></div>
+
+
+<p>若输入是 FP16，输入 tile 共 16 KiB，完成约 1,048,576 FLOPs（一次 FMA 计两次浮点运算）。只按本轮输入流量估算，算术强度是 64 FLOPs/byte。这个手算没有计输出、scale、padding、cache、跨 block 重复读取，也不代表实测 HBM 流量。</p>
+<p>朴素的每输出独立加载模型则需要 <code>2×BM×BN×BK</code> 次元素读取请求；分块协作模型只需 <code>BM×BK + BK×BN</code> 个输入元素。这里比较的是复用机会，不是在断言真实 DRAM 流量一定按这个比例下降。</p>
+<p>采用普通同步加载时，要保证两个边界：<strong>所有加载线程完成写入，计算线程才能读取。所有计算线程读完当前 tile，才允许覆盖这块缓冲区。</strong> CUDA 教学代码常用两次 <code>__syncthreads()</code>，异步流水线则采用与传输和计算相匹配的同步协议。</p>
+<h2 id="6-register-tiling-一个线程计算多个输出">6. Register tiling：一个线程计算多个输出</h2>
+<p>Shared memory 解决 block 内复用；寄存器分块进一步减少 shared memory 的重复访问。</p>
+<p>假设一个线程负责 2×2 个输出。在某个 k 上，它先读取两个 A 值和两个 B 值：</p>
+<div class="codehilite"><pre><span></span>a0 = A[m,   k]       b0 = B[k, n]
+a1 = A[m+1, k]       b1 = B[k, n+1]
+
+acc00 += a0*b0       acc01 += a0*b1
+acc10 += a1*b0       acc11 += a1*b1
+</pre></div>
+
+
+<p>四个输入值更新四个累加器，A/B 都得到复用。这也可以看成一个小的 outer product：<code>[2,1] @ [1,2] → [2,2]</code>。沿 K 重复，最终累加出一个小输出矩阵。</p>
+<p>从逻辑上看，分块通常继续细分为 CTA tile、warp/warpgroup tile、指令 tile。SIMT FMA 路径可以显式描述每线程的几个输出；Tensor Core 路径的 fragment 则分布在参与指令的线程或专用存储中，不能把同一套“每线程一小块”的排布硬套到所有架构。</p>
+<p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#hierarchical-structure">CUTLASS 的分层 GEMM 结构</a>。</p>
+<h2 id="7-tensor-core-加速片上数据的矩阵乘加">7. Tensor Core：加速片上数据的矩阵乘加</h2>
+<p>前面的数学分块和 Tensor Core 不冲突。Tensor Core 是完成小块矩阵乘加的硬件，计算含义可以写成：</p>
+<div class="math display-math">\[
+D_{\mathrm{small}}=A_{\mathrm{small}}B_{\mathrm{small}}+C_{\mathrm{small}}
+\]</div>
+
+<p>一个较大的 CTA tile 会被拆成多次矩阵指令。kernel 还得负责准备数据、等待传输、组织指令和写回输出；不能因为调用了矩阵指令，就自动消除所有瓶颈。</p>
+<table>
+<thead>
+<tr>
+<th>常见路径</th>
+<th>参与组织与数据位置的区别</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SIMT FMA</td>
+<td>线程用普通乘加指令更新寄存器中的结果</td>
+</tr>
+<tr>
+<td><code>mma.sync</code></td>
+<td>Warp 协作执行矩阵指令，按要求组织寄存器 fragments</td>
+</tr>
+<tr>
+<td>Hopper <code>wgmma.mma_async</code></td>
+<td>Warpgroup 级异步矩阵指令，支持规定的 shared-memory 操作数形式</td>
+</tr>
+<tr>
+<td>Blackwell <code>tcgen05.mma</code></td>
+<td>使用新的矩阵指令和 Tensor Memory（TMEM）机制，按具体指令规定组织操作数与累加器</td>
+</tr>
+</tbody>
+</table>
+<p><strong>不要把“累加器总在普通线程寄存器里”作为跨架构规则。</strong> 基础 SIMT 和许多较早的 Tensor Core 例子可以这样理解；Blackwell 的 TMEM 是另一种专门的片上存储。TMEM 也不是 global memory 或 TMA descriptor。</p>
+<p>数据类型、指令形状、转置形式和对齐条件由硬件及指令决定。不存在一条适用于所有 GPU、所有精度的“矩阵边长是某个倍数就一定最快”规则。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#matrix-multiply-accumulate-operation">PTX 矩阵指令</a>、<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_functionality.html">CUTLASS Blackwell SM100 GEMM</a>。</p>
+<h2 id="8-内存布局-合并访问-bank-conflict-与-swizzle">8. 内存布局：合并访问、bank conflict 与 swizzle</h2>
+<h3 id="8-1-global-memory-看一个-warp-的地址集合">8.1 Global memory：看一个 warp 的地址集合</h3>
+<p>对于 row-major FP32 矩阵，相邻 32 个线程分别读取相邻元素，覆盖连续的 128 字节；实际事务还受对齐、边界和硬件规则影响。若它们读同一列但跨不同行，地址间距是整行字节数，通常需要更多内存事务。</p>
+<p>优化目标是把计算线程需要的逻辑元素，映射到适合加载的物理地址。可以通过线程映射、向量化加载或预先转换布局达到目的，不能只靠交换矩阵名称。</p>
+<h3 id="8-2-shared-memory-连续不代表没有冲突">8.2 Shared memory：连续不代表没有冲突</h3>
+<p>Shared memory 分成多个 banks。不同线程访问不同地址、但集中命中同一 bank 时，可能产生 bank conflict。经典 FP32 教学例中，<code>tile[32][32]</code> 的列访问容易冲突，给行末加一列 padding，成为 <code>tile[32][33]</code>，可以改变 bank 映射。同一地址的广播访问则有不同规则。</p>
+<p>Tensor Core 所需的布局更复杂。Swizzle 通过重排地址位，让需要一起访问的数据分散到合适的 banks；消费者必须按同一布局取数。<strong>逻辑上的 <code>tile[m,k]</code> 不变，元素在 shared memory 中的物理位置可以改变。</strong></p>
+<h3 id="8-3-逻辑转置不一定搬动数据">8.3 逻辑转置不一定搬动数据</h3>
+<p>PyTorch 的 <code>transpose</code>/<code>permute</code> 通常只改变 shape 和 stride。若目标是让原本分散的元素在物理内存中连续，往往需要实际重排，或直接让上游 kernel 按目标布局写出。仅修改视图、descriptor 或指针解释，不会消除底层地址之间的间隔。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#memory-optimizations">CUDA 合并访问与 shared-memory banks</a>、<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html#tma-swizzle">TMA swizzle</a>。</p>
+<h2 id="9-双缓冲与多级流水线-搬下一块-同时算当前块">9. 双缓冲与多级流水线：搬下一块，同时算当前块</h2>
+<p>基础循环是“加载 → 等待 → 计算 → 再加载”。如果传输和计算完全串行，计算单元会在访存期间空等。</p>
+<p>双缓冲分配两个输入缓冲槽。计算 K tile 0 时，把 K tile 1 搬到另一槽；用完 tile 0 后，再让 tile 2 复用它的槽。</p>
+<p><img alt="串行加载计算与双缓冲重叠，以及 K tile 与缓冲槽的对应" src="assets/gemm-pipeline.svg" loading="lazy" /></p>
+<p>图中时间长度仅用于说明依赖，不表示某台 GPU 的实测耗时。<code>ready</code> 表示加载完成；<code>released</code> 表示计算已不再读取该槽。异步矩阵指令发出后，输入未必已经读完，所以不能只以“指令已发出”作为释放缓冲区的依据。</p>
+<p>阅读 stage 相关讨论时，需要区分三个概念：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>表达什么</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>K tile / mainloop iteration</td>
+<td>当前处理哪一段 K</td>
+<td>第 i 轮处理 <code>[i×BK,(i+1)×BK)</code></td>
+</tr>
+<tr>
+<td>Pipeline stage / buffer slot</td>
+<td>同时在途的数据占用哪个缓冲槽</td>
+<td>两槽实现中常见 <code>slot = i % 2</code></td>
+</tr>
+<tr>
+<td>Quantization group</td>
+<td>哪些数据共享一个 scale</td>
+<td>一行的 128 个元素共用 scale</td>
+</tr>
+</tbody>
+</table>
+<p>三者可以对齐，也可以不一样。例如 <code>K=1024</code>、<code>BK=64</code> 有 16 次 K 循环。<code>num_stages=3</code> 表示流水线配置有 3 个数据缓冲阶段，不会把循环变成 3 次。量化组长 128 时，两个 K tile 可能使用同一组 scale。</p>
+<p>一个粗略的稳态模型：串行每轮约 <code>Tload + Tcompute</code>；充分重叠时接近 <code>max(Tload, Tcompute)</code>，还要加启动、排空和同步成本。若带宽不足、计算太短或资源不足，就达不到理想重叠。更多 stages 会占更多 shared memory，也可能降低驻留并发。</p>
+<h2 id="10-cp-async-tma-与-warp-specialization">10. cp.async、TMA 与 warp specialization</h2>
+<h3 id="10-1-异步搬运解决什么">10.1 异步搬运解决什么</h3>
+<p><code>cp.async</code> 路径让线程发起 global→shared 的异步拷贝，在支持的形式下避免数据先经过普通寄存器再写入 shared memory。线程仍需组织地址、发起和等待传输。</p>
+<p>Hopper 引入的 TMA 支持硬件辅助的多维 tile 搬运。Tiled TMA 使用 descriptor 描述 base address、shape、stride、tile 等信息，请求再提供坐标、shared-memory 目标位置和完成同步对象。它把许多逐元素寻址和搬运工作交给硬件，<strong>不会替 kernel 选择 GEMM tile 或自动完成矩阵乘法</strong>。</p>
+<p>TMA multicast 在支持的 thread block cluster 内可以把数据分发到多个 blocks 的 shared memory，减少部分重复加载；这也需要消费者具有相应的数据复用关系。Cluster 是同一 GPU 上的 block 分组，不是 EP 的跨 GPU 通信组。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html#tensor-memory-accelerator">Hopper TMA 与异步传输</a>、<a href="https://docs.nvidia.com/cuda/cuda-driver-api/cuda_driver_api/group__CUDA__TENSOR__MEMORY.html">Tensor Map 接口</a>。</p>
+<h3 id="10-2-warp-specialization-怎样分工">10.2 Warp specialization 怎样分工</h3>
+<p>同一个 block 中，可以让一部分 warps 专门组织加载，让另一些 warps 组织矩阵计算：</p>
+<div class="codehilite"><pre><span></span>Producer warps：等待空槽 → 发起加载 → 通知数据就绪
+Consumer warps：等待数据 → 执行矩阵计算 → 通知槽可以复用
+</pre></div>
+
+
+<p>两个角色处理不同 K tiles，就能形成流水线。Producer 不是一直亲手复制每个字节；使用 TMA 时，它可以主要负责发出传输请求和维护同步。</p>
+<p>这种分工会消耗线程、寄存器、缓冲槽及同步状态；若任务太小，组织成本可能不划算。Warp specialization 描述角色分工，double buffering 描述缓冲配置，TMA 描述搬运机制，它们可以组合使用，也各有独立含义。</p>
+<p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/gemm_api_3x.html">CUTLASS 3.x 的 collective mainloop 与调度</a>。</p>
+<h2 id="11-tile-大小-资源消耗和边界浪费">11. Tile 大小、资源消耗和边界浪费</h2>
+<h3 id="11-1-更大的输出-tile-有哪些收益和代价">11.1 更大的输出 tile 有哪些收益和代价</h3>
+<p>增大 BM/BN 能增加输入复用，但也增加累加器、片上缓冲和执行时间。以 <code>BM=BN=128</code>、FP32 累加为例，逻辑结果已有 <code>128×128×4 = 64 KiB</code>。寄存器路径会把这些结果分布到线程寄存器，实际还要保存指针、输入 fragments 和循环状态；Blackwell TMEM 路径要另算专用存储。</p>
+<p>对于 <code>BK=32</code>、FP16 A/B，单组 shared-memory 输入是 16 KiB；两槽至少 32 KiB，尚未计 padding、barrier、scale 和其他缓冲。增加 BK 还会增大输入缓冲。BK 在简单输入流量模型中同时放大 FLOPs 和输入字节数，不能仅凭 BK 变大就认定算术强度提高。</p>
+<p>资源多了，一个 SM 能驻留的 blocks 可能减少。Occupancy 是驻留活跃 warps 相对上限的比例，不是 Tensor Core 使用率，也不是越高一定越快。GEMM 可能用较低 occupancy 换取更强的数据复用和指令流水线。</p>
+<h3 id="11-2-tile-quantization-边界不满一块">11.2 Tile quantization：边界不满一块</h3>
+<p><code>M=N=130</code>、<code>BM=BN=128</code> 时，输出需要 2×2 个 tiles；最右侧或最下侧大部分位置越界。通常通过 mask/predication、零填充或专用边界路径保证正确性，但仍可能浪费部分指令和资源。</p>
+<p><code>130×130 / (256×256) ≈ 25.8%</code> 只是按完整 tile 覆盖面积算出的有效比例，不是性能利用率实测。换小 tile 可以减少边界空洞，也可能削弱数据复用。</p>
+<h3 id="11-3-wave-quantization-最后一批工作填不满-gpu">11.3 Wave quantization：最后一批工作填不满 GPU</h3>
+<p>假设设备有 120 个 SM，资源约束使每个 SM 一次只能驻留一个这样的 CTA。121 个等长 CTAs 需要先后处理两批，最后一批只有一个 CTA。它说明为何 tile 数刚超过一个并发容量时，耗时可能出现阶梯。</p>
+<p>实际 blocks 会异步完成，SM 也可能驻留多个 blocks，所以 wave 是理解尾部效应的近似模型，不是 GPU 必须全局锁步执行的轮次。</p>
+<p>来源：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#gpu-implementation">NVIDIA tile/wave quantization 与矩阵尺寸</a>。</p>
+<h2 id="12-l2-locality-改变输出-tile-的访问顺序">12. L2 locality：改变输出 tile 的访问顺序</h2>
+<p>计算 <code>D[m_tile,n_tile]</code> 时，同一个 m_tile 的不同输出列块复用 A；同一个 n_tile 的不同输出行块复用 B。如果近期工作的 tiles 共享某一输入区域，L2 有机会保留这些数据。</p>
+<p>因此可以改变 tile ID 到 <code>(m_tile,n_tile)</code> 的映射，让相邻工作形成小组，而不是总按一行输出从左扫到右。这样优化的是跨 CTA 的 cache 复用，不会改变矩阵的逻辑形状。</p>
+<p>这里的 threadblock swizzle / tile rasterization 与 shared-memory swizzle 不同：前者调整工作坐标的访问次序，后者调整数据在 shared memory 中的位置。输出 tile 编号也不保证严格的硬件执行顺序；优化利用的是调度局部性和 cache 机会。</p>
+<p>来源：<a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html#l2-cache-optimizations">Triton 的 grouped tile ordering</a>。</p>
+<h2 id="13-split-k-输出-tiles-太少时-把求和也并行化">13. Split-K：输出 tiles 太少时，把求和也并行化</h2>
+<p>假设 <code>M=N=128</code>、<code>K=8192</code>，采用 <code>128×128</code> 输出 tile。基础分工只生成一个 CTA，即使 K 很长，也很难利用整个 GPU。</p>
+<p>Split-K 把 K 分给 P 个 CTA。例如 P=4：</p>
+<div class="codehilite"><pre><span></span>CTA 0：A[:,    0:2048] @ B[   0:2048, :] → D0
+CTA 1：A[:, 2048:4096] @ B[2048:4096, :] → D1
+CTA 2：A[:, 4096:6144] @ B[4096:6144, :] → D2
+CTA 3：A[:, 6144:8192] @ B[6144:8192, :] → D3
+
+最终 D = D0 + D1 + D2 + D3
+</pre></div>
+
+
+<p>这里每个部分矩阵都对应同一片输出坐标，因此需要合并。实现可以使用 workspace 加归约 kernel，也可以在满足条件时用原子累加或其他协议；不能让普通 CTAs 无同步地覆盖同一输出。</p>
+<p>更多并行度的代价是部分结果的写入/读取、归约、同步和潜在的数值差异。4 个 CTAs 也未必足够填满设备。若 M/N 本来已经很大，增加 Split-K 可能只增加额外工作。</p>
+<p><code>βC</code> 和非线性 epilogue 必须注意执行位置：一般要在部分和正确合并后只应用一次。比如 <code>ReLU(D0)+ReLU(D1)</code> 不等于 <code>ReLU(D0+D1)</code>。</p>
+<p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#parallelized-reductions">CUTLASS 并行归约与 Split-K</a>。</p>
+<h2 id="14-persistent-gemm-stream-k-与负载均衡">14. Persistent GEMM、Stream-K 与负载均衡</h2>
+<h3 id="14-1-persistent-一个-cta-连续计算多个-tiles">14.1 Persistent：一个 CTA 连续计算多个 tiles</h3>
+<p>基础分工给每个输出 tile 一个 CTA。Persistent kernel 则启动一批 CTAs，每个 CTA 算完当前任务，再取下一块：</p>
+<div class="codehilite"><pre><span></span><span class="c1"># 概念代码：next_work 可以是静态步进，也可以由动态调度器提供。</span>
+<span class="k">while</span> <span class="p">(</span><span class="n">work</span> <span class="o">:=</span> <span class="n">scheduler</span><span class="o">.</span><span class="n">next_work</span><span class="p">())</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">acc</span> <span class="o">=</span> <span class="n">compute_one_output_tile</span><span class="p">(</span><span class="n">work</span><span class="p">)</span>
+    <span class="n">write_epilogue</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">acc</span><span class="p">)</span>
+</pre></div>
+
+
+<p>可复用执行组织，灵活安排 tile 顺序和不同问题。Persistent 不意味着“模型权重一直放在 shared memory”，也不意味着“一次 launch 的 CPU 开销消失”。普通 GEMM 本来也可以一次 launch 完成；这里改变的是 CTA 与工作任务的映射。</p>
+<h3 id="14-2-stream-k-按-k-迭代工作量分配任务">14.2 Stream-K：按 K 迭代工作量分配任务</h3>
+<p>若输出 tiles 的数量与执行容量不匹配，仅按整块输出分配容易留下长尾。Stream-K 把“某输出 tile 的某段 K 迭代”看成可分配工作，让执行者承担更接近的计算量。</p>
+<p>一个输出 tile 可能被不同执行者共同完成，因此边界处需要合并部分结果。它与把所有 tiles 都按固定份数拆开的 Split-K 有不同的工作划分方式，也不能理解为“使用多个 CUDA streams”。具体实现会在均衡收益与部分和通信之间做取舍。</p>
+<p>来源：<a href="https://arxiv.org/abs/2301.03598">Stream-K 原论文</a>。Persistent/grouped 工作分配的实现例见 <a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/grouped_scheduler.html">CUTLASS grouped scheduler</a>。</p>
+<h3 id="14-3-blackwell-的-clc-放在哪里">14.3 Blackwell 的 CLC 放在哪里</h3>
+<p>Cluster Launch Control（CLC）提供硬件辅助的工作获取机制，可以用于动态 tile 调度。它优化的是任务分配环节，不替代 TMA 搬运、矩阵指令或部分和归约；支持 CLC 也不表示任意 GEMM 都一定从动态调度获益。</p>
+<p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_cluster_launch_control.html">CUTLASS CLC 调度说明</a>。</p>
+<h2 id="15-batched-grouped-gemm-把多个矩阵问题放在一起">15. Batched / grouped GEMM：把多个矩阵问题放在一起</h2>
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>问题形态</th>
+<th>要解决什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Strided batched GEMM</td>
+<td>多个同尺寸问题，批次地址间隔规则</td>
+<td>高效描述重复的矩阵乘法</td>
+</tr>
+<tr>
+<td>Pointer-array batched GEMM</td>
+<td>常见形式仍是同尺寸问题，但各矩阵由指针给出</td>
+<td>允许各问题地址不规则</td>
+</tr>
+<tr>
+<td>Grouped GEMM</td>
+<td>一组 GEMM，可以支持不同问题尺寸；具体库有约束</td>
+<td>合并任务、减少多次小 launch，并均衡工作</td>
+</tr>
+</tbody>
+</table>
+<p>MoE 的一个线性投影常见：</p>
+<div class="codehilite"><pre><span></span>Expert 0：X0[ 37,K] @ W0[N,K].T → Y0[ 37,N]
+Expert 1：X1[112,K] @ W1[N,K].T → Y1[112,N]
+Expert 2：X2[  9,K] @ W2[N,K].T → Y2[  9,N]
+</pre></div>
+
+
+<p>各 expert 的权重 N/K 相同，token 数 M 不同。Grouped kernel 把所有 expert 的输出 tiles 放进一套任务分配中。它不会把每个 token 都和所有 expert 权重相乘；tile 必须携带正确的 expert 归属。</p>
+<p>DeepGEMM 的 M-grouped 接口要求 N/K 固定，并对输入 token 的分组布局和对齐做约束。若本 GPU 的权重规则打包成 <code>[E_local,N_local,K_local]</code>，一个权重 TMA descriptor 可以覆盖这些本地权重，通过坐标选择 expert。EP/TP 后通常是各 GPU 各自描述本地权重或分片；跨卡 dispatch/combine 还需要通信机制。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/cublas/index.html#cublas-t-gemmstridedbatched">cuBLAS batched 接口</a>、<a href="https://github.com/deepseek-ai/DeepGEMM#grouped-gemms-contiguous-layout">DeepGEMM grouped 布局</a>。</p>
+<h2 id="16-epilogue-fusion-结果还在片上时完成后处理">16. Epilogue fusion：结果还在片上时完成后处理</h2>
+<p>Mainloop 沿 K 完成矩阵乘加；epilogue 处理最终累加结果，例如缩放、加 bias、加残差、激活、类型转换和写回。</p>
+<div class="codehilite"><pre><span></span>分开执行：GEMM → 写中间矩阵 → 激活 kernel 读入 → 写最终矩阵
+融合执行：GEMM 累加器 → 激活 / 转换 → 写最终矩阵
+</pre></div>
+
+
+<p>融合可以减少中间结果流量和额外 launch。非线性激活通常要等完整 K 归约结束，不能对每个 K tile 分别激活再相加。融合还可能增加寄存器、同步或布局转换开销，因此要看整个 kernel 是否受益。</p>
+<p>更复杂的融合会把多个 GEMM、SwiGLU 或通信串在一个 kernel 中，需要重新考虑数据依赖、资源与任务调度，不能只把几个算子代码拼接起来。</p>
+<p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/operators/tutorials/001_gemm_with_fused_epilogue.html">CUTLASS fused epilogue 教程</a>。</p>
+<h2 id="17-低精度-gemm-把-scale-放回-k-循环">17. 低精度 GEMM：把 scale 放回 K 循环</h2>
+<h3 id="17-1-每个-k-分组有自己的缩放因子">17.1 每个 K 分组有自己的缩放因子</h3>
+<p>现在使用 Linear 的存储约定：<code>A[M,K]</code>、<code>W[N,K]</code>，结果 <code>D = A @ W.T</code>。假设 A 和 W 都按每行 128 个元素共享 scale：</p>
+<div class="codehilite"><pre><span></span>Aq： [M,K]             SA： [M,ceil(K/128)]
+Wq： [N,K]             SW： [N,ceil(K/128)]
+</pre></div>
+
+
+<p>对第 g 组，先用低精度数据计算部分点积 <span class="math">\(P_g[m,n]\)</span>，再乘对应的 scales：</p>
+<div class="math display-math">\[
+D[m,n]\approx\sum_g S_A[m,g]S_W[n,g]\,P_g[m,n]
+\]</div>
+
+<p>每个 g 的缩放因子可能不同，所以一般不能先把所有未缩放部分和加起来，最后只乘一个 scale。软件怎样穿插缩放，或是否使用原生 block-scaled 矩阵指令，取决于架构和 kernel。</p>
+<p>这里为了看清索引选用两侧 1×128 分组；实际权重也可能使用 128×128 等二维分组，届时 <code>SW</code> 的 N 维也被分组。Scale 个数与索引必须按真实量化方案推导。</p>
+<h3 id="17-2-为什么-deepgemm-要转置-scale-布局">17.2 为什么 DeepGEMM 要转置 scale 布局</h3>
+<p>取 <code>M=4</code>、<code>K=384</code>，<code>SA</code> 的逻辑形状是 <code>[4,3]</code>。若每轮 K 处理 128 个元素，第 0 轮需要 <code>SA[0,0]</code> 到 <code>SA[3,0]</code>，第 1 轮需要第 1 列，以此类推。</p>
+<p><img alt="同一 K 分组的 scale 在重排后连续存储" src="assets/gemm-scale-layout.svg" loading="lazy" /></p>
+<div class="codehilite"><pre><span></span>逻辑矩阵不变：
+        K组0  K组1  K组2
+M行0     a0    a1    a2
+M行1     b0    b1    b2
+M行2     c0    c1    c2
+M行3     d0    d1    d2
+
+K 连续的物理排列：a0 a1 a2 | b0 b1 b2 | c0 c1 c2 | d0 d1 d2
+M 连续的物理排列：a0 b0 c0 d0 | a1 b1 c1 d1 | a2 b2 c2 d2
+</pre></div>
+
+
+<p><strong>调整后，同一轮需要的多行 scale 挨在一起。</strong> 这优化的是 scale 的读取，不把 A 的行列含义交换，也不改变 scale 与对应数据的关系。TMA 能描述 stride，但仅编码 stride 不会把原本分散的地址变连续。</p>
+<p>忽略 TMA 对齐、padding 和打包，PyTorch 可以这样表达一次物理布局转换：</p>
+<div class="codehilite"><pre><span></span><span class="c1"># S 原来是 [M,G] 的 row-major Tensor。</span>
+<span class="n">S_m_major</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+<span class="c1"># 逻辑 shape 仍是 [M,G]；值 S_m_major[m,g] == S[m,g]。</span>
+<span class="c1"># 无 padding 时，stride 从 (G,1) 变成 (1,M)。</span>
+</pre></div>
+
+
+<p>单独 <code>S.T</code> 只改变视图；中间的 <code>contiguous()</code> 才实际重排。生产实现可以让量化 kernel 直接写出目标布局，省掉单独的转换 kernel。</p>
+<p>E8M0 规定一个 scale 的数值编码，transpose 规定多个 scale 的排列，packing 规定怎样打包存储单元，三者各有职责。使用 E8M0 不自动意味着量化组长是 32；本例的组长仍然是 128。</p>
+<p>DeepGEMM 主分支接口说明要求 LHS scale 使用 TMA 对齐的转置布局，并区分 SM90 的 FP32 scale 与 SM100 的 packed UE8M0 scale。具体调用时仍需匹配所用版本和 recipe。<a href="https://github.com/deepseek-ai/DeepGEMM#notices">DeepGEMM scale 接口说明</a></p>
+<h2 id="18-看一个-gemm-为什么慢-把优化对应到问题">18. 看一个 GEMM 为什么慢：把优化对应到问题</h2>
+<p>粗略估算总 FLOPs 约为 <span class="math">\(2MNK\)</span>。输入/输出只读写一次、忽略 cache 和额外数据时，最低数据量可以估算为 <span class="math">\(b_A MK+b_B KN+b_D MN\)</span> 字节，<span class="math">\(b\)</span> 表示各类型的字节数；若需要原有 C，还要加 C 的读取。由此得到理想化算术强度。</p>
+<p>Roofline 的第一步是比较计算时间下界 <code>FLOPs / 算力</code> 和传输时间下界 <code>bytes / 带宽</code>。这只能指出候选限制：小问题的 launch、任务不够、依赖等待、边界浪费和布局转换可能更重要。HBM、L2、shared memory 是不同层级，不能混用流量和带宽。</p>
+<table>
+<thead>
+<tr>
+<th>观察到的具体问题</th>
+<th>相关优化</th>
+<th>需要一起考虑的代价</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>同一输入被反复加载</td>
+<td>CTA/shared-memory/register tiling</td>
+<td>片上资源占用、tile 边界</td>
+</tr>
+<tr>
+<td>Global 访问分散</td>
+<td>合并访问、线程映射、布局转换</td>
+<td>转换流量与额外 kernel</td>
+</tr>
+<tr>
+<td>Shared-memory bank conflict</td>
+<td>Padding、swizzle</td>
+<td>地址计算与消费者布局</td>
+</tr>
+<tr>
+<td>Tensor Core 在等下一块输入</td>
+<td>异步加载、多 stages、warp specialization</td>
+<td>缓冲空间、同步、生产速度</td>
+</tr>
+<tr>
+<td>输出 tiles 很少、K 很长</td>
+<td>小输出 tile、Split-K</td>
+<td>复用下降或部分和归约</td>
+</tr>
+<tr>
+<td>最后一批工作很少</td>
+<td>Persistent/Stream-K/动态调度</td>
+<td>调度与结果合并成本</td>
+</tr>
+<tr>
+<td>跨 tiles 重复访问相同输入</td>
+<td>L2 友好的 tile 顺序、适用时 multicast</td>
+<td>Cache 容量与调度约束</td>
+</tr>
+<tr>
+<td>很多 expert 的小 GEMM</td>
+<td>Grouped GEMM</td>
+<td>路由布局、负载不均、分组对齐</td>
+</tr>
+<tr>
+<td>中间结果被写回又读入</td>
+<td>Epilogue/算子融合</td>
+<td>寄存器压力与新增依赖</td>
+</tr>
+<tr>
+<td>矩阵数据和计算成本太大</td>
+<td>适用的低精度/结构化稀疏路径</td>
+<td>数值误差、scale、格式转换、稀疏约束</td>
+</tr>
+<tr>
+<td>CPU 提交许多短 kernel</td>
+<td>CUDA Graph、上层融合</td>
+<td>Capture 约束、固定地址与运行组织</td>
+</tr>
+</tbody>
+</table>
+<p>稀疏 Tensor Core 路径需要满足规定的稀疏模式及元数据，矩阵中零的数量增加并不会自动触发这种运算。CUDA Graph 主要优化提交与执行组织，也不会自动修复 GEMM 内部低效的加载方式。</p>
+<p>选择参数时，通常要针对 <code>(M,N,K)</code>、dtype、stride、GPU 和后处理调优，测量完整调用成本。大矩阵、单 token decode、小 expert GEMM 的合适配置可能完全不同。Autotuning 是比较候选实现；不能只把 BM、BK 或 stages 调到最大。</p>
+<p>本文的形状、流量与时间图用于解释机制，未执行 CUDA kernel 或性能测试。需要做性能判断时，应先确认结果正确，再用受控 benchmark 和 profiler 区分 launch、搬运、计算、同步及尾部时间。</p>
+<h2 id="19-继续阅读">19. 继续阅读</h2>
+<ul>
+<li><a href="cuda-execution-hierarchy.html">CUDA 执行层级与硬件映射</a>：block、warp、SM、资源驻留。</li>
+<li><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a>：kernel 如何变成矩阵与搬运指令。</li>
+<li><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a>：输入精度、累加精度、E8M0 和分组 scale。</li>
+<li><a href="gpu-software-stack.html">GPU 软件栈与工具</a>：cuBLAS、CUTLASS、CuTe DSL、Triton、DeepGEMM 的层次。</li>
+<li><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a>：编译优化与执行重放的边界。</li>
+<li><a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html">NVIDIA 矩阵乘法性能背景</a>：算术强度、tile/wave quantization。</li>
+<li><a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html">CUTLASS Efficient GEMM</a>：分层结构、pipeline 与并行归约。</li>
+<li><a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html">Triton 矩阵乘法教程</a>：可对应阅读的 blocked matmul、L2 顺序和调参代码。</li>
+</ul></article><footer>CUDA 执行层级与 kernel 编译笔记，附官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-先固定矩阵与维度的含义">1. 先固定矩阵与维度的含义</a><a class="level-2" href="#2-一个点积为什么要分段计算">2. 一个点积为什么要分段计算</a><a class="level-2" href="#3-最朴素的实现-一个线程计算一个输出">3. 最朴素的实现：一个线程计算一个输出</a><a class="level-2" href="#4-cta-tiling-一个-block-负责一块输出">4. CTA tiling：一个 block 负责一块输出</a><a class="level-2" href="#5-shared-memory-把重复读取变成-block-内复用">5. Shared memory：把重复读取变成 block 内复用</a><a class="level-2" href="#6-register-tiling-一个线程计算多个输出">6. Register tiling：一个线程计算多个输出</a><a class="level-2" href="#7-tensor-core-加速片上数据的矩阵乘加">7. Tensor Core：加速片上数据的矩阵乘加</a><a class="level-2" href="#8-内存布局-合并访问-bank-conflict-与-swizzle">8. 内存布局：合并访问、bank conflict 与 swizzle</a><a class="level-2" href="#9-双缓冲与多级流水线-搬下一块-同时算当前块">9. 双缓冲与多级流水线：搬下一块，同时算当前块</a><a class="level-2" href="#10-cp-async-tma-与-warp-specialization">10. cp.async、TMA 与 warp specialization</a><a class="level-2" href="#11-tile-大小-资源消耗和边界浪费">11. Tile 大小、资源消耗和边界浪费</a><a class="level-2" href="#12-l2-locality-改变输出-tile-的访问顺序">12. L2 locality：改变输出 tile 的访问顺序</a><a class="level-2" href="#13-split-k-输出-tiles-太少时-把求和也并行化">13. Split-K：输出 tiles 太少时，把求和也并行化</a><a class="level-2" href="#14-persistent-gemm-stream-k-与负载均衡">14. Persistent GEMM、Stream-K 与负载均衡</a><a class="level-2" href="#15-batched-grouped-gemm-把多个矩阵问题放在一起">15. Batched / grouped GEMM：把多个矩阵问题放在一起</a><a class="level-2" href="#16-epilogue-fusion-结果还在片上时完成后处理">16. Epilogue fusion：结果还在片上时完成后处理</a><a class="level-2" href="#17-低精度-gemm-把-scale-放回-k-循环">17. 低精度 GEMM：把 scale 放回 K 循环</a><a class="level-2" href="#18-看一个-gemm-为什么慢-把优化对应到问题">18. 看一个 GEMM 为什么慢：把优化对应到问题</a><a class="level-2" href="#19-继续阅读">19. 继续阅读</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>
