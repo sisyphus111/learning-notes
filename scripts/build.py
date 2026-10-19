@@ -60,13 +60,19 @@ PYTORCH_REFERENCES = [
     ('PyTorch/operations-and-components.md', 'pytorch-components.html', '常见计算与组件',
      'Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention'),
 ]
+CUDA_REFERENCES = [
+    ('CUDA/execution-hierarchy.md', 'cuda-execution-hierarchy.html', '执行层级与硬件映射',
+     'thread · warp · block · cluster · grid · SM / GPC · 同步范围'),
+    ('CUDA/compilation-and-instructions.md', 'cuda-compilation-and-instructions.html', 'PTX、SASS 与编译流程',
+     'CUDA C++ · Triton · CuTe DSL · ptxas · cubin · AOT / JIT'),
+]
 GPU_REFERENCES = [
     ('GPU/software-stack.md', 'gpu-software-stack.html', 'GPU 软件栈与工具',
      'cuBLAS · cuDNN · CUTLASS · CuTe DSL · Triton · 编译与运行'),
     ('GPU/graphs-and-compilation.md', 'gpu-graphs-and-compilation.html', '计算图、编译与 CUDA Graph',
      'torch.compile · Dynamo · Inductor · 算子融合 · capture / replay'),
 ]
-PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + GPU_REFERENCES
+PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + GPU_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}
 
 
@@ -204,7 +210,7 @@ def links(html, source):
 
 def sidebar(current):
     result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>编程札记<small>算法 · 语言 · 系统</small></span></a>'
-    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
+    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
             active = ' aria-current="page"' if current == output else ''
@@ -220,6 +226,8 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
         source_note = 'Python 语法、项目运行与语言互操作，附官方文档链接；多文件示例按正文说明使用。'
     elif reference_kind == 'PyTorch 教学':
         source_note = '以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。'
+    elif reference_kind == 'CUDA 教学':
+        source_note = 'CUDA 执行层级与 kernel 编译笔记，附官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。'
     elif reference_kind == 'GPU 软件栈':
         source_note = 'GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。'
     elif reference_kind == 'STL 参考':
@@ -252,7 +260,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 index = []
 problem_count = 0
 for source, output, title, subtitle in PAGES:
-    reference_kind = 'GPU 软件栈' if source.startswith('GPU/') else 'PyTorch 教学' if source.startswith('PyTorch/') else 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
+    reference_kind = 'GPU 软件栈' if source.startswith('GPU/') else 'CUDA 教学' if source.startswith('CUDA/') else 'PyTorch 教学' if source.startswith('PyTorch/') else 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
     body, tokens = RENDERED[source]
     # Each chapter starts with a page title; original headings remain available.
     body = links(body, source)
@@ -293,6 +301,7 @@ home = f'''<div class="home-lead"><p>从代码写法，到计算与系统原理�
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
+<section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">把线程分组对应到 SM 与 GPC，再理解 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
 <section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">区分现成计算库、kernel 开发工具与编译器，再连接算子图优化和 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('编程札记', 'index.html', home, subtitle='算法思路、语言参考与系统学习札记。'))

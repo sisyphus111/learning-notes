@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 650" role="img" aria-labelledby="title desc">
+  <title id="title">CUDA 工作分组与硬件映射</title>
+  <desc id="desc">左侧 Grid 内的一个 Cluster 含 Block 0 与 Block 1，每个 block 有八个 warp。右侧 GPU 的一个 GPC 含 SM 0 与 SM 1。两个箭头分别把完整的 block 映射到一个 SM。其他 clusters 和硬件省略；每个 SM 可以驻留多个 blocks。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#62768d"/>
+    </marker>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:#26364e}
+      .heading{font-size:27px;font-weight:650}.label{font-size:25px;font-weight:600}
+      .detail{font-size:22px;fill:#5f728b}.small{font-size:21px;fill:#5f728b}
+      .blue{fill:#285da8}.green{fill:#328a59}
+    </style>
+  </defs>
+  <rect width="1040" height="650" rx="10" fill="#fff"/>
+  <text x="28" y="45" class="heading">逻辑：工作怎样分组</text>
+  <text x="590" y="45" class="heading">硬件：工作放在哪里</text>
+
+  <rect x="24" y="70" width="430" height="510" rx="12" fill="#f2f6fc" stroke="#cfdae8" stroke-width="2"/>
+  <text x="44" y="109" class="label blue">Grid · 本次启动的全部工作</text>
+  <rect x="40" y="130" width="398" height="395" rx="10" fill="#fff" stroke="#7c9bc2" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="58" y="166" class="label blue">Cluster · 可选分组</text>
+
+  <rect x="58" y="188" width="362" height="145" rx="9" fill="#eef4fd" stroke="#285da8" stroke-width="2"/>
+  <text x="76" y="222" class="label">Block 0 · 256 threads</text>
+  <text x="76" y="263" class="detail">Warp 0 · 32 threads</text>
+  <text x="76" y="302" class="detail">Warp 1～7 · 各 32 threads</text>
+
+  <rect x="58" y="354" width="362" height="145" rx="9" fill="#eef4fd" stroke="#285da8" stroke-width="2"/>
+  <text x="76" y="388" class="label">Block 1 · 256 threads</text>
+  <text x="76" y="429" class="detail">Warp 0 · 32 threads</text>
+  <text x="76" y="468" class="detail">Warp 1～7 · 各 32 threads</text>
+  <text x="44" y="556" class="small">其他 clusters / blocks 省略</text>
+
+  <rect x="586" y="70" width="430" height="510" rx="12" fill="#f0f8f3" stroke="#d1e2d8" stroke-width="2"/>
+  <text x="606" y="109" class="label green">GPU · 执行硬件</text>
+  <rect x="602" y="130" width="398" height="395" rx="10" fill="#fff" stroke="#72a588" stroke-width="2"/>
+  <text x="620" y="166" class="label green">GPC · 一组 SM</text>
+
+  <rect x="620" y="188" width="362" height="145" rx="9" fill="#eef8f1" stroke="#328a59" stroke-width="2"/>
+  <text x="638" y="222" class="label">SM 0</text>
+  <text x="638" y="263" class="detail">执行 Block 0 的全部 8 warps</text>
+  <text x="638" y="302" class="detail">Scheduler · 运算与存储资源</text>
+
+  <rect x="620" y="354" width="362" height="145" rx="9" fill="#eef8f1" stroke="#328a59" stroke-width="2"/>
+  <text x="638" y="388" class="label">SM 1</text>
+  <text x="638" y="429" class="detail">执行 Block 1 的全部 8 warps</text>
+  <text x="638" y="468" class="detail">Scheduler · 运算与存储资源</text>
+  <text x="606" y="556" class="small">其他 SM / GPC 省略</text>
+
+  <path d="M420 260 H620" stroke="#62768d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="468" y="230" width="104" height="25" fill="#fff"/>
+  <text x="520" y="249" text-anchor="middle" class="small">整块放置</text>
+  <path d="M420 426 H620" stroke="#62768d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="468" y="396" width="104" height="25" fill="#fff"/>
+  <text x="520" y="415" text-anchor="middle" class="small">整块放置</text>
+
+  <text x="28" y="617" class="detail">示意：一个 block 完整位于一个 SM；一个 SM 可以驻留多个 blocks。</text>
+</svg>

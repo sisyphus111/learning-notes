@@ -11,6 +11,7 @@
 - Python 项目入门包含模块与包、`import`、`python -m`、入口保护、pip / venv、`pyproject.toml`、editable 安装和 `__pycache__`；语言互操作页提供可构建的 pybind11 示例，并解释数据转换、所有权、GIL、ABI 与进程通信。
 - 5 个 STL 页面：速查、对象语义、序列容器、关联容器、适配器与算法。
 - PyTorch 教学分为三页：[Tensor 与 GPU 内存](PyTorch/tensors.md) 讲 shape、计算、stride、共享存储与异步执行；[神经网络基础](PyTorch/neural-networks.md) 讲 torch.nn、functional、模型与参数、自动求导及训练/推理流程；[常见计算与组件](PyTorch/operations-and-components.md) 展开 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 和 attention 的 Torch 实现。
+- CUDA 教学独立成板块：[执行层级与硬件映射](CUDA/execution-hierarchy.md) 讲线程分组、SM / GPC 放置、资源驻留与同步范围；[PTX、SASS 与编译流程](CUDA/compilation-and-instructions.md) 讲三类 kernel 的编译路径、ptxas / PTX Compiler 库和 AOT / JIT。
 - GPU 软件栈独立成板块：[GPU 软件栈与工具](GPU/software-stack.md) 区分计算库、CUTLASS / CuTe、编译工具与推理框架；[计算图、编译与 CUDA Graph](GPU/graphs-and-compilation.md) 解释图捕获、编译优化、kernel 融合与执行重放。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、与个人主页相同的太阳/月亮主题图标及手机阅读。
 
@@ -24,7 +25,7 @@ STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存�
 
 ## 维护方式
 
-编辑各题型目录、`STL/`、`Python/`、`PyTorch/` 与 `GPU/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
+编辑各题型目录、`STL/`、`Python/`、`PyTorch/`、`CUDA/` 与 `GPU/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
 
 构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
 
