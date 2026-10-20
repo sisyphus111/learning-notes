@@ -131,6 +131,60 @@ guard 不满足则可能触发重编译。graph break 与重编译不是同一�
 
 Stream capture 本身就是 CUDA 提供的构图方式。捕获期间，提交到被捕获 stream 的工作进入图，不按普通 stream 工作立即执行。Python 或 C++ 的 host 代码仍在运行。显式构图与 stream capture 最终都得到 CUDA 图。[CUDA Graph 创建与执行](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html)
 
+### 显式建图与 stream capture
+
+显式建图时，调用方逐个添加节点，并指定前置依赖。下面表达 `A → B`。这些 CUDA C++ 片段用于说明接口关系，省略错误检查和 kernel 定义，未实机运行。
+
+```cpp
+cudaGraph_t graph;
+cudaGraphCreate(&graph, 0);
+
+cudaGraphNode_t node_a, node_b;
+// 假设 params_a / params_b 已填入函数、grid、block 和参数。
+cudaGraphAddKernelNode(&node_a, graph, nullptr, 0, &params_a);
+cudaGraphAddKernelNode(&node_b, graph, &node_a, 1, &params_b);
+```
+
+第二次调用的 `&node_a, 1` 表示 B 有一个前置节点 A。显式建图需要调用方指定依赖。若两个节点都没有前置依赖，“先添加 A，再添加 B”不会自动形成 `A → B`。
+
+stream capture 则利用已有的 stream 顺序和 event 依赖建立图：
+
+```cpp
+cudaGraph_t graph;
+cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+
+kernel_a<<<grid, block, 0, stream>>>(...);
+kernel_b<<<grid, block, 0, stream>>>(...);
+
+cudaStreamEndCapture(stream, &graph);
+```
+
+A、B 位于同一条 stream，CUDA 因此记录 `A → B`。捕获记录的是工作及依赖，不是一次 GPU 执行的开始时间、结束时间或 SM 分配结果。
+
+两种方式都可以接上同样的实例化与重放：
+
+```cpp
+cudaGraphExec_t executable;
+cudaGraphInstantiateWithFlags(&executable, graph, 0);
+
+// 每次需要执行这一套工作时，提交已有的执行实例。
+cudaGraphLaunch(executable, launch_stream);
+```
+
+显式建图适合直接管理节点；stream capture 方便复用已有的 kernel 和支持捕获的库调用。两者可以结合，例如先捕获，再修改图。[CUDA Graph Runtime API](https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__GRAPH.html)、[NVIDIA 构图示例](https://developer.nvidia.com/blog/constructing-cuda-graphs-with-dynamic-parameters/)
+
+### capture mode 控制检查范围，不代表捕获所有 stream
+
+`cudaStreamBeginCapture(stream, mode)` 中的 `mode`，控制捕获期间对潜在不安全 API 调用的限制范围。
+
+| mode | 限制范围 |
+| --- | --- |
+| `cudaStreamCaptureModeGlobal` | 捕获会约束当前线程及其他线程中的潜在不安全调用 |
+| `cudaStreamCaptureModeThreadLocal` | 这次捕获的此类限制主要作用于发起捕获的线程 |
+| `cudaStreamCaptureModeRelaxed` | 放宽此类检查；与捕获必然冲突的操作仍然不允许 |
+
+`Global` 不表示自动记录所有 stream、线程或 GPU 的工作。捕获从指定 stream 开始，其他 stream 需要按规则加入。同样，`Relaxed` 不会把任意 CPU 操作或普通 `cudaMalloc` 自动转换成图节点。[CUDA Stream Capture API](https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__STREAM.html)
+
 ### PyTorch API 怎样对应到 CUDA
 
 | PyTorch API 或行为 | 底层含义与框架工作 |
@@ -165,6 +219,122 @@ g.replay()                 # y 的预期结果仍为 new_x * 2
 重放不会再次运行 `print`、读取 Python 变量 `scale` 或创建新的 `y` 对象。如果把可变标量放在固定的 GPU buffer 中，并让 kernel 每次读取它，数值就可以随重放改变。
 
 普通 Python `for range(3)` 会在捕获时展开为当时产生的工作；普通 Python `if` 也不会自动成为可重放的条件节点。CUDA 原生支持专门的图更新和条件节点机制，但需要显式使用相应接口或受支持的上层功能。kernel 内部按照输入数据判断分支，与 Python 在 host 端重新选择工作，是不同的控制流层次。
+
+### 多 stream：用 event 建立分支与汇合
+
+假设 A 准备输入，B、C 分别计算两个结果，D 消费两个结果：
+
+```text
+             ┌→ B ─┐
+         A ──┤     ├──→ D
+             └→ C ─┘
+```
+
+B、C 都要等待 A 完成，但彼此没有依赖。可以在两条 stream 上提交，再用 event 表达跨 stream 的先后关系：
+
+```cpp
+// s0 / s1 是预先创建的显式 stream。
+// a_ready / c_done 是预先创建、禁用计时的 CUDA events。
+cudaStreamBeginCapture(s0, cudaStreamCaptureModeGlobal);
+
+prepare_a<<<grid, block, 0, s0>>>(...);
+
+// fork：s1 等待捕获中的 event，加入同一张捕获图。
+cudaEventRecord(a_ready, s0);
+cudaStreamWaitEvent(s1, a_ready, 0);
+
+compute_b<<<grid, block, 0, s0>>>(...);
+compute_c<<<grid, block, 0, s1>>>(...);
+
+// join：把 s1 的工作汇回起始 stream。
+cudaEventRecord(c_done, s1);
+cudaStreamWaitEvent(s0, c_done, 0);
+
+combine_d<<<grid, block, 0, s0>>>(...);
+cudaStreamEndCapture(s0, &graph);
+```
+
+| 依赖的来源 | 图中的边 |
+| --- | --- |
+| s0 内的提交顺序 | A → B → D |
+| a_ready 的 record / wait | A → C |
+| c_done 的 record / wait | C → D |
+
+普通的捕获内 event record / wait 会转化成图依赖，不要求保留为运行时 event 节点。CUDA 也有显式保留 event 节点的 external event 用法；上例使用默认的内部依赖方式。
+
+这里遵循 **fork / join**：其他 stream 通过 event 加入同一张图，所有分支在结束前汇回起始 stream。`cudaStreamEndCapture()` 必须在起始 stream 上调用。仅在 s0 开始捕获，不会自动捕获没有关联的 s1。两个独立开始的 capture 也不会因为一次普通 event wait 就自动合并。[CUDA 跨 stream 捕获规则](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#cross-stream-dependencies-and-events)
+
+重放只需一次 `cudaGraphLaunch(executable, launch_stream)`。launch stream 用于安排整张图与外部工作的顺序，不会把图内所有节点强制串行化。B、C 具备并行条件，但实际能否重叠取决于资源。CUDA 保留依赖关系，不承诺重放时沿用捕获时的 stream 分配。
+
+### stream 等 event 与 CPU 等 GPU 是两种同步
+
+`cudaStreamWaitEvent` 表达“后续 GPU 工作等待某个前置条件”，CPU 可以继续提交。因此，CUDA 能把这种关系写成图中的边。
+
+`cudaStreamSynchronize` 则要求 CPU 等到 stream 中的工作执行完成。捕获中的工作尚未作为普通工作提交执行，对正在捕获的 stream 调用它会与捕获冲突。对包含活跃捕获的 device 调用 `cudaDeviceSynchronize`，以及等待捕获中的 event，也有相应限制。
+
+```text
+可表达为图依赖：
+GPU 工作 A 完成 → GPU 工作 B 才能开始
+
+不能直接靠普通 capture 重放：
+GPU 工作 A 完成 → CPU 取回结果 → CPU 决定提交 B 还是 C
+```
+
+后一种流程需要把 host 决策放在捕获之外，或使用支持的图更新、条件节点机制。普通 CPU 分支不会自动变成图的一部分。[NVIDIA 捕获约束](https://docs.nvidia.com/dl-cuda-graph/cuda-graph-basics/constraints.html)
+
+### 多 GPU：每个 rank 的图包含本地计算和通信工作
+
+NCCL（NVIDIA Collective Communication Library）支持捕获 collective、点对点和 group 操作。分布式程序通常让每个 rank 捕获本 GPU 的工作，再由所有参与 rank 启动各自的图。
+
+以两个 rank 的 Tensor Parallel 为例，两个 GPU 分别计算局部结果，经过 AllReduce 后继续计算：
+
+```text
+rank 0 的图：局部 GEMM₀ → NCCL AllReduce₀ → 后续计算₀
+                              ⇅ 通信
+rank 1 的图：局部 GEMM₁ → NCCL AllReduce₁ → 后续计算₁
+```
+
+这些是各进程管理的图对象，通信依赖由 NCCL 协议连接。“每个 rank 一张图”是常见的分布式组织方式。一般的 host-launched CUDA Graph 也支持跨设备操作。device-launched graph 则有单设备等额外限制。[NVIDIA 多设备说明](https://docs.nvidia.com/dl-cuda-graph/cuda-graph-basics/constraints.html#multi-device-considerations)、[CUDA 图实例化限制](https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__GRAPH.html)
+
+下面是每个 rank 各自执行的片段。假设本 rank 的 device、communicator、stream 和 buffers 已初始化，计算及通信路径已预热：
+
+```cpp
+cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+
+local_compute<<<grid, block, 0, stream>>>(sendbuf);
+ncclAllReduce(
+    sendbuf, recvbuf, count,
+    ncclFloat, ncclSum, comm, stream
+);
+consume_result<<<grid, block, 0, stream>>>(recvbuf);
+
+cudaStreamEndCapture(stream, &graph);
+cudaGraphInstantiateWithFlags(&executable, graph, 0);
+
+// 各参与 rank 都要提交各自对应的图。
+cudaGraphLaunch(executable, stream);
+```
+
+捕获时，NCCL 把通信执行工作接入图；重放时，CPU 无需再调用原来的 `ncclAllReduce`。GPU 之间仍然要传输数据、归约并等待通信条件，CUDA Graph 不会省去这些工作。
+
+同一个通信操作是否使用 capture，必须在参与 rank 间一致。collective 涉及 communicator 中的参与 rank；点对点通信涉及发送方与接收方。重放时，各方必须启动源于该次 collective capture 的对应图，并保持通信调用的匹配关系和顺序。
+
+各 rank 不需要在同一纳秒启动，但不能只启动一方就等待整个 collective 完成。某一方缺席或通信顺序不匹配，可能让其他 rank 一直等待。当前 NCCL 文档指出，同一进程控制多 GPU 时可能发生 graph launch 死锁。单线程依次启动尤其需要注意；文档推荐每个进程管理一张 GPU。[NCCL CUDA Graph 支持与约束](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/cudagraph.html)
+
+### 计算 stream 与通信 stream 一起捕获
+
+如果 NCCL 使用单独的 comm stream，可以在每个 rank 内复用前面的 fork / join：
+
+```text
+compute stream：GEMM ───────────────────→ 后续计算
+                    │ event                 ↑ event
+                    ↓                       │
+comm stream：       等 GEMM → NCCL AllReduce ┘
+```
+
+从 compute stream 开始捕获，用 event 接入 comm stream。提交 NCCL 工作后，再用 event 汇回 compute stream，最后结束捕获。
+
+同一 GPU 内，图的边保证 GEMM、通信和后续计算的顺序；不同 GPU 之间，NCCL 协议保证交换与归约。CUDA 不会因为两个操作访问同一指针，就自动推导遗漏的跨 stream 依赖，调用方仍须表达这些关系。
 
 ## 5. 地址固定：虚拟地址、物理显存与数据内容
 
