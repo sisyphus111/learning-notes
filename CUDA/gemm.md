@@ -150,18 +150,93 @@ $$
 
 一个较大的 CTA tile 会被拆成多次矩阵指令。kernel 还得负责准备数据、等待传输、组织指令和写回输出；不能因为调用了矩阵指令，就自动消除所有瓶颈。
 
-| 常见路径 | 参与组织与数据位置的区别 |
-| --- | --- |
-| SIMT FMA | 线程用普通乘加指令更新寄存器中的结果 |
-| `mma.sync` | Warp 协作执行矩阵指令，按要求组织寄存器 fragments |
-| Hopper `wgmma.mma_async` | Warpgroup 级异步矩阵指令，支持规定的 shared-memory 操作数形式 |
-| Blackwell `tcgen05.mma` | 使用新的矩阵指令和 Tensor Memory（TMEM）机制，按具体指令规定组织操作数与累加器 |
+### 7.1 计算路径：谁发起指令，数据放在哪里
 
-**不要把“累加器总在普通线程寄存器里”作为跨架构规则。** 基础 SIMT 和许多较早的 Tensor Core 例子可以这样理解；Blackwell 的 TMEM 是另一种专门的片上存储。TMEM 也不是 global memory 或 TMA descriptor。
+Hopper、Blackwell 是 GPU 架构名，Tensor Core 是计算硬件，`mma.sync` 这些名字则是矩阵指令。这里的“路径”指 kernel 用哪类指令、怎样组织线程，以及操作数和累加结果放在哪里。
+
+| 常见路径 | 参与计算的线程组织 | 操作数与累加结果 |
+| --- | --- | --- |
+| SIMT FMA | 各线程执行普通乘加，分别计算自己的结果 | 普通寄存器保存输入值和累加结果；这一行用于和 Tensor Core 路径比较 |
+| `mma.sync` | 一个 warp 的 32 个线程共同执行矩阵指令 | 常见形式把输入和累加结果分散在参与线程的寄存器中 |
+| Hopper `wgmma.mma_async` | 一个 warpgroup 的 4 个 warps、128 个线程协作 | B 来自 shared memory；A 按指令形式来自 shared memory 或寄存器；累加结果在寄存器中 |
+| Blackwell SM100 `tcgen05.mma` | 一个线程可以发起整个异步 MMA | A 来自 shared memory 或 TMEM，B 来自 shared memory，累加结果在 TMEM 中 |
+
+`mma.sync` 中的 register fragment，就是某个线程持有的矩阵片段。32 个线程按指令要求提供各自的片段，共同完成一块矩阵乘加。它们不是各自计算一次完整的矩阵乘法。`tcgen05.mma` 的“一个线程发起”则表示提交硬件计算任务，实际矩阵运算仍由 Tensor Core 执行。
+
+Hopper 也可以使用 `mma.sync`，架构名不表示只能选择表中的一行。这里的 `tcgen05` / TMEM 路线以 B200 等 SM100 GPU 为例。RTX 5090 所属的 SM120 使用不同的矩阵指令路线，不能仅凭“Blackwell”这个名字就照搬。
 
 数据类型、指令形状、转置形式和对齐条件由硬件及指令决定。不存在一条适用于所有 GPU、所有精度的“矩阵边长是某个倍数就一定最快”规则。
 
 来源：[PTX 矩阵指令](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#matrix-multiply-accumulate-operation)、[CUTLASS Blackwell SM100 GEMM](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_functionality.html)。
+
+### 7.2 TMEM：为 Tensor Core 增加专门的片上存储
+
+**Tensor Memory（TMEM）是 SM100 上额外的一块片上存储，独立于普通寄存器和 shared memory。** TMEM 主要保存 Tensor Core 的矩阵累加结果。理解它时，先看“中间结果存在哪里”：
+
+```text
+Hopper WGMMA：     Tensor Core 更新计算线程寄存器中的累加结果
+Blackwell SM100：  Tensor Core 直接更新 TMEM 中的累加结果
+```
+
+分块 GEMM 沿 K 依次读取输入块，输出的中间结果却要一直保留：
+
+```text
+第 0 段 K：D = A₀ @ B₀
+第 1 段 K：D = D + A₁ @ B₁
+第 2 段 K：D = D + A₂ @ B₂
+……
+```
+
+这里不断更新的 D 就是累加器矩阵。假设 D 的逻辑形状为 `[128,128]`，使用 FP32 累加，仅这些数值就占 `128×128×4 = 64 KiB`。若平均分给 128 个线程，每个线程要保存 128 个 FP32 值；这还没有计入地址、循环变量和其他临时值。这个手算说明寄存器压力的来源，实际分配还取决于指令和布局。
+
+**TMEM 让这批长期存活的累加结果占用专门的存储，普通寄存器可以用于其他工作。** 需要后处理时，线程再读取结果。TMEM 的收益来自存储和执行方式的改变，不能仅凭“多了一块存储”推断具体加速比例。
+
+来源：[NVIDIA tcgen05 编程指南](https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/tcgen05_programming.html)。
+
+### 7.3 从输入搬运到 TMEM 累加，再到输出
+
+采用 A、B 都来自 shared memory 的形式时，一条典型数据流是：
+
+```text
+global memory 中的 A、B
+    ↓ TMA 等搬运机制
+shared memory 中的当前输入块
+    ↓ tcgen05.mma 使用输入块
+Tensor Core 读取并更新 TMEM 中的 D
+    ↓ 更换输入块，沿 K 继续累加，D 留在 TMEM 中
+等待所需的 MMA 完成
+    ↓ tcgen05.ld：TMEM → 普通线程寄存器，并等待读取完成
+线程执行 bias、激活或类型转换
+    ↓
+最终输出写回 global memory
+```
+
+主循环中的 D 可以一直留在 TMEM 中；每次 MMA 不必先把整个累加器交给普通线程寄存器。普通算术指令需要处理结果时，仍然会用到寄存器，所以 TMEM 不会消除 kernel 的全部寄存器需求。
+
+三个名称分别承担不同职责：**TMA 负责搬运数据，Tensor Core 负责矩阵运算，TMEM 负责保存 Tensor Core 使用的数据。** TMA descriptor 则是描述搬运对象的元数据，不是保存矩阵数值的 TMEM。
+
+来源：[NVIDIA tcgen05 数据流与结果读取](https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/tcgen05_programming.html#global-memory-gmem-to-mma-data-flow-overview)。
+
+### 7.4 TMEM 的分配、同步与复用
+
+TMEM 需要 kernel 显式管理，不是硬件自动填充的 cache，也不是通过 `cudaMalloc()` 分配的 global memory。kernel 通过专门指令申请空间，使用 TMEM 地址访问，结束前释放申请的空间。
+
+```text
+申请 TMEM
+    → 发起 MMA 并累加
+    → 等待计算完成
+    → 读取并处理结果
+    → 确认使用者已完成访问
+    → 复用这块空间，或在退出前释放
+```
+
+`tcgen05.mma` 可以由单线程发起，但 `tcgen05.alloc` / `tcgen05.dealloc` 要求一个 warp 协作执行。各类指令的参与要求不同。SM100 的 TMEM 按列分配，基本粒度为 32 列，分配列数要求为 2 的幂。
+
+MMA 是异步操作。`tcgen05.commit` 可以让 barrier 跟踪此前 MMA 的完成，消费者等待对应完成信号，并满足访问顺序要求后，才能读取结果。仅执行一次普通 `__syncthreads()` 或 fence，不能替代 MMA 完成等待。
+
+kernel 还可以在 TMEM 中安排两个累加器区域：Tensor Core 计算下一块输出时，后处理线程读取上一块结果。这为计算和后处理重叠提供条件，但需要更多 TMEM 容量，以及正确的缓冲区读写依赖。
+
+来源：[PTX：TMEM 与分配规则](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#tensor-memory)、[PTX：异步完成机制](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#tcgen05-instructions-mbarrier-based-completion-mechanism)。
 
 ## 8. 内存布局：合并访问、bank conflict 与 swizzle
 
