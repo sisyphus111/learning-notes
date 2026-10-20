@@ -113,17 +113,76 @@ guard 不满足则可能触发重编译。graph break 与重编译不是同一�
 
 ## 4. CUDA Graph 的创建与重放
 
-CUDA Graph 可以通过显式 API 构建，也可以通过 stream capture 记录工作。capture 记录提交的工作，不表示已经完成本次 GPU 计算。典型阶段为：
+**CUDA 定义底层操作怎样组成图并执行；PyTorch 把 Tensor 程序接到这套机制上，并管理内存和框架状态。** 最终执行的仍然是 CUDA 原生图。
 
-1. 创建或捕获图，描述工作与依赖。
-2. 实例化图，准备可重复提交的执行对象。
-3. 重放图，用新的输入内容执行工作。
+### CUDA 原生对象与阶段
 
-CUDA Graph 节点不只包含 kernels，CUDA API 还支持复制及其他节点。普通 PyTorch stream capture 不会把任意 Python 控制流或 CPU 副作用自动转成可重放工作。[CUDA Graph 创建与执行](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html)
+| 对象或阶段 | 具体含义 |
+| --- | --- |
+| `cudaGraph_t` | 图的描述，包含节点、节点参数和依赖边 |
+| `cudaGraphExec_t` | 实例化后的可执行图，可以反复提交 |
+| 构图 | 显式添加节点与依赖，或用 stream capture 记录提交的工作 |
+| 实例化 | 校验图并准备执行资源；不等于重新编译图中的 kernel |
+| launch / replay | 向 stream 提交可执行图，按依赖执行 |
+
+节点可以表示 kernel、memcpy、memset、事件、内存分配/释放，也有专门的 host、子图和条件节点。边表达执行依赖，节点必须等其前置条件满足后才能执行。
+
+例如，kernel 节点记录函数、grid/block 配置、参数与依赖。它使用的是参数中的地址，不会根据 Python 变量名重新查找 Tensor。
+
+Stream capture 本身就是 CUDA 提供的构图方式。捕获期间，提交到被捕获 stream 的工作进入图，不按普通 stream 工作立即执行。Python 或 C++ 的 host 代码仍在运行。显式构图与 stream capture 最终都得到 CUDA 图。[CUDA Graph 创建与执行](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html)
+
+### PyTorch API 怎样对应到 CUDA
+
+| PyTorch API 或行为 | 底层含义与框架工作 |
+| --- | --- |
+| `torch.cuda.CUDAGraph()` | 创建管理原生 CUDA 图资源的包装对象 |
+| 进入 `with torch.cuda.graph(g)` | 选择捕获 stream、准备框架状态，开始 CUDA stream capture |
+| 捕获区域中的 Tensor 运算 | Python 执行算子调用；算子产生的底层 CUDA 工作被捕获 |
+| 退出捕获区域 | 结束 capture；默认还会完成实例化 |
+| `g.replay()` | 准备需要更新的框架状态，再调用原生 graph launch |
+| `g.pool()` | 获取 PyTorch 捕获池的标识，用于共享内存；它不是图节点 |
+
+`torch.cuda.graph` 是上下文管理器，`torch.cuda.CUDAGraph` 是图资源的包装对象。未指定 stream 时，上下文管理器使用内部 side stream。当前接口也支持 `keep_graph=True`，保留原生图供高级用户检查或修改。这时需要显式实例化，或在首次 replay 时实例化。[PyTorch graph 接口](https://docs.pytorch.org/docs/2.14/generated/torch.cuda.graph.html)、[CUDAGraph 接口](https://docs.pytorch.org/docs/2.14/generated/torch.cuda.CUDAGraph.html)
+
+一行 Tensor 运算不一定对应一个节点：`view` 可能只修改元数据，一个复杂算子也可能提交多个 kernels。PyTorch 的 capture 路径会调用 `cudaStreamBeginCapture`、`cudaStreamEndCapture`；replay 路径最终调用 `cudaGraphLaunch`。[PyTorch CUDAGraph 实现](https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/cuda/CUDAGraph.cpp)
+
+### 捕获 Python 产生的工作，不会重放 Python 本身
+
+下面是语义片段，假设 CUDA 输入 `x` 已准备并完成 warmup：
+
+```python
+scale = 2
+g = torch.cuda.CUDAGraph()
+with torch.cuda.graph(g):
+    print("capturing")      # 捕获时由 CPU 执行一次
+    y = x * scale
+
+scale = 3                  # 不会修改图中已经记录的参数
+x.copy_(new_x)             # 更新原输入存储中的内容
+g.replay()                 # y 的预期结果仍为 new_x * 2
+```
+
+重放不会再次运行 `print`、读取 Python 变量 `scale` 或创建新的 `y` 对象。如果把可变标量放在固定的 GPU buffer 中，并让 kernel 每次读取它，数值就可以随重放改变。
+
+普通 Python `for range(3)` 会在捕获时展开为当时产生的工作；普通 Python `if` 也不会自动成为可重放的条件节点。CUDA 原生支持专门的图更新和条件节点机制，但需要显式使用相应接口或受支持的上层功能。kernel 内部按照输入数据判断分支，与 Python 在 host 端重新选择工作，是不同的控制流层次。
+
+## 5. 地址固定：虚拟地址、物理显存与数据内容
+
+在不修改图、直接 replay 的模型中，记录的指针参数保持不变。这里指的是 **GPU 虚拟地址**，不是某个永远不变的 HBM 物理位置。
+
+```text
+kernel 参数中的虚拟地址 P
+           ↓ GPU 地址转换
+支撑该地址的物理显存
+           ↓
+当前保存的数据
+```
+
+这三个对象要分别理解。地址保持不变，内容仍可更新。对于 CUDA 原生 graph allocation，CUDA 还可以保留虚拟地址并更换物理映射。这不表示普通 PyTorch graph pool 每次 replay 都会重新映射显存。[CUDA graph allocation 的地址保证](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#graph-memory-nodes)
 
 ### 数据可变，基础捕获模型中的地址保持稳定
 
-在普通 PyTorch CUDA Graph 捕获与重放中，指针参数仍指向捕获时的地址。新 batch 可以复制到这些输入缓冲区，再重放图。换一个 Tensor 对象并重新绑定 Python 变量，不会自动改变图里的指针。
+新 batch 可以复制到固定输入缓冲区，再重放图。换一个 Tensor 对象并重新绑定 Python 变量，不会自动修改图中的指针。
 
 ```text
 static_a 原来指向地址 P
@@ -134,11 +193,211 @@ static_a.copy_(new_a)     更新 P 中的数据，重放能读到新内容
 static_a = new_a         只改 Python 绑定，图仍然读取 P
 ```
 
-因此需要让输入/输出缓冲区持续存活。底层 CUDA 有图更新机制，上层编译系统也能管理多份捕获。地址稳定的描述针对这里的基础重放模型。[PyTorch CUDA Graph 内存语义](https://docs.pytorch.org/docs/2.9/notes/cuda.html#cuda-graphs)
+因此，输入、权重、输出与 workspace 的地址和使用期都需要有效。图外创建的输入或权重不会因为被 kernel 引用，就自动迁入 graph-private pool；调用方仍需保持它们的存储存活。
+
+静态输出也是会被覆盖的 buffer。`saved = static_output` 只增加引用，不能保存旧内容；需要保留某次结果时，应在下一次覆盖之前执行 `saved = static_output.clone()`。跨 stream 使用还必须安排事件或等待关系。
+
+“静态”限定的是这份执行安排。基础捕获通常固定 shape、stride、dtype 和 launch 参数。底层 CUDA 可在限制内更新图，上层也可为不同 batch size 捕获不同版本。不能把常用捕获约定扩大为“CUDA 的所有图都不能更新”。
+
+## 6. PyTorch 为什么需要 graph-private pool
+
+下面先讨论 PyTorch 的 **native caching allocator**。它管理内存块，Tensor 持有其中一段存储。普通 eager 中，Tensor 的存储不再被使用且同步条件满足后，allocator 可以将该块交给其他 Tensor。回到缓存并不等于立即归还驱动。
+
+### Python 对象销毁后，图仍然需要原地址
+
+考虑捕获中的计算：
+
+```python
+t = x * 2
+y = t + 1
+del t
+```
+
+图中仍然有“写入 t 的地址 P”和“读取 P”的 kernel。下次 replay 会再次访问 P。如果普通 allocator 已把 P 分给无关 Tensor `z`，replay 就会覆盖 `z`。
+
+为避免这类冲突，PyTorch 在捕获期间把分配导向 graph-private pool。图还需要这些地址时，普通 eager 分配不能随意取走它们。pool 是 allocator 管理的内存块集合和记录，不要求是一段连续显存，也不是额外硬件。[PyTorch graph memory management](https://docs.pytorch.org/docs/2.14/notes/cuda.html#graph-memory-management)
+
+### 创建 Tensor 不等于添加 Alloc 节点
+
+```python
+with torch.cuda.graph(g):
+    tmp = torch.empty_like(x)
+    torch.mul(x, 2, out=tmp)
+```
+
+在 native allocator 路线中，可以分成两条路径：
+
+```text
+框架内存管理：
+创建 tmp 的元数据 → allocator 从 private pool 安排存储 P
+
+CUDA 工作捕获：
+记录 mul kernel → 输出参数指向 P
+```
+
+`empty_like` 不初始化数据，安排其存储并不必然产生 CUDA Alloc 节点。replay 时也不重新执行 Python 的 `empty_like`；kernel 直接写入 P。
+
+pool 可以复用已有空闲块，也可以在捕获准备和分配过程中增长。无需在开始捕获之前一次性预分配全部空间。捕获完成后，所需内存会被保留，以供未来 replay 使用。
+
+### private pool 内部仍然可以复用
+
+如果捕获中的使用顺序是：
+
+```text
+生成 a → 使用 a → a 已无后续用途 → 生成 b → 使用 b
+```
+
+且尺寸、布局与同步条件允许，a、b 可以复用同一段存储。每次 replay 都按捕获的依赖执行，就能重复这套安排。
+
+因此，pool 保留的是支撑执行过程所需的内存高水位，不是所有历史分配大小的累加。实际占用还受块大小、碎片、输出是否继续存活和 stream 使用影响。[PyTorch allocator 的 graph capture 说明](https://github.com/pytorch/pytorch/blob/main/c10/cuda/CUDACachingAllocator.cpp)
+
+## 7. CUDA 原生的图内分配与释放
+
+CUDA 原生支持把分配和释放作为图节点。它们表达一段内存的 **GPU 有效使用期**，因此可以和固定虚拟地址同时成立。
+
+![PyTorch private pool 与 CUDA 原生内存节点的时间线](../assets/cuda-graph-memory-lifetimes.svg)
+
+上图比较 native allocator 的典型路径与 CUDA 原生内存节点。若 PyTorch 使用 `cudaMallocAsync` backend，底层行为可能涉及内存节点，不能沿用“只有固定 buffer、没有分配节点”的假设。具体行为取决于 allocator backend 和版本。
+
+### cudaMallocAsync 怎样被捕获成节点
+
+下面是 CUDA C++ 流程片段，省略错误处理、变量初始化与 kernel 定义。`bytes` 是 host 端在捕获时已经确定的大小：
+
+```cpp
+cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+
+cudaMallocAsync(&p, bytes, stream);
+kernel_A<<<grid, block, 0, stream>>>(p);
+kernel_B<<<grid, block, 0, stream>>>(p);
+cudaFreeAsync(p, stream);
+
+cudaStreamEndCapture(stream, &graph);
+cudaGraphInstantiate(&exec, graph, 0);
+cudaGraphLaunch(exec, stream);
+```
+
+对应的图是：
+
+```text
+Alloc(bytes, P) → kernel A(P) → kernel B(P) → Free(P)
+```
+
+构图时，CUDA 确定并返回虚拟地址 P；执行时，分配节点开始这次分配的有效期，释放节点结束有效期。所有访问 P 的操作都必须排在 Alloc 之后、Free 之前。跨分支的访问也需要相应依赖，不能只看 host 代码的书写顺序。
+
+这不是 GPU 执行到 Alloc 时才由 Python 决定新的 shape 或大小，也不是每次 replay 重新调用上述 C++ 函数。重放执行的是预先记录的节点。[CUDA graph memory nodes](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#graph-memory-nodes)
+
+### 分配有效期与物理资源保留是两件事
+
+| 对象 | 构图与重放时的含义 |
+| --- | --- |
+| 虚拟地址 P | 创建分配节点时确定，在节点生命周期内保持固定 |
+| 本次分配的有效期 | 随 GPU 执行到 Alloc 而开始，随 Free 而结束 |
+| 物理显存 | CUDA 管理，可缓存、复用或重新映射到固定虚拟地址 |
+| 数据内容 | Free 后不再保证保留，下一次 Alloc 不会自动恢复旧数据 |
+
+replay 经过 Alloc 不等于每次都向系统重新申请物理显存。经过 Free 也不等于立刻把物理显存归还系统。CUDA 可以保留资源，以降低后续分配和映射开销。
+
+若图包含 `Alloc P → 使用 P → Free P → Alloc Q → 使用 Q`，依赖已证明 P、Q 的有效期不重叠，CUDA 可以复用底层资源。若 P、Q 会同时被访问，就不能让它们的数据互相覆盖。
+
+图也可以把分配保留到自身执行结束之后，交给后续工作使用和释放。这时需要跨图或 stream 顺序保证有效期；销毁图本身不会自动释放仍然存活的 graph allocation。上面的片段在同一图内释放，避免了这类跨图所有权。
+
+### 三种“图内分配”要分开读
+
+| 所谓的“图内分配” | 实际含义 |
+| --- | --- |
+| PyTorch 捕获区域里创建 Tensor | host 端由 allocator 安排存储；不一定添加 Alloc 节点 |
+| CUDA 图中有内存节点 | 图执行时经过 Alloc / Free，改变该次分配的有效期 |
+| kernel 内调用设备端 malloc | 设备端动态分配机制，不等同于图内存节点 |
+
+`cudaMallocAsync` / `cudaFreeAsync` 具有可捕获的 stream 顺序语义。普通 `cudaMalloc` / `cudaFree` 不能当作它们的可捕获替代品。放松 capture 的错误检查也不会把普通分配自动转成内存节点。
+
+## 8. 多个图共享 pool：复用内存与执行约束
+
+### PyTorch 的共享捕获池
+
+假设为 batch size 1 和 8 分别捕获两个推理图。每次只执行其中一个时，两套完全独立的临时存储可能浪费显存。共享 pool 允许后一次捕获在满足分配条件时复用池中已有块。
+
+```python
+# 结构示意：输入已创建，两个 workload 已完成 warmup。
+g1 = torch.cuda.CUDAGraph()
+g2 = torch.cuda.CUDAGraph()
+
+with torch.cuda.graph(g1):
+    y1 = workload1(x1)
+
+with torch.cuda.graph(g2, pool=g1.pool()):
+    y2 = workload2(x2)
+
+g1.replay()
+g2.replay()
+```
+
+`pool=` 是分配资源的共享约定，不会把两个图合并，也不会自动替调用方建立它们的执行顺序。
+
+| 使用方式 | 需要保持的条件 |
+| --- | --- |
+| 相互依赖的一串图，例如 G1 的输出供 G2 使用 | 按捕获时的顺序重放，保持中间值的生命周期，不能并发重放 |
+| 相互独立、按请求选择的图，例如不同 batch bucket | 不并发；复用存储前消费或复制仍需保留的输出 |
+| 在不同 streams 上重放共享存储的图 | 必须用 stream/event 依赖确保实际执行不重叠；仅按顺序调用两个 Python 方法不够 |
+
+图已结束，不代表它的输出已经没有用途。如果某块存储在两个图中被复用，G2 的写入可以覆盖 G1 留下的数据。共享 pool 不会为每个图保存一份历史快照。
+
+例如，需要跨后续 replay 保留 `y1` 的值时，可以在覆盖前于有序 stream 上执行 `saved_y1 = y1.clone()`。这会增加一次复制及保存结果所需的存储，应按输出的实际生命周期使用。[PyTorch sharing memory across captures](https://docs.pytorch.org/docs/2.14/notes/cuda.html#sharing-memory-across-captures)
+
+假设两个图分别需要 100 MiB 和 160 MiB 的临时块。如果这些块都能复用，理想化估算可能接近 160 MiB，而非 260 MiB。这只是忽略碎片与长期存活输出后的容量例子。**传入同一个 pool 不保证最终占用等于两个峰值的最大值**。捕获期间仍存活的输出、分配顺序和块尺寸都可能限制复用。
+
+### CUDA 原生也有 graph memory pool
+
+CUDA 原生内存节点有自己的资源管理。图内存分配的有效期不重叠时，CUDA 可以复用物理内存。不同图可以保留不同虚拟地址，再在允许的执行区间映射到同一批物理资源。
+
+这种由 CUDA 管理映射与有效期的复用，不等于 PyTorch native private pool 的共享约定。不能把“CUDA 可为并发图安排不同物理存储”推导成“共享 PyTorch pool 的图可以任意并发”。
+
+## 9. pool、workspace 与显存释放分别属于哪一层
+
+| 名称 | 管理者 | 具体作用 |
+| --- | --- | --- |
+| PyTorch 普通 caching pool | PyTorch allocator | 缓存、分割和复用普通 Tensor 的内存块 |
+| PyTorch graph-private pool | PyTorch allocator | 为一份或多份捕获保留内存块，保护 replay 使用的地址 |
+| `cudaMemPool_t` | CUDA stream-ordered allocator | 普通异步分配使用的内存资源池 |
+| CUDA graph memory pool | CUDA runtime/driver | 为图内存节点管理底层物理资源 |
+| workspace | 算子或库使用的 buffer | 保存调度元数据、中间结果或其他临时数据；不是一种 pool |
+
+一个 workspace 可以由调用者提前分配，也可以由库通过 allocator 取得。图能否安全使用它，取决于地址、容量、数据准备顺序与生命周期。几个图若共享同一个 workspace，也必须处理实际访问的重叠；pool 不同并不会消除这块外部 buffer 的冲突。
+
+### 为什么 del Tensor 后显存还在
+
+`del` 删除 Python 引用。只有最后一个持有者释放存储，allocator 才能回收该分配；缓存池随后还可能保留内存块。对 graph-private pool，还需要考虑图将来的 replay。
+
+PyTorch 文档说明，私有池的存活期与对应图及捕获中创建的 Tensor 有关。共享池还可能被其他图引用。因此，只删除一个临时 Tensor，或只销毁其中一个图，都不保证整个池释放。[PyTorch 内存管理](https://docs.pytorch.org/docs/2.14/notes/cuda.html#graph-memory-management)
+
+`memory_allocated()` 观察 Tensor 分配占用，`memory_reserved()` 观察 allocator 管理的总量；graph pool 中保留的空闲块可以造成两者差距。统计含义还与 allocator backend 有关，不能把差值直接称作泄漏。
+
+| 操作 | 释放范围与边界 |
+| --- | --- |
+| `torch.cuda.empty_cache()` | 释放 allocator 能归还的未使用缓存；不能把活图仍需保护的地址随意释放 |
+| `cudaMemPoolTrimTo()` | 修剪普通 CUDA stream-ordered pool 的可释放资源 |
+| `cudaDeviceGraphMemTrim()` | 修剪 CUDA 原生图内存池中未被活跃工作或未释放分配占用的物理资源 |
+
+CUDA 文档明确区分后两种池。原生 graph pool 被 trim 后，图的下次执行可能需要重新分配和映射资源。因此不能把 trim 当作每次 replay 前后的固定步骤。[CUDA graph physical memory footprint](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#physical-memory-footprint)
+
+## 10. 捕获约束与手动使用示例
+
+### 捕获前准备什么
+
+下面针对普通 PyTorch 手动捕获。具体算子和库仍需支持所在版本的 CUDA capture：
+
+| 准备或约束 | 原因 |
+| --- | --- |
+| 用目标 shape / dtype / device 执行 warmup | 将编译、库初始化和算法准备放在重复执行之外；warmup 不保证任意代码都能捕获 |
+| 保持输入、权重、输出和 workspace 有效 | 图保存地址，不会按 Python 变量名重新查找对象 |
+| 不在捕获中取 GPU 标量来决定 Python 分支 | `.item()` 等 host 同步行为不属于普通可重放 GPU 路径 |
+| 不同步正在捕获的 stream 或整个 device | 捕获中的工作尚未作为普通工作执行，不能按执行完成状态查询或等待 |
+| 多 stream 捕获表达完整依赖并汇合 | CUDA 必须知道被捕获工作之间的先后关系 |
+| 重放前更新数据，并在使用输出前建立执行顺序 | graph launch 是异步提交，不等于 GPU 已经完成 |
 
 ### PyTorch 手动捕获示意
 
-下面代码与上文 f 配合使用。它是 CUDA 示例，未运行；warmup 在 side stream 上执行，保留静态输入和输出引用。
+下面代码与第 2 节的 `f` 配合使用。它是 CUDA 示例，未实机运行；warmup 在 side stream 上执行。代码保留静态输入、输出引用，并在同一当前 stream 上安排输入复制与 replay。
 
 ```python
 static_a = torch.randn(1024, device="cuda")
@@ -160,12 +419,15 @@ new_b = torch.randn_like(static_b)
 static_a.copy_(new_a)
 static_b.copy_(new_b)
 graph.replay()
-# static_output 是这次重放的输出；后续重放会复用其存储。
+# 当前 stream 后续的 GPU 操作可按顺序消费 static_output。
+# 后续 replay 会覆盖它；需要保留时，在覆盖前 clone 到独立存储。
 ```
 
-重放的目标是复用已经准备的工作。捕获、实例化、warmup、输入复制与执行本身仍有成本。Python 中的打印或日志不会因为放进捕获上下文，就在每次 replay 时重新执行。
+这段代码中，静态输入在捕获外分配；`f` 的中间 Tensor 和输出在捕获中由 allocator 安排。默认 native allocator 的 private pool 保护后者；调用方保持前者存活。两类存储共同成为这张图的运行资源。
 
-## 5. 编译优化与 CUDA Graph 能组合，但互不等同
+捕获、实例化、warmup、输入复制与 GPU 执行本身仍有成本。本页仅检查文档与示例语法，不把它们作为 CUDA 执行或性能验证结果。
+
+## 11. 编译优化与 CUDA Graph 能组合，但互不等同
 
 | 使用方式 | 在这个逐元素示例中可能发生什么 | 主要改变 |
 | --- | --- | --- |
@@ -182,7 +444,7 @@ compiled_f = torch.compile(f, mode="reduce-overhead")
 
 一份可处理动态 shape 的编译图，可以对应多份具体 shape 的 CUDA Graph 捕获。推理系统也可能把 batch 大小归入有限的 buckets，分别维护捕获与静态缓冲区。因此“编译图支持动态 shape”与“单份基础 CUDA Graph 的参数固定”能够同时成立。
 
-## 6. 计算图怎样影响性能
+## 12. 计算图怎样影响性能
 
 计算图为后端提供计算关系。后端可以利用这些关系融合算子、消除中间存储、调整调度或规划内存。能实现哪些优化取决于后端和计算。CUDA Graph 则复用工作与依赖的执行安排，减少重复提交。
 

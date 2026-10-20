@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" role="img" aria-labelledby="title desc">
+  <title id="title">CUDA Graph 内存：捕获时安排存储与图内分配节点</title>
+  <desc id="desc">上方展示 PyTorch native allocator 在捕获时从私有池安排地址 P，重放时 kernel 反复使用 P。下方展示 CUDA 原生分配节点、使用节点与释放节点，每次执行都经过有效期的开始与结束。两者都可使用固定虚拟地址，但只有下方明确包含分配和释放节点。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#62768d"/>
+    </marker>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:#26364e}
+      .title{font-size:29px;font-weight:650}.label{font-size:25px;font-weight:600}
+      .body{font-size:23px}.note{font-size:22px;fill:#5f728b}
+      .arrow{fill:none;stroke:#62768d;stroke-width:2.5;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="860" rx="12" fill="#fff"/>
+  <text x="36" y="48" class="title">固定虚拟地址，与内存的有效使用期分开理解</text>
+  <rect x="24" y="78" width="1152" height="326" rx="12" fill="#f2f6fc" stroke="#cbd9ec" stroke-width="2"/>
+  <text x="48" y="121" class="label">PyTorch native allocator：捕获时安排存储</text>
+  <rect x="48" y="153" width="336" height="112" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="216" y="191" text-anchor="middle" class="label">创建临时 Tensor</text>
+  <text x="216" y="232" text-anchor="middle" class="body">private pool 安排地址 P</text>
+  <rect x="480" y="153" width="672" height="112" rx="9" fill="#fff" stroke="#285da8" stroke-width="2"/>
+  <text x="816" y="191" text-anchor="middle" class="label">记录 kernel，参数指向 P</text>
+  <text x="816" y="232" text-anchor="middle" class="body">replay 1：使用 P　→　replay 2：仍使用 P</text>
+  <path d="M384 209H480" class="arrow"/>
+  <path d="M72 298V314H1128V298" fill="none" stroke="#285da8" stroke-width="2"/>
+  <text x="600" y="351" text-anchor="middle" class="body">pool 持续保护所需地址；重放不重新执行 Python 分配</text>
+  <text x="600" y="382" text-anchor="middle" class="note">Tensor 已销毁，也不意味着普通 eager 分配可以取走该块</text>
+
+  <rect x="24" y="430" width="1152" height="328" rx="12" fill="#f0f8f3" stroke="#cce2d4" stroke-width="2"/>
+  <text x="48" y="473" class="label">CUDA 原生内存节点：每次执行开始、结束分配有效期</text>
+  <rect x="48" y="509" width="264" height="112" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="180" y="547" text-anchor="middle" class="label">Alloc(P)</text>
+  <text x="180" y="588" text-anchor="middle" class="body">开始本次有效期</text>
+  <rect x="432" y="509" width="336" height="112" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="600" y="547" text-anchor="middle" class="label">kernel A → kernel B</text>
+  <text x="600" y="588" text-anchor="middle" class="body">在有效期内访问 P</text>
+  <rect x="888" y="509" width="264" height="112" rx="9" fill="#fff" stroke="#328a59" stroke-width="2"/>
+  <text x="1020" y="547" text-anchor="middle" class="label">Free(P)</text>
+  <text x="1020" y="588" text-anchor="middle" class="body">结束本次有效期</text>
+  <path d="M312 565H432" class="arrow"/>
+  <path d="M768 565H888" class="arrow"/>
+  <path d="M180 645V661H1020V645" fill="none" stroke="#328a59" stroke-width="2"/>
+  <text x="600" y="698" text-anchor="middle" class="body">虚拟地址在构图时确定；每次 replay 重复这些生命周期节点</text>
+  <text x="600" y="732" text-anchor="middle" class="note">Free 后不保证内容保留；物理显存可留在池中复用</text>
+  <text x="48" y="804" class="body">创建 Tensor ≠ 必然添加 Alloc 节点；要先看所用的 allocator 路线。</text>
+  <text x="48" y="838" class="note">箭头表示提交或执行顺序。示意不表示具体性能，也不描述物理显存位置。</text>
+</svg>

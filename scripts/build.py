@@ -75,7 +75,7 @@ GPU_REFERENCES = [
     ('GPU/software-stack.md', 'gpu-software-stack.html', 'GPU 软件栈与工具',
      'cuBLAS · cuDNN · CUTLASS · CuTe DSL · Triton · 编译与运行'),
     ('GPU/graphs-and-compilation.md', 'gpu-graphs-and-compilation.html', '计算图、编译与 CUDA Graph',
-     'torch.compile · Dynamo · Inductor · 算子融合 · capture / replay'),
+     'torch.compile · capture / replay · 虚拟地址 · 图内分配 · 共享 pool'),
     ('GPU/precision-and-quantization.md', 'gpu-precision-and-quantization.html', '浮点格式、混合精度与量化',
      'FP16 / BF16 · TF32 · FP8 · E8M0 · MXFP8 / NVFP4 · scale'),
 ]
