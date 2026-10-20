@@ -263,12 +263,141 @@ Tensor Core 读取并更新 TMEM 中的 D
 <h3 id="8-1-global-memory-看一个-warp-的地址集合">8.1 Global memory：看一个 warp 的地址集合</h3>
 <p>对于 row-major FP32 矩阵，相邻 32 个线程分别读取相邻元素，覆盖连续的 128 字节；实际事务还受对齐、边界和硬件规则影响。若它们读同一列但跨不同行，地址间距是整行字节数，通常需要更多内存事务。</p>
 <p>优化目标是把计算线程需要的逻辑元素，映射到适合加载的物理地址。可以通过线程映射、向量化加载或预先转换布局达到目的，不能只靠交换矩阵名称。</p>
-<h3 id="8-2-shared-memory-连续不代表没有冲突">8.2 Shared memory：连续不代表没有冲突</h3>
-<p>Shared memory 分成多个 banks。不同线程访问不同地址、但集中命中同一 bank 时，可能产生 bank conflict。经典 FP32 教学例中，<code>tile[32][32]</code> 的列访问容易冲突，给行末加一列 padding，成为 <code>tile[32][33]</code>，可以改变 bank 映射。同一地址的广播访问则有不同规则。</p>
-<p>Tensor Core 所需的布局更复杂。Swizzle 通过重排地址位，让需要一起访问的数据分散到合适的 banks；消费者必须按同一布局取数。<strong>逻辑上的 <code>tile[m,k]</code> 不变，元素在 shared memory 中的物理位置可以改变。</strong></p>
+<h3 id="8-2-shared-memory-bank-是什么-冲突怎样产生">8.2 Shared memory：bank 是什么，冲突怎样产生</h3>
+<p><strong>Bank 是可以与其他 bank 并行访问的存储分区，包含存储单元和相应的读写电路。</strong> 一个 warp 有 32 个线程，执行同一条读取指令时，可能提供 32 个不同地址。把 shared memory 分成多个 bank，可以让这些请求分散到不同分区并行服务。</p>
+<p>现代 NVIDIA GPU 的 shared memory 通常有 32 个 bank。以下采用每线程读取一个 FP32 元素的模型：每个元素占 4 字节，连续的 32 位字依次映射到连续的 bank。假设数组 <code>x</code> 的起始地址对应 bank 0：</p>
+<table>
+<thead>
+<tr>
+<th>Bank 0</th>
+<th>Bank 1</th>
+<th>Bank 2</th>
+<th>…</th>
+<th>Bank 31</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x[0]</code></td>
+<td><code>x[1]</code></td>
+<td><code>x[2]</code></td>
+<td>…</td>
+<td><code>x[31]</code></td>
+</tr>
+<tr>
+<td><code>x[32]</code></td>
+<td><code>x[33]</code></td>
+<td><code>x[34]</code></td>
+<td>…</td>
+<td><code>x[63]</code></td>
+</tr>
+<tr>
+<td><code>x[64]</code></td>
+<td><code>x[65]</code></td>
+<td><code>x[66]</code></td>
+<td>…</td>
+<td><code>x[95]</code></td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
+<p>一个 bank 可以保存许多元素，4 字节描述的是这里的映射粒度，不是整个 bank 的容量。Bank 也不属于某个固定线程：<strong>线程访问哪个 bank，由它提供的地址决定。</strong></p>
+<div class="math display-math">\[
+\operatorname{bank}(\text{address})
+=\left\lfloor\frac{\text{address}}{4}\right\rfloor\bmod32
+\]</div>
+
+<p>对上述数组，公式简化为 <code>bank(x[i]) = i % 32</code>。</p>
+<h4 id="8-2-1-不同-bank-同-bank-同地址">8.2.1 不同 bank、同 bank、同地址</h4>
+<p>令 <code>lane</code> 为 warp 内的线程编号，取值为 0 到 31。以下三种读取的结果不同：</p>
+<table>
+<thead>
+<tr>
+<th>每个线程读取</th>
+<th>32 个线程的地址分布</th>
+<th>硬件服务方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x[lane]</code></td>
+<td><code>x[0]</code> 到 <code>x[31]</code>，分别落在 32 个 bank</td>
+<td>并行服务，没有 bank conflict</td>
+</tr>
+<tr>
+<td><code>x[lane * 32]</code></td>
+<td><code>x[0]</code>、<code>x[32]</code>、…、<code>x[992]</code>，不同地址全落在 bank 0</td>
+<td>分批服务，形成 32-way bank conflict</td>
+</tr>
+<tr>
+<td><code>x[0]</code></td>
+<td>所有线程读取完全相同的地址</td>
+<td>读取同一份数据并广播，不构成上述冲突</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bank conflict 的典型情形，是同一 warp 的一次访问中，多个不同的 32 位字争用同一个 bank。</strong> 硬件把请求拆成多次无冲突的服务，降低有效带宽。普通的不同地址读取仍然得到正确结果；这是性能问题，不是数据竞争。多个线程写同一地址则另有正确性要求，不能套用读取广播的解释。</p>
+<p>这里的“32-way”描述这次访问的冲突程度，不代表整个 kernel 必然慢 32 倍。向量化访存本身也可能需要多个服务批次，不能把所有批次都算成额外冲突；FP16、宽访存和 Tensor Core 数据加载需要结合具体指令分析。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-and-memory-banks">CUDA：Shared Memory and Memory Banks</a>、<a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#shared-memory">Nsight Compute：Shared Memory 请求与 bank conflicts</a>。</p>
+<h4 id="8-2-2-读矩阵的一行与一列-padding-为什么有效">8.2.2 读矩阵的一行与一列：padding 为什么有效</h4>
+<p>对于行优先 FP32 数组 <code>tile[32][32]</code>，假设起点对应 bank 0：</p>
+<div class="math display-math">\[
+\operatorname{index}(r,c)=32r+c,\qquad
+\operatorname{bank}(r,c)=(32r+c)\bmod32=c
+\]</div>
+
+<p>因此，32 个线程读取 <code>tile[0][lane]</code> 时，列号不同，分散到 32 个 bank。读取 <code>tile[lane][0]</code> 时，列号全是 0，全部争用 bank 0。</p>
+<p>把存储改成 <code>tile[32][33]</code>，每行最后一个位置作为 padding，逻辑数据仍只使用前 32 列：</p>
+<div class="math display-math">\[
+\operatorname{bank}(r,c)=(33r+c)\bmod32=(r+c)\bmod32
+\]</div>
+
+<p>同一列的访问就变为：</p>
+<div class="codehilite"><pre><span></span>tile[0][0]  → bank 0
+tile[1][0]  → bank 1
+tile[2][0]  → bank 2
+…
+tile[31][0] → bank 31
+</pre></div>
+
+
+<p>矩阵数值和逻辑坐标没有改变，改变的是行与行之间的地址跨度。代价是多用 32 个 FP32 位置，即 128 字节 shared memory。这个 padding 方法针对上述访问模式，不是所有 dtype 和矩阵指令的通用布局。</p>
+<h4 id="8-2-3-swizzle-按规则重排存放位置">8.2.3 Swizzle：按规则重排存放位置</h4>
+<p>Swizzle 通过重排地址位，让需要一起访问的数据分散到合适的 bank。用一个简化的 4×4 示例说明：把逻辑元素 <code>(r,c)</code> 存到该行的物理列 <code>c XOR r</code>，行内元素顺序变成：</p>
+<div class="codehilite"><pre><span></span>物理列： 0    1    2    3
+第0行： a00  a01  a02  a03
+第1行： a11  a10  a13  a12
+第2行： a22  a23  a20  a21
+第3行： a33  a32  a31  a30
+</pre></div>
+
+
+<p>逻辑第 0 列的 <code>a00、a10、a20、a30</code>，分别位于物理列 0、1、2、3。示例只说明重排方法，不代表 NVIDIA TMA 的实际 swizzle 粒度或 Tensor Core 的布局要求。</p>
+<p><strong>逻辑上的 <code>tile[m,k]</code> 不变，元素在 shared memory 中的物理位置可以改变。</strong> 写入者和消费者必须使用同一套映射，否则会读错元素。TMA 可以在搬入 shared memory 时执行支持的 swizzle，但消费者仍须按对应布局取数，并满足对齐和指令约束。</p>
+<p>Bank conflict 值得关注，不仅因为 shared memory 延迟低，还因为它承担了 tile 的反复读取。冲突会破坏 bank 间的并行服务能力，并在计算循环中重复发生；数据供应可能因此限制 Tensor Core 的利用率。是否构成当前 kernel 的瓶颈，仍需结合测量判断。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-aat">CUDA：Shared-memory 矩阵布局与 padding</a>、<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html#shared-memory-bank-swizzling">TMA：Shared-Memory Bank Swizzling</a>。</p>
 <h3 id="8-3-逻辑转置不一定搬动数据">8.3 逻辑转置不一定搬动数据</h3>
 <p>PyTorch 的 <code>transpose</code>/<code>permute</code> 通常只改变 shape 和 stride。若目标是让原本分散的元素在物理内存中连续，往往需要实际重排，或直接让上游 kernel 按目标布局写出。仅修改视图、descriptor 或指针解释，不会消除底层地址之间的间隔。</p>
-<p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#memory-optimizations">CUDA 合并访问与 shared-memory banks</a>、<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html#tma-swizzle">TMA swizzle</a>。</p>
+<h3 id="8-4-显存也有-bank-为什么-kernel-优化中较少直接讨论">8.4 显存也有 bank，为什么 kernel 优化中较少直接讨论</h3>
+<p>HBM/GDDR 显存属于 DRAM，也有 bank 争用和 row-buffer conflict：同一 bank 切换到另一行时，可能需要先关闭当前行，再激活目标行。CUDA 语境中不加限定地说“bank conflict”，通常指 shared memory 的冲突，并不表示显存没有类似问题。</p>
+<p>普通 global load 要经过多层硬件：</p>
+<div class="codehilite"><pre><span></span>warp 的地址 → 合并访问与缓存查询
+                    ↓ 缓存未能满足请求
+             内存控制器排队、调度
+                    ↓
+             显存 channel / bank / row
+</pre></div>
+
+
+<p>到达 DRAM 的请求来自多个 warp 和 SM；控制器还会重排请求，利用行命中和 bank 并行性。具体地址映射依赖硬件，不能直接套用 shared memory 的 <code>(address / 4) % 32</code>。因此，kernel 开发通常先优化容易控制和测量的合并访问、缓存复用、传输量与显存带宽；shared memory 的冲突则可以直接关联到访存指令，并通过 padding 或 swizzle 调整。</p>
+<p><strong>较少直接讨论 DRAM bank conflict，不代表它的开销可以忽略。</strong> 合并访问良好也不保证没有 DRAM bank 冲突：前者组织当前 warp 的传输请求，后者涉及这些请求与其他请求在显存中的调度。</p>
+<p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#coalesced-access-to-global-memory">CUDA：Global memory 合并访问</a>、<a href="https://research.nvidia.com/sites/default/files/pubs/2017-02_Architecting-an-Energy-Efficient/chatterjee.hpca2017.pdf">NVIDIA：GPU DRAM bank conflicts 与控制器调度</a>。</p>
 <h2 id="9-双缓冲与多级流水线-搬下一块-同时算当前块">9. 双缓冲与多级流水线：搬下一块，同时算当前块</h2>
 <p>基础循环是“加载 → 等待 → 计算 → 再加载”。如果传输和计算完全串行，计算单元会在访存期间空等。</p>
 <p>双缓冲分配两个输入缓冲槽。计算 K tile 0 时，把 K tile 1 搬到另一槽；用完 tile 0 后，再让 tile 2 复用它的槽。</p>
