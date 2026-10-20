@@ -229,6 +229,13 @@ def sidebar(current):
 
 def shell(title, current, content, toc='', subtitle='', reference_kind=''):
     kind = reference_kind or '求知录'
+    page_assets = ''
+    if current == 'cuda-gemm.html':
+        for name in ('gemm.css', 'gemm.js'):
+            version = sha256((ROOT / 'assets' / name).read_bytes()).hexdigest()[:10]
+            url = f'assets/{name}?v={version}'
+            page_assets += (f'<link rel="stylesheet" href="{url}">\n' if name.endswith('.css')
+                            else f'<script defer src="{url}"></script>\n')
     if reference_kind == 'Python 参考':
         source_note = 'Python 语法、项目运行与语言互操作，附官方文档链接；多文件示例按正文说明使用。'
     elif reference_kind == 'PyTorch 教学':
@@ -247,7 +254,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v={STYLE_VERSION}"><link rel="stylesheet" href="assets/code.css">
-<script>(()=>{{let saved;try{{saved=localStorage.getItem('notes-theme')}}catch(e){{}}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'}})();</script>
+{page_assets}<script>(()=>{{let saved;try{{saved=localStorage.getItem('notes-theme')}}catch(e){{}}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'}})();</script>
 <script defer src="assets/site.js?v={SCRIPT_VERSION}"></script>
 <script>window.MathJax={{tex:{{inlineMath:[['\\\\(','\\\\)']],displayMath:[['\\\\[','\\\\]']]}},options:{{skipHtmlTags:['script','noscript','style','textarea','pre','code']}}}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>

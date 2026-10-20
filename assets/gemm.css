@@ -1,0 +1,118 @@
+/* Page-local demonstrations; the article's typography and layout stay intact. */
+.gemm-demo {
+  --ga: #216eab; --gb: #b16115; --gc: #247650; --gs: #7c52ab;
+  --ga-wash: #e4f1fc; --gb-wash: #fff0df; --gc-wash: #e4f5ec; --gs-wash: #f1eafa;
+  margin: 24px 0; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--paper); overflow: clip; font-size: 13px; line-height: 1.65;
+  scroll-margin-top: 84px;
+}
+[data-theme=dark] .gemm-demo {
+  --ga: #98d2ff; --gb: #f1ba78; --gc: #8dddb1; --gs: #ceb3f5;
+  --ga-wash: #193c58; --gb-wash: #49341f; --gc-wash: #193e32; --gs-wash: #342747;
+}
+.gemm-demo summary { padding: 14px 18px; font-weight: 650; color: var(--accent); }
+.gemm-demo[open] summary { border-bottom: 1px solid var(--line); }
+.gemm-demo .gd-body { padding: 16px 18px; }
+.gemm-demo .gd-intro { color: var(--muted); margin: 0 0 14px; }
+.gemm-demo .gd-controls, .gemm-demo .gd-options {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.gemm-demo .gd-options { margin: 0 0 14px; }
+.gemm-demo .gd-options label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gemm-demo select {
+  color: var(--ink); background: var(--paper); border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 8px; max-width: 100%; font: inherit;
+}
+.gemm-demo button { font-size: 12px; padding: 5px 11px; }
+.gemm-demo button:disabled { opacity: .45; cursor: default; }
+.gemm-demo .gd-play { background: var(--wash); border-color: var(--accent); color: var(--accent); }
+.gemm-demo .gd-progress { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.gemm-demo .gd-progress input { min-width: 0; flex: 1; accent-color: var(--accent); }
+.gemm-demo .gd-counter { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gemm-demo .gd-scene { margin: 18px 0; }
+.gemm-demo .gd-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.gemm-demo .gd-matrices { display: flex; justify-content: space-around; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.gemm-demo .gd-matrix { min-width: 0; text-align: center; }
+.gemm-demo .gd-label { display: block; color: var(--muted); margin-bottom: 7px; font-size: 12px; }
+.gemm-demo .gd-grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 3px; }
+.gemm-demo .gd-cell {
+  display: flex; align-items: center; justify-content: center; min-width: 0;
+  width: 29px; height: 29px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--bg); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+  transition: background-color .2s, color .2s, border-color .2s, transform .2s;
+}
+.gemm-demo .gd-cell.is-a, .gemm-demo .is-a { background: var(--ga-wash); color: var(--ga); border-color: var(--ga); }
+.gemm-demo .gd-cell.is-b, .gemm-demo .is-b { background: var(--gb-wash); color: var(--gb); border-color: var(--gb); }
+.gemm-demo .gd-cell.is-c, .gemm-demo .is-c { background: var(--gc-wash); color: var(--gc); border-color: var(--gc); }
+.gemm-demo .gd-cell.is-s, .gemm-demo .is-s { background: var(--gs-wash); color: var(--gs); border-color: var(--gs); }
+.gemm-demo .gd-cell.is-now { outline: 2px solid currentColor; outline-offset: 1px; transform: translateY(-2px); }
+.gemm-demo .gd-cell.is-done { background: var(--gc-wash); color: var(--gc); }
+.gemm-demo .gd-cell.is-pad { background: repeating-linear-gradient(135deg, var(--paper), var(--paper) 4px, var(--line) 4px, var(--line) 5px); color: var(--muted); }
+.gemm-demo .gd-formula {
+  padding: 12px; border-left: 3px solid var(--gc); background: var(--gc-wash);
+  color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 16px; overflow-wrap: anywhere;
+}
+.gemm-demo .gd-status { min-height: 3.3em; margin: 12px 0 0; }
+.gemm-demo .gd-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+.gemm-demo .gd-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.gemm-demo .gd-part { border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.gemm-demo .gd-part strong { display: block; font-variant-numeric: tabular-nums; }
+.gemm-demo .gd-part.is-current { border-color: var(--gc); background: var(--gc-wash); }
+.gemm-demo .gd-legend { color: var(--muted); font-size: 12px; margin-top: 12px; }
+.gemm-demo .gd-legend span { display: inline-block; margin-right: 12px; }
+.gemm-demo .gd-legend b { display: inline-block; padding: 0 5px; border-radius: 3px; }
+.gemm-demo .gd-memory { display: grid; gap: 3px; grid-template-columns: repeat(8, minmax(0, 1fr)); max-width: 400px; margin: auto; }
+.gemm-demo .gd-memory .gd-cell { width: auto; font-size: 11px; }
+.gemm-demo .gd-bank { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+.gemm-demo .gd-bank span { border: 1px solid var(--line); border-radius: 4px; padding: 5px 1px; text-align: center; font-size: 11px; }
+.gemm-demo .gd-bank small { display: block; }
+.gemm-demo .gd-timeline { position: relative; }
+.gemm-demo .gd-track { display: grid; grid-template-columns: 82px 1fr; gap: 8px; margin: 7px 0; align-items: center; }
+.gemm-demo .gd-track-label { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.gemm-demo .gd-rail { position: relative; height: 30px; background: var(--bg); border-radius: 4px; }
+.gemm-demo .gd-bar {
+  position: absolute; top: 2px; height: 26px; display: flex; align-items: center;
+  justify-content: center; border: 1px solid; border-radius: 3px; font-size: 11px;
+  opacity: .55; transition: opacity .2s;
+}
+.gemm-demo .gd-bar.is-started { opacity: 1; }
+.gemm-demo .gd-cursor { position: absolute; top: -2px; bottom: -2px; border-left: 2px solid var(--ink); transition: left .4s linear; }
+.gemm-demo .gd-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.gemm-demo .gd-slot { padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
+.gemm-demo .gd-slot b { display: block; }
+.gemm-demo .gd-flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.gemm-demo .gd-node { flex: 1; min-width: 90px; border: 1px solid var(--line); padding: 10px; border-radius: 5px; text-align: center; }
+.gemm-demo .gd-arrow { align-self: center; color: var(--muted); }
+.gemm-demo .gd-transfer { position: relative; width: 80px; height: 46px; flex-shrink: 0; }
+.gemm-demo .gd-transfer::before { content: ''; position: absolute; top: 23px; left: 0; right: 0; border-top: 2px dashed var(--line); }
+.gemm-demo .gd-packet {
+  position: absolute; top: 13px; left: 0; width: 20px; height: 20px;
+  border-radius: 4px; background: var(--ga); transition: left .65s ease, opacity .3s;
+}
+.gemm-demo .gd-storage { position: relative; height: 44px; margin: 12px 0; }
+.gemm-demo .gd-token {
+  position: absolute; top: 0; left: calc(var(--slot) * 100% / 12);
+  width: calc(100% / 12 - 3px); height: 34px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--bg);
+  transition: left .85s ease, background-color .2s; font: 12px ui-monospace, monospace;
+}
+.gemm-demo .gd-equations { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 14px; font-variant-numeric: tabular-nums; }
+.gemm-demo .gd-equations span { padding: 8px; background: var(--code); border-radius: 4px; }
+@media (max-width: 520px) {
+  .gemm-demo .gd-body { padding: 14px 12px; }
+  .gemm-demo summary { padding: 12px; }
+  .gemm-demo .gd-matrices { gap: 16px 10px; }
+  .gemm-demo .gd-cell { width: 27px; height: 27px; }
+  .gemm-demo .gd-track { grid-template-columns: 60px 1fr; gap: 5px; }
+  .gemm-demo .gd-bar { font-size: 10px; }
+  .gemm-demo .gd-options label { width: 100%; }
+  .gemm-demo .gd-bank { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .gemm-demo .gd-bank span { font-size: 12px; padding: 6px 4px; }
+  .gemm-demo .gd-equations, .gemm-demo .gd-slots { grid-template-columns: 1fr; }
+  .gemm-demo .gd-controls button { min-height: 40px; }
+  .gemm-demo .gd-progress input { min-height: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gemm-demo *, .gemm-demo *::before { transition: none !important; }
+}
+@media print { .gemm-demo { display: none; } }
