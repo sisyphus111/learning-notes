@@ -19,6 +19,7 @@ from pygments.lexers import CppLexer, PythonLexer, TextLexer
 
 ROOT = Path(__file__).resolve().parents[1]
 STYLE_VERSION = sha256((ROOT / 'assets/style.css').read_bytes()).hexdigest()[:10]
+SCRIPT_VERSION = sha256((ROOT / 'assets/site.js').read_bytes()).hexdigest()[:10]
 CHAPTERS = [
     ('数组/fuck数组.md', 'arrays.html', '数组', '哈希表 · 双指针 · 滑窗 · 前缀和 · 二分'),
     ('链表/fuck链表.md', 'linked-lists.html', '链表', '基础操作 · 快慢指针 · 递归'),
@@ -213,19 +214,19 @@ def links(html, source):
 
 
 def sidebar(current):
-    result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>编程札记<small>算法 · 语言 · 系统</small></span></a>'
+    result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a>'
     for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
             active = ' aria-current="page"' if current == output else ''
             result += f'<a href="{output}"{active}>{title}</a>'
         result += '</nav>'
-    result += '<a class="source-link" href="https://github.com/sisyphus111/code-notes">GitHub ↗</a>'
+    result += '<a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a>'
     return result
 
 
 def shell(title, current, content, toc='', subtitle='', reference_kind=''):
-    kind = reference_kind or '编程札记'
+    kind = reference_kind or '求知录'
     if reference_kind == 'Python 参考':
         source_note = 'Python 语法、项目运行与语言互操作，附官方文档链接；多文件示例按正文说明使用。'
     elif reference_kind == 'PyTorch 教学':
@@ -240,19 +241,19 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
         source_note = '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。'
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(title if title == '编程札记' else title + ' · 编程札记')}</title><meta name="description" content="{escape(subtitle)}">
+<title>{escape(title if title == '求知录' else title + ' · 求知录')}</title><meta name="description" content="{escape(subtitle)}">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v={STYLE_VERSION}"><link rel="stylesheet" href="assets/code.css">
-<script>try{{document.documentElement.dataset.theme=localStorage.getItem('notes-theme')||'light'}}catch(e){{}}</script>
-<script defer src="assets/site.js"></script>
+<script>(()=>{{let saved;try{{saved=localStorage.getItem('notes-theme')}}catch(e){{}}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'}})();</script>
+<script defer src="assets/site.js?v={SCRIPT_VERSION}"></script>
 <script>window.MathJax={{tex:{{inlineMath:[['\\\\(','\\\\)']],displayMath:[['\\\\[','\\\\]']]}},options:{{skipHtmlTags:['script','noscript','style','textarea','pre','code']}}}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
 <a class="skip-link" href="#main">跳到正文</a>
 <aside class="sidebar" id="sidebar">{sidebar(current)}</aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">编程札记</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">{kind}</p><h1>{escape(title)}</h1><p class="subtitle">{escape(subtitle)}</p></div>
 <article>{content}</article><footer>{source_note}</footer></main>{toc}</div>
 </div>
@@ -300,15 +301,15 @@ for source, output, title, subtitle in PAGES:
             problem_count += 1
 
 cards = lambda pages: '<div class="cards">' + ''.join(f'<a class="card" href="{output}"><h3>{title}<span>↗</span></h3><p>{desc}</p></a>' for _, output, title, desc in pages) + '</div>'
-home = f'''<div class="home-lead"><p>从代码写法，到计算与系统原理。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
+home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
 <section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">把线程分组对应到 SM 与 GPC，再理解 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
 <section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">从 H100 的驱动与运行时开始，区分计算库、kernel 开发工具和编译器，再连接算子图优化与 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
-<section class="reading-note"><h2>怎么用这份笔记</h2><p>按题型读，用搜索定位题号或写法。不同解法保留在同一道题下，便于对照推理、边界与复杂度。原作者尚未完成的内容保留 TODO 标记。</p></section>'''
-(ROOT / 'index.html').write_text(shell('编程札记', 'index.html', home, subtitle='算法思路、语言参考与系统学习札记。'))
+<section class="reading-note"><h2>怎么用这份笔记</h2><p>按主题阅读，用搜索定位概念、写法或题目。先理解问题和原理，再对照推导与实现；需要时回到参考文档核实细节。算法部分保留原作者的思路与 TODO 标记。</p></section>'''
+(ROOT / 'index.html').write_text(shell('求知录', 'index.html', home, subtitle='记录学习中的问题、推导与实践。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
 (ROOT / 'assets/code.css').write_text(HtmlFormatter(style='friendly').get_style_defs('.codehilite'))
 print(f'Built {len(PAGES)+1} pages; {problem_count} problem entries; {len(index)} searchable sections.')

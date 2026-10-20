@@ -10,7 +10,14 @@ updateThemeLabel();
 themeButton.addEventListener('click', () => {
     const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.themeSource = 'manual';
     try { localStorage.setItem('notes-theme', theme); } catch (error) { /* Storage may be disabled. */ }
+    updateThemeLabel();
+});
+// Follow the OS until the reader explicitly chooses a theme.
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
+    if (document.documentElement.dataset.themeSource !== 'system') return;
+    document.documentElement.dataset.theme = event.matches ? 'dark' : 'light';
     updateThemeLabel();
 });
 for (const example of document.querySelectorAll('.code-example')) {

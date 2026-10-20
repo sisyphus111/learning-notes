@@ -1,8 +1,8 @@
-# 编程札记
+# 求知录 · Learning Notes
 
-算法 · 语言 · 系统。记录算法思路、语言与 API 用法，以及计算和系统实现。
+记录学习中的问题、推导与实践。当前内容涵盖算法、编程语言、机器学习与计算系统。
 
-**阅读网站：[sisyphus111.github.io/code-notes](https://sisyphus111.github.io/code-notes/)**
+**阅读网站：[sisyphus111.github.io/learning-notes](https://sisyphus111.github.io/learning-notes/)**
 
 - 10 个题型，133 个题目条目；保留「焚诀」、思路推导、复杂度和原有参考链接。
 - 同一解法提供 C++ / Python 标签页，恢复 7 个记忆化搜索小节；运行时间伪造片段仍不收录。
@@ -14,15 +14,15 @@
 - CUDA 教学独立成板块：[执行层级与硬件映射](CUDA/execution-hierarchy.md) 讲线程分组、SM / GPC 放置、资源驻留与同步范围；[PTX、SASS 与编译流程](CUDA/compilation-and-instructions.md) 讲三类 kernel 的编译路径、ptxas / PTX Compiler 库和 AOT / JIT。
 - GPU 软件栈独立成板块：[驱动、运行时与框架](GPU/driver-runtime-framework.md) 从 H100 设备讲到内核驱动、libcuda / libcudart、PyTorch、容器和版本；[GPU 软件栈与工具](GPU/software-stack.md) 区分计算库、CUTLASS / CuTe、编译工具与推理框架；[计算图、编译与 CUDA Graph](GPU/graphs-and-compilation.md) 解释图捕获、编译优化、kernel 融合与执行重放。
 - [浮点格式、混合精度与量化](GPU/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
-- 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、与个人主页相同的太阳/月亮主题图标及手机阅读。
+- 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、冰蓝配色、深浅主题切换及手机阅读。首次访问跟随系统主题，手动选择后记住偏好。
 
 ## 内容来源
 
 刷题主体基于 Cong Li 的 **Fuck-Leetcode** 笔记，本仓库引入的原始快照为
-[`db6f82c`](https://github.com/sisyphus111/code-notes/commit/db6f82c)。这是他人笔记的双语言改编版：保留原作者的讲解风格与既有出处，不代表原作者提供或验证了补充实现。原文中的 TODO 仍表示未完成的内容。
+[`db6f82c`](https://github.com/sisyphus111/learning-notes/commit/db6f82c)。这是他人笔记的双语言改编版：保留原作者的讲解风格与既有出处，不代表原作者提供或验证了补充实现。原文中的 TODO 仍表示未完成的内容。
 
 STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存在独立分支
-[`codex/backup-main-2026-10-01`](https://github.com/sisyphus111/code-notes/tree/codex/backup-main-2026-10-01)，快照提交为 `7f888bd`。
+[`codex/backup-main-2026-10-01`](https://github.com/sisyphus111/learning-notes/tree/codex/backup-main-2026-10-01)，快照提交为 `7f888bd`。
 
 ## 维护方式
 
