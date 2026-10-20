@@ -50,6 +50,19 @@ for k in range(K):
 D[m, n] = acc
 ```
 
+**不同线程执行相同代码，但各自持有独立的 `acc`。** 例如 `A[2,4] @ B[4,2] → D[2,2]`，用 4 个线程说明输出分工：
+
+| 线程 | 负责的输出 | 沿 K 累加的内容 |
+| --- | --- | --- |
+| thread 0 | `D[0,0]` | A 第 0 行与 B 第 0 列的点积 |
+| thread 1 | `D[0,1]` | A 第 0 行与 B 第 1 列的点积 |
+| thread 2 | `D[1,0]` | A 第 1 行与 B 第 0 列的点积 |
+| thread 3 | `D[1,1]` | A 第 1 行与 B 第 1 列的点积 |
+
+每个线程把 K 的全部 4 项累加到自己的寄存器，再写入自己负责的输出位置。4 个线程既不共用一个 `acc`，也不写同一个 `D[m,n]`。这个小例子只说明 SIMT 分工，不表示应当用 4 个线程配置实际 GEMM。
+
+thread 0 和 thread 1 都读取 A 第 0 行，但更新各自的累加器。**共同读取准备好的输入，与共同修改同一个输出，是两件不同的事。**
+
 问题在于复用：计算 `D[m,0]`、`D[m,1]` 的线程都需要 A 的第 m 行；计算 `D[0,n]`、`D[1,n]` 的线程都需要 B 的第 n 列。若各线程独立加载，相同数据会被反复请求。
 
 Cache 可以吸收部分重复访问，但 kernel 仍需要组织加载指令和地址计算。还要考虑相邻线程的访问位置：row-major B 的同一列在内存中有 stride；若 warp 的相邻 lanes 改为取同一行的相邻列，就更适合合并访问。**不能只看单个线程沿哪个方向走，还要看同一条访存指令中整个 warp 访问了哪些地址。**
@@ -99,6 +112,37 @@ store_tile(D, acc, row=m0, col=n0)
 ```
 
 这是常见 GEMM mainloop 的基本结构。`load_tile`、`zeros` 是示意函数，不是可直接运行的 Torch/CUDA API。[Triton 官方矩阵乘法教程](https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html#motivations)
+
+### 4.1 CTA 内的线程怎样保存和更新累加器
+
+**`acc[BM,BN]` 表示整个 CTA 的逻辑输出 tile，不表示所有线程共同修改一个普通数组。** 在基础 SIMT 分工中，线程分别负责不同输出；一个线程也可以持有多个输出的累加器，第 6 节会展开这种 register tiling。
+
+对某个输出元素，假设连续四段 K 的贡献为 `10、20、30、40`。持有这个元素的线程持续更新同一个累加器：
+
+```text
+初始 acc = 0
+第 0 段之后：10
+第 1 段之后：30
+第 2 段之后：60
+第 3 段之后：100 → 写回 D[m,n]
+```
+
+数学上，这已经是沿 K 的归约（reduction）。下一段接着更新上一段的结果，不需要额外收集其他线程对这个元素的部分和。输入搬运、缓冲区复用和异步计算仍须遵守相应同步协议。
+
+| 存储位置 | 常见 GEMM 中保存什么 |
+| --- | --- |
+| 线程寄存器 | SIMT / `mma.sync` / Hopper WGMMA 路径的输出累加值，以及输入片段、地址和循环状态 |
+| shared memory | CTA 协作加载的 A/B 输入 tile；输出阶段也可能用于交换、重排结果 |
+| Blackwell SM100 TMEM | `tcgen05.mma` 路径的累加结果，详见第 7 节 |
+| global memory | 原始矩阵和最终输出；Split-K 也可在这里保存跨 CTA 的部分结果 |
+
+在寄存器累加路径中，输出 tile 分布在参与计算的线程寄存器里，通常持续保留到 K 循环结束。shared memory 暂存 A/B，不意味着每一轮都把输出部分和写回 shared memory 或显存。
+
+Tensor Core 指令另有规定的协作方式。例如 `mma.sync` 由一个 warp 集体执行，矩阵 fragment 按指令布局分布在各线程寄存器中。硬件完成矩阵乘加，不能把“每线程独立计算整个点积”原样套到这个过程；也不能把它理解成 32 个线程对同一个共享地址各自执行普通 `+=`。
+
+**同属一个 CTA 不会自动消除写冲突。** 若主动把同一输出的不同 K 段分给多个线程，就会形成多份部分和，也需要 CTA 内归约。warp 内可用 shuffle 交换并相加；跨 warp 可使用 shared memory 配合同步。`__syncthreads()` 让参与线程在正确的位置协调读写，但不会自动求和，也不会把并发 `+=` 变成原子操作。
+
+来源：[CUTLASS：线程级 GEMM、累加器与 epilogue](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#thread-level-gemm)、[CUDA：线程块与同步](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html)。
 
 ## 5. Shared memory：把重复读取变成 block 内复用
 
@@ -674,7 +718,11 @@ Tile 大小同时影响任务数量和每个任务的资源需求，因此也可
 
 ## 13. Split-K：输出 tiles 太少时，把求和也并行化
 
+### 13.1 多个 CTA 计算同一输出的不同贡献
+
 假设 `M=N=128`、`K=8192`，采用 `128×128` 输出 tile。基础分工只生成一个 CTA，即使 K 很长，也很难利用整个 GPU。
+
+这个 CTA 内的线程可以分担输出元素，但整个 CTA 仍运行在一个 SM 上。延长 K 循环，不会自动让其他 SM 加入计算。
 
 Split-K 把 K 分给 P 个 CTA。例如 P=4：
 
@@ -687,13 +735,71 @@ CTA 3：A[:, 6144:8192] @ B[6144:8192, :] → D3
 最终 D = D0 + D1 + D2 + D3
 ```
 
-这里每个部分矩阵都对应同一片输出坐标，因此需要合并。实现可以使用 workspace 加归约 kernel，也可以在满足条件时用原子累加或其他协议；不能让普通 CTAs 无同步地覆盖同一输出。
+每个 CTA 都在计算 `[128,2048] @ [2048,128]`，所以 `D0` 到 `D3` 都是 `[128,128]`。**四个 CTA 负责同一片输出坐标的不同 K 段，不是分别负责输出矩阵的四个角。**
+
+### 13.2 原来的累加也是归约，Split-K 新增跨 CTA 合并
+
+沿用第 4.1 节的一个输出元素。单 CTA 可以持续把 `10、20、30、40` 加到同一个累加器；Split-K 则得到四份独立结果：
+
+```text
+CTA 0 的局部累加器：10
+CTA 1 的局部累加器：20
+CTA 2 的局部累加器：30
+CTA 3 的局部累加器：40
+
+每个 CTA 都算完自己的 K 段，仍需合并：10 + 20 + 30 + 40 = 100
+```
+
+“额外归约”指新增的结果合并阶段。普通 CTA 不能直接读取另一 CTA 的线程寄存器。普通 shared memory 也以 CTA 为作用域；即使两个 CTA 驻留在同一个 SM 上，也不会自动共享这块存储。显式使用 cluster distributed shared memory 时另有访问和同步要求，不能把它当作任意 CTA 之间的普通共享数组。
+
+| 跨 CTA 的困难 | 实现必须保证什么 |
+| --- | --- |
+| 部分结果分散在不同 CTA 中 | 把结果写到合并方可以访问的位置 |
+| 各 CTA 完成时间不同 | 读取部分结果之前，写入已完成且对读取方可见 |
+| 多个部分结果对应同一输出元素 | 合并时保留每一份贡献，避免覆盖或丢失更新 |
+
+### 13.3 普通 `+=` 为什么会丢失结果
+
+假设两个 CTA 对同一个 global memory 地址执行 `D[m,n] += partial`。普通读、加、写可能交错成：
+
+```text
+D[m,n] 初始为 0
+CTA 0 读取 0，准备加 10
+CTA 1 也读取 0，准备加 20
+CTA 0 写回 10
+CTA 1 写回 20
+
+最终得到 20，正确结果应为 30：CTA 0 的贡献丢失了。
+```
+
+`__syncthreads()` 只协调当前 CTA 的线程，不能等待整个 grid 的其他 CTA。普通 CTA 的执行顺序也没有保证，并且不一定同时驻留；不能随意插入“所有 CTA 自旋等待彼此”的全局 barrier。
+
+### 13.4 Workspace 与归约 kernel 怎样完成合并
+
+一种实现先让各 CTA 写不同的临时区域，再由另一个 kernel 合并：
+
+```text
+阶段一：Split-K GEMM kernel
+CTA 0 → workspace[0, :, :] = D0
+CTA 1 → workspace[1, :, :] = D1
+CTA 2 → workspace[2, :, :] = D2
+CTA 3 → workspace[3, :, :] = D3
+
+阶段二：reduction kernel
+对每个 (m,n)：
+    D[m,n] = workspace[0,m,n] + workspace[1,m,n]
+           + workspace[2,m,n] + workspace[3,m,n]
+```
+
+workspace 位于 global memory，各 CTA 写入互不重叠的位置。把两个 kernel 按顺序提交到同一个 CUDA stream，可以保证归约 kernel 在前一 kernel 完成后读取结果，无需 CPU 把部分结果读回。归约 kernel 内也可让不同线程负责不同 `(m,n)`，各自合并 P 份贡献。
+
+在满足类型支持、初始化和完成同步要求时，也可以使用原子累加或其他跨 CTA 协议。原子加能防止同一地址丢失更新，但不代表所有 CTA 已完成，也不保证浮点加法的执行顺序固定。
 
 更多并行度的代价是部分结果的写入/读取、归约、同步和潜在的数值差异。4 个 CTAs 也未必足够填满设备。若 M/N 本来已经很大，增加 Split-K 可能只增加额外工作。
 
-`βC` 和非线性 epilogue 必须注意执行位置：一般要在部分和正确合并后只应用一次。比如 `ReLU(D0)+ReLU(D1)` 不等于 `ReLU(D0+D1)`。
+`βC` 和非线性 epilogue 必须注意执行位置：基础实现可在部分和正确合并后只应用一次。每个 CTA 都加完整的 `βC`，会重复加 P 次。非线性操作也不能随意提前：`ReLU(1)+ReLU(-1)=1`，但 `ReLU(1-1)=0`。
 
-来源：[CUTLASS 并行归约与 Split-K](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#parallelized-reductions)。
+来源：[CUTLASS 并行归约与 Split-K](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#parallelized-reductions)、[CUDA：线程块与同步](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html)。
 
 ## 14. Persistent GEMM、Stream-K 与负载均衡
 
