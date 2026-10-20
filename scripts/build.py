@@ -64,6 +64,8 @@ PYTORCH_REFERENCES = [
 CUDA_REFERENCES = [
     ('CUDA/execution-hierarchy.md', 'cuda-execution-hierarchy.html', '执行层级与硬件映射',
      'thread · warp · block · cluster · grid · SM / GPC · 同步范围'),
+    ('CUDA/gemm.md', 'cuda-gemm.html', 'GEMM 计算与优化',
+     '分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局'),
     ('CUDA/compilation-and-instructions.md', 'cuda-compilation-and-instructions.html', 'PTX、SASS 与编译流程',
      'CUDA C++ · Triton · CuTe DSL · ptxas · cubin · AOT / JIT'),
 ]
