@@ -72,7 +72,7 @@ acc += A_tile @ B_tile
 
 ![同一输出 tile 沿 K 累加多组 A/B tile](../assets/gemm-tiling.svg)
 
-图中两段 K 都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；图中箭头表示数据参与计算，没有规定这些 blocks 的启动先后顺序。
+不同 K 段都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；这些 blocks 的启动先后顺序不由图示规定。
 
 用 `M=N=K=1024`、`BM=BN=128`、`BK=32` 做一次手算：
 

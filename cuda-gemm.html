@@ -4,8 +4,8 @@
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v=a151ad2e69"><link rel="stylesheet" href="assets/code.css">
-<link rel="stylesheet" href="assets/gemm.css?v=f906c8d31d">
-<script defer src="assets/gemm.js?v=ccef7dbb21"></script>
+<link rel="stylesheet" href="assets/gemm.css?v=84dddeea23">
+<script defer src="assets/gemm.js?v=0ae357ae67"></script>
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
 <script defer src="assets/site.js?v=3cc3b692d3"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
@@ -90,7 +90,7 @@ acc += A_tile @ B_tile
 
 
 <p><img alt="同一输出 tile 沿 K 累加多组 A/B tile" src="assets/gemm-tiling.svg" loading="lazy" /></p>
-<p>图中两段 K 都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；图中箭头表示数据参与计算，没有规定这些 blocks 的启动先后顺序。</p>
+<p>不同 K 段都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；这些 blocks 的启动先后顺序不由图示规定。</p>
 <p>用 <code>M=N=K=1024</code>、<code>BM=BN=128</code>、<code>BK=32</code> 做一次手算：</p>
 <table>
 <thead>
