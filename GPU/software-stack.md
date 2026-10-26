@@ -182,6 +182,8 @@ Tensor Core 执行特定矩阵指令。库或编译器先选择、生成使用�
 
 TP 的 Row Parallel Linear 可以先调用矩阵 kernel 产生部分和，再调用 NCCL all-reduce 合并贡献。推理框架负责把两步放进模型执行流程。计算库、通信库和上层框架分别承担计算、传输和组织职责。[NCCL 概览](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/overview.html)
 
+通信接口、数据语义与实现算法见 [MPI 与 Ring / Tree AllReduce](communication-and-allreduce.md)。该页用四个 rank 展开逐轮归约、部分和存储、结果传播，以及流量与延迟的取舍。
+
 CUDA Runtime 与 Driver API 都提供用户态调用接口，Driver API 不等于内核态驱动模块。Toolkit 与 Driver 也有各自的版本和安装来源。具体接口关系见 [CUDA Runtime / Driver API](https://docs.nvidia.com/cuda/cuda-runtime-api/driver-vs-runtime-api.html)，工具入口见 [CUDA 文档目录](https://docs.nvidia.com/cuda/)。
 
 本页是软件职责与接口的教学说明。C++ 片段没有经过 CUDA 编译；没有执行 kernel、数值测试或性能测量。
