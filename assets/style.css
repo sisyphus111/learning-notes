@@ -10,11 +10,12 @@
 }
 :root[data-theme=dark]{
   color-scheme:dark;
-  --bg:#0b1722;--paper:#112332;--ink:#e1edf5;--muted:#a0b8ca;
-  --line:#294354;--accent:#8bd4f4;--wash:#19384c;--code:#102636;
-  --header:#0b1722eb;--shadow:0 18px 70px #02091180;
-  --syntax-comment:#a0b2c3;--syntax-keyword:#8bd4f4;--syntax-string:#a8d8dc;
-  --syntax-number:#cebcf4;--syntax-function:#b9dbff;
+  --bg:#111111;--paper:#191919;--ink:#e8e8e8;--muted:#b6b6b6;
+  --line:#3a3a3a;--accent:#91baff;--wash:#252525;--code:#151515;
+  --header:#111111;--shadow:0 18px 70px #00000066;
+  --syntax-comment:#a3a3a3;--syntax-keyword:#91baff;--syntax-string:#b7d6b0;
+  --syntax-number:#d4b7e9;--syntax-function:#dcc9a3;
+  font-size:16px;
 }
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline;text-underline-offset:4px}button,input{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}button{color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:6px 13px}kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:14px;color:var(--muted)}.skip-link{position:fixed;top:-100px;left:20px;z-index:100;background:var(--paper);padding:10px}.skip-link:focus{top:10px}
 .sidebar{position:fixed;inset:0 auto 0 0;width:235px;padding:24px 24px;background:var(--paper);border-right:1px solid var(--line);overflow:auto;z-index:20}.brand{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:650;color:var(--ink);line-height:1.5;margin-bottom:26px}.brand:hover{text-decoration:none}.brand-mark{border:1px solid var(--accent);color:var(--accent);font-size:14px;padding:6px 8px;border-radius:7px}.brand small{display:block;font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:400;margin-top:4px}.nav-label{font-size:11px;color:var(--muted);letter-spacing:.08em;margin:18px 9px 8px}.sidebar nav{display:grid;gap:2px}.sidebar nav a{color:var(--muted);padding:4px 10px;font-size:13px;border-radius:5px}.sidebar nav a:hover,.sidebar nav a[aria-current]{color:var(--accent);background:var(--wash);text-decoration:none}.sidebar nav a[aria-current]{font-weight:600}.source-link{display:block;font-size:12px;margin:30px 10px 0;color:var(--muted)}
@@ -44,7 +45,7 @@ article .rule-card li{margin:8px 0}
 article .rule-card li::marker{color:var(--accent);font-weight:650}
 article .rule-card>:last-child{margin-bottom:0}
 
-/* Ice-blue surfaces and code colors share the same light/dark palette. */
+/* Light surfaces retain the ice-blue palette; dark surfaces use neutral grays. */
 ::selection{background:var(--accent);color:var(--bg)}
 .sidebar{background:linear-gradient(165deg,var(--wash),var(--paper) 290px)}
 .brand img{flex-shrink:0;border-radius:9px}
@@ -63,3 +64,19 @@ article .codehilite :is(.s,.sa,.sb,.sc,.dl,.sd,.s2,.se,.sh,.si,.sx,.sr,.s1,.ss){
 article .codehilite :is(.m,.mb,.mf,.mh,.mi,.mo,.il){color:var(--syntax-number)}
 article .codehilite :is(.nf,.fm,.nc,.nn,.na,.nt,.nl){color:var(--syntax-function)}
 article .codehilite :is(.o,.p,.w,.go){color:var(--muted)}
+
+/* Keep dark reading surfaces opaque and code legible at normal browser zoom. */
+:root[data-theme=dark] .sidebar{background:var(--paper)}
+:root[data-theme=dark] .topbar{backdrop-filter:none}
+:root[data-theme=dark] dialog::backdrop{background:#0009;backdrop-filter:none}
+:root[data-theme=dark] .card:hover{box-shadow:none}
+:root[data-theme=dark] .codehilite pre{font:14px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root[data-theme=dark] .codehilite pre code{font-size:14px}
+:root[data-theme=dark] article .codehilite :is(.c,.ch,.cm,.cp,.cpf,.c1,.cs){font-style:normal;background:transparent}
+/* Cover name and diagnostic tokens that otherwise inherit Pygments' light colors. */
+:root[data-theme=dark] article .codehilite :is(.no,.nd,.ni,.ne,.nv,.vc,.vg,.vi,.vm){color:var(--syntax-function)}
+:root[data-theme=dark] article .codehilite :is(.gh,.gu){color:var(--ink)}
+:root[data-theme=dark] article .codehilite :is(.gp,.gt){color:var(--accent)}
+:root[data-theme=dark] article .codehilite :is(.err,.gr,.gd){color:#ffb3b3}
+:root[data-theme=dark] article .codehilite .gi{color:var(--syntax-string)}
+:root[data-theme=dark] article .codehilite .hll{background:var(--wash)}

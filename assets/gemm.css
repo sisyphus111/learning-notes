@@ -6,8 +6,8 @@
   color:var(--ink); font-size:13px; line-height:1.65; scroll-margin-top:90px;
 }
 [data-theme=dark] .gemm-demo {
-  --ga:#98d2ff; --gb:#f1ba78; --gc:#8dddb1; --gs:#ceb3f5;
-  --ga-wash:#193c58; --gb-wash:#49341f; --gc-wash:#193e32; --gs-wash:#342747;
+  --ga:#9dc8f5; --gb:#dfbc8c; --gc:#a8d7bb; --gs:#d1bbed;
+  --ga-wash:#1d2936; --gb-wash:#30291e; --gc-wash:#1e2c24; --gs-wash:#2c2435;
 }
 .gemm-demo:is(.gd-explore,.gd-walk,.gd-timeline) {
   padding:20px; background:var(--paper); border:1px solid var(--line); border-radius:8px;
