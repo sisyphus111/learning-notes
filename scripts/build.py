@@ -66,6 +66,8 @@ CUDA_REFERENCES = [
      'thread · warp · block · cluster · grid · SM / GPC · 同步范围'),
     ('CUDA/gemm.md', 'cuda-gemm.html', 'GEMM 计算与优化',
      '分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局'),
+    ('CUDA/flash-attention.md', 'cuda-flash-attention.html', 'FlashAttention 1–4',
+     'online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM'),
     ('CUDA/compilation-and-instructions.md', 'cuda-compilation-and-instructions.html', 'PTX、SASS 与编译流程',
      'CUDA C++ · Triton · CuTe DSL · ptxas · cubin · AOT / JIT'),
 ]
@@ -241,7 +243,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
     elif reference_kind == 'PyTorch 教学':
         source_note = '以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。'
     elif reference_kind == 'CUDA 教学':
-        source_note = 'CUDA 执行层级与 kernel 编译笔记，附官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。'
+        source_note = 'CUDA 执行、GEMM、attention 与 kernel 编译笔记，附论文、官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。'
     elif reference_kind == 'GPU 软件栈':
         source_note = 'GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。'
     elif reference_kind == 'STL 参考':
@@ -315,7 +317,7 @@ home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。<
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
-<section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">把线程分组对应到 SM 与 GPC，再理解 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
+<section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">从线程与硬件映射开始，理解 GEMM、FlashAttention 的分块与流水线，以及 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
 <section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">从 H100 的驱动与运行时开始，区分计算库、kernel 开发工具和编译器，再连接算子图优化与 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按主题阅读，用搜索定位概念、写法或题目。先理解问题和原理，再对照推导与实现；需要时回到参考文档核实细节。算法部分保留原作者的思路与 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('求知录', 'index.html', home, subtitle='记录学习中的问题、推导与实践。'))

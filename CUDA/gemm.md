@@ -1,5 +1,7 @@
 # GEMM：分块计算、数据搬运与常见优化
 
+attention 怎样把两次 GEMM 与 softmax 接起来，并随 GPU 架构改变流水线，见 [FlashAttention 1–4](flash-attention.md)。
+
 ## 1. 先固定矩阵与维度的含义
 
 GEMM 是 General Matrix Multiplication，常见接口计算 $D=\alpha AB+\beta C$。其中 $\alpha$、$\beta$ 是标量，$C$ 是原有输入，$D$ 是新输出。先令 $\alpha=1$、$\beta=0$，只看 $D=AB$：
