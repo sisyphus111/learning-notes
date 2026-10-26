@@ -125,14 +125,39 @@
     }
   });
 
-  mount({
-    id:'registers',section:'6.',label:'外积展开',title:'两个 A 值、两个 B 值，更新四个寄存器',
-    intro:'只展开固定 k 的一次更新。A 值沿行复用，B 值沿列复用；四个 acc 都保留原来的部分和。',
-    draw(scene) {
-      scene.innerHTML=`<div class="gd-outer"><span></span><b class="is-b">b₀</b><b class="is-b">b₁</b>
-        <b class="is-a">a₀</b><span class="is-c">acc₀₀ += a₀b₀</span><span class="is-c">acc₀₁ += a₀b₁</span>
-        <b class="is-a">a₁</b><span class="is-c">acc₁₀ += a₁b₀</span><span class="is-c">acc₁₁ += a₁b₁</span></div>`;
-      return '这是一个线程负责 2×2 输出的示例：下一轮 k 更换 a/b，继续更新这四个 acc。';
+  // Each panel shows one thread's footprint within the current shared-memory
+  // K tile. Output cells display this k's increment, not the accumulated result.
+  for (const size of [2,3,8]) mount({
+    id:size===2?'registers':`registers-${size}`,section:'6.',kind:'explore',
+    label:'寄存器分块',title:`${size}×${size}：${size*2} 个输入值，更新 ${size*size} 个累加器`,
+    intro:`固定 BK=4。A、B 画出 shared memory 中与当前线程输出对应的输入子块；高亮的 A 列和 B 行读入寄存器，组合成这一次外积。`,
+    options:[option('k','当前 k',choices([0,1,2,3]))],
+    note:'行、列编号均为子块内的局部编号；这是 SIMT 每线程分块示意，实际线程布局可不同。',
+    draw(scene,{options}) {
+      const k=+options.k, m=options.m??Math.floor(size/2), n=options.n??Math.floor(size/2);
+      function tile(name,rows,cols,tone,caption,value,active,selected,output=false) {
+        return `<div class="gd-reg-matrix gd-reg-${tone}"><div class="gd-reg-heading"><strong>${name}</strong><span>[${rows}, ${cols}]</span></div>
+          <p class="gd-reg-caption">${caption}</p>
+          <div class="gd-reg-axis">${name==='A'?'k →': '列 j →'}</div>
+          <div class="gd-reg-grid" style="--reg-cols:${cols}" role="group" aria-label="${name} 子块 ${rows} 行 ${cols} 列">
+            <span class="gd-reg-corner">${name==='B'?'k ↓':'行 i ↓'}</span>${seq(cols).map(c=>`<span class="gd-reg-index ${name==='A'&&c===k?'gd-a-text':''}">${c}</span>`).join('')}
+            ${seq(rows).map(r=>`<span class="gd-reg-index ${name==='B'&&r===k?'gd-b-text':''}">${r}</span>${seq(cols).map(c=>{
+              const chosen=selected(r,c), label=output?`选择 acc[${r},${c}]；本轮加 ${value(r,c)}`:`${name}[${r},${c}] = ${value(r,c)}${active(r,c)?'；当前 k 使用':''}`;
+              const attrs=`class="gd-reg-cell ${active(r,c)?`is-${tone}`:''} ${chosen?'gd-reg-selected':''}" aria-label="${label}" title="${label}"`;
+              return output?`<button type="button" ${attrs} data-output="${r},${c}" aria-pressed="${chosen}">+${value(r,c)}</button>`:`<span ${attrs}>${value(r,c)}</span>`;
+            }).join('')}`).join('')}
+          </div><p class="gd-reg-foot">${output?`${size*size} 个 FP32 acc · ${size*size*4} B`:`高亮 ${size} 个值 → ${name==='A'?'a':'b'}[${size}] 寄存器`}</p></div>`;
+      }
+      scene.innerHTML=`<div class="gd-register-example ${size===8?'gd-register-dense':''}"><div class="gd-reg-equation">
+        <span class="gd-a-text">a [${size}×1]</span><span>×</span><span class="gd-b-text">b [1×${size}]</span><span>→</span><span class="gd-reg-equation-output">acc += 本轮贡献</span></div>
+        <div class="gd-reg-panels">
+          ${tile('A',size,4,'a','取当前 k 的一列',aValue,(_,c)=>c===k,(r,c)=>r===m&&c===k)}
+          ${tile('B',4,size,'b','取当前 k 的一行',bValue,r=>r===k,(r,c)=>r===k&&c===n)}
+          ${tile('acc',size,size,'c','格内 +数值 = 本轮加数',(r,c)=>aValue(r,k)*bValue(k,c),()=>true,(r,c)=>r===m&&c===n,true)}
+        </div>
+        <div class="gd-reg-detail"><span>选中输出 <b>acc[${m},${n}]</b></span><div><span>原值</span><b>+</b><span class="gd-reg-factor is-a">A[${m},${k}] = ${aValue(m,k)}</span><b>×</b><span class="gd-reg-factor is-b">B[${k},${n}] = ${bValue(k,n)}</span><b>=</b><strong>原值 + ${aValue(m,k)*bValue(k,n)}</strong></div></div>
+        <p class="gd-reg-reuse">一个 A 值用于同一输出行的 <b>${size}</b> 个位置；一个 B 值用于同一输出列的 <b>${size}</b> 个位置。</p></div>`;
+      return `点击绿色格子查看输入对应关系。切换 k 只查看这一轮的贡献；沿完整 K 计算时，${size*size} 个 acc 持续累加，不随输入更换而清零。`;
     }
   });
 
