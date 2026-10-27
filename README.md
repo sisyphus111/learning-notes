@@ -15,7 +15,7 @@
 - GPU 软件栈独立成板块：[驱动、运行时与框架](GPU/driver-runtime-framework.md) 从 H100 设备讲到内核驱动、libcuda / libcudart、PyTorch、容器和版本；[GPU 软件栈与工具](GPU/software-stack.md) 区分计算库、CUTLASS / CuTe、编译工具与推理框架；[计算图、编译与 CUDA Graph](GPU/graphs-and-compilation.md) 解释编译优化与执行重放，并展开 CUDA / PyTorch API、固定虚拟地址、图内分配、private pool 与跨图共享。
 - [浮点格式、混合精度与量化](GPU/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
 - [GEMM 计算与优化](CUDA/gemm.md) 从点积和 K 分段讲起，连接 CTA/register tiling、内存布局、Tensor Core、异步流水线、Split-K、persistent/grouped GEMM、融合与 scale 转置。
-- [FlashAttention 1–4](CUDA/flash-attention.md) 从 attention 形状和 online softmax 推导开始，讲清四代的前后向算法、Ampere/Hopper/Blackwell 的搬运与计算路径、TMA/TMEM、FA4 条件缩放与 2-CTA 协作，并附教学实现和固定版本源码入口。
+- Attention 独立成板块：[Transformer 运行全过程](Attention/transformer-runtime.md) 从文本、Q/K/V、每层计算走到 prefill、KV cache、decode 与训练；[FlashAttention 1–4](CUDA/flash-attention.md) 从 online softmax 推导讲到四代前后向、Ampere/Hopper/Blackwell、TMA/TMEM、条件缩放与 2-CTA，并附教学实现和源码入口。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、冰蓝浅色与中性深灰主题及手机阅读。深色模式提高正文与代码的可读性；首次访问跟随系统主题，手动选择后记住偏好。
 
 ## 内容来源
@@ -28,7 +28,7 @@ STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存�
 
 ## 维护方式
 
-编辑各题型目录、`STL/`、`Python/`、`PyTorch/`、`CUDA/` 与 `GPU/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
+编辑各题型目录、`STL/`、`Python/`、`PyTorch/`、`CUDA/`、`Attention/` 与 `GPU/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
 
 构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
 

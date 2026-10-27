@@ -66,10 +66,14 @@ CUDA_REFERENCES = [
      'thread · warp · block · cluster · grid · SM / GPC · 同步范围'),
     ('CUDA/gemm.md', 'cuda-gemm.html', 'GEMM 计算与优化',
      '分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局'),
-    ('CUDA/flash-attention.md', 'cuda-flash-attention.html', 'FlashAttention 1–4',
-     'online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM'),
     ('CUDA/compilation-and-instructions.md', 'cuda-compilation-and-instructions.html', 'PTX、SASS 与编译流程',
      'CUDA C++ · Triton · CuTe DSL · ptxas · cubin · AOT / JIT'),
+]
+ATTENTION_REFERENCES = [
+    ('Attention/transformer-runtime.md', 'attention-transformer-runtime.html', 'Transformer 运行全过程',
+     '文本到 token · Q/K/V · 多头与 GQA · FFN · prefill / decode · KV cache · 训练'),
+    ('CUDA/flash-attention.md', 'cuda-flash-attention.html', 'FlashAttention 1–4',
+     'online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM'),
 ]
 GPU_REFERENCES = [
     ('GPU/driver-runtime-framework.md', 'gpu-driver-runtime-framework.html', '驱动、运行时与框架',
@@ -83,7 +87,7 @@ GPU_REFERENCES = [
     ('GPU/communication-and-allreduce.md', 'gpu-communication-and-allreduce.html', 'MPI 与 Ring / Tree AllReduce',
      '通信语义 · 逐轮部分和 · ReduceScatter / AllGather · 双树 · 流量与延迟'),
 ]
-PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + GPU_REFERENCES
+PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + ATTENTION_REFERENCES + GPU_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}
 
 
@@ -221,7 +225,7 @@ def links(html, source):
 
 def sidebar(current):
     result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a>'
-    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
+    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('Attention 与 Transformer', ATTENTION_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
             active = ' aria-current="page"' if current == output else ''
@@ -246,6 +250,8 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
         source_note = '以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。'
     elif reference_kind == 'CUDA 教学':
         source_note = 'CUDA 执行、GEMM、attention 与 kernel 编译笔记，附论文、官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。'
+    elif reference_kind == 'Attention 与 Transformer':
+        source_note = 'Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。'
     elif reference_kind == 'GPU 软件栈':
         source_note = 'GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。'
     elif reference_kind == 'STL 参考':
@@ -278,7 +284,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 index = []
 problem_count = 0
 for source, output, title, subtitle in PAGES:
-    reference_kind = 'GPU 软件栈' if source.startswith('GPU/') else 'CUDA 教学' if source.startswith('CUDA/') else 'PyTorch 教学' if source.startswith('PyTorch/') else 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
+    reference_kind = 'Attention 与 Transformer' if any(source == entry[0] for entry in ATTENTION_REFERENCES) else 'GPU 软件栈' if source.startswith('GPU/') else 'CUDA 教学' if source.startswith('CUDA/') else 'PyTorch 教学' if source.startswith('PyTorch/') else 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
     body, tokens = RENDERED[source]
     # Each chapter starts with a page title; original headings remain available.
     body = links(body, source)
@@ -319,7 +325,8 @@ home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。<
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
-<section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">从线程与硬件映射开始，理解 GEMM、FlashAttention 的分块与流水线，以及 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
+<section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">从线程与硬件映射开始，理解 GEMM 的分块与流水线，以及 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
+<section class="home-section"><h2>Attention 与 Transformer</h2><p class="section-desc">先走通 Transformer 从文本到生成的全过程，再理解 attention 的数学、变体与高性能实现。</p>{cards(ATTENTION_REFERENCES)}</section>
 <section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">从 H100 的驱动与运行时开始，区分计算库、kernel 开发工具和编译器，再连接算子图优化与 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按主题阅读，用搜索定位概念、写法或题目。先理解问题和原理，再对照推导与实现；需要时回到参考文档核实细节。算法部分保留原作者的思路与 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('求知录', 'index.html', home, subtitle='记录学习中的问题、推导与实践。'))

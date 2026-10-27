@@ -192,4 +192,89 @@ phase_B<<<12, 256, 0, stream>>>(intermediate, y);
 | “Warp 对应一组永久专属 CUDA Cores” | Warp 是执行分组，指令使用共享的硬件流水线 |
 | “Tile 是 block 与 warp 之间的线程层级” | Tile 是数据或计算区域；block/warp 是执行分组，具体实现决定谁处理哪个 tile |
 
+## 9. 线程的计算、搬运与通信分工
+
+计算、搬运和通信是程序安排给线程的工作角色。GPU 线程没有固定的“计算线程”或“搬运线程”硬件类型；同一个线程可以先搬数据，再计算，再写回结果。理解分工时，先看线程执行哪些指令，再看指令使用哪些硬件。
+
+### 9.1 普通 global→shared 复制为什么经过寄存器
+
+第 6 节的 `tile[t] = x[t]`，在普通 load/store 路径中可以拆成两步。下面是 kernel 内的片段，`x` 指向 global memory，`tile` 位于 shared memory：
+
+```cpp
+float tmp = x[t];  // 从 global memory 读取，通常由线程寄存器保存结果
+tile[t] = tmp;     // 把寄存器中的值写入 shared memory
+```
+
+即使源码直接写成一句赋值，普通 load/store 路径仍需要寄存器承接读取结果。下面是指令语义示意，不是编译器输出：
+
+```text
+ld.global  r, [global_address]
+st.shared  [shared_address], r
+
+数据路径：global memory → 寄存器 r → shared memory
+```
+
+`st.shared` 使用 `ld.global` 的结果，因此存在数据依赖。这里的 global memory 是地址空间；读取可能命中缓存，不代表每次都访问 HBM。具体源码怎样生成指令，需要检查目标架构上的编译结果。
+
+`cp.async` 同时指定源地址、目标地址和复制大小。支持的复制路径可以直接把数据送入 shared memory，省去被复制数据在普通寄存器中的中转：
+
+```text
+cp.async [shared_address], [global_address], 复制字节数
+
+数据路径：global memory → shared memory
+线程工作：计算地址 → 发起复制 → 做独立工作 → 等待完成 → 使用数据
+```
+
+**省去的是数据中转用的寄存器；地址、循环变量和同步状态仍可能占用寄存器。** 发起复制不代表数据已经可用。使用前需要对应的异步完成等待；跨线程使用时，还要建立所需的线程间同步。
+
+减少寄存器中转和允许异步推进是两个收益。前者减少搬运数据所需的寄存器及相关指令；后者允许把等待推迟到真正需要数据时。普通 load 也不意味着整个 GPU 停住：调度器仍可让其他就绪 warps 执行。
+
+来源：[CUDA 异步复制与 load/store 路径](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html)、[PTX cp.async](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#data-movement-and-conversion-instructions-cp-async)。
+
+### 9.2 所有线程轮流工作，或按 warp 固定分工
+
+一种常见实现让 block 内的线程先共同加载，再共同计算：
+
+```text
+每个线程搬一部分输入
+        ↓
+同步，确认数据可用
+        ↓
+每个线程参与计算
+        ↓
+确认本轮数据已用完，再复用 buffer
+```
+
+此时每个线程都兼任搬运与计算，没有专门的搬运线程组。
+
+另一种实现按 warp 安排不同角色，称为 **warp specialization**。负责准备数据的 producer warps 与负责使用数据的 consumer warps 可以独立推进：
+
+```text
+Producer warps：等空 buffer → 发起搬运 → 确认或安排完成通知 → 准备下一块
+Consumer warps：等数据就绪 → 执行计算 → 通知 buffer 已用完 → 处理下一块
+```
+
+使用多个 buffer 时，producer 可以准备 tile 1，consumer 同时计算 tile 0。两者必须遵守两个条件：数据搬完才能读，消费者用完才能覆盖。按 warp 分工符合 warp 的执行分组；并不是把同一 warp 内的任意线程拆开，就能让不同路径自由并行。
+
+Hopper 的 Tensor Memory Accelerator（TMA）适合这种分工：producer 中的一个线程可以提交整块数据的搬运请求，硬件继续传输。Producer 仍需管理请求和同步，但不必亲手逐元素复制。Warp specialization 是角色安排，双缓冲是存储安排，TMA 是搬运机制；三者可以组合使用。
+
+来源：[Hopper TMA 与 warp specialization](https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html#tensor-memory-accelerator)。矩阵乘法中的流水线可继续看 [GEMM 计算与优化](gemm.md)。
+
+### 9.3 线程的角色与硬件执行单元
+
+“线程负责计算或搬运”描述谁组织工作。实际指令还要交给相应硬件执行：
+
+| 程序中的工作 | 线程负责什么 | 硬件承担什么 |
+| --- | --- | --- |
+| 普通算术 | 执行算术指令，维护操作数和结果 | 对应的算术流水线执行运算 |
+| Tensor Core 计算 | 按指令要求协作，发起矩阵运算并管理依赖 | Tensor Core 执行矩阵运算 |
+| 异步搬运 | 准备地址或 descriptor，发起请求，等待完成 | 对应的访存与搬运硬件传输数据 |
+| 通信 | 按实现读取或写入 buffer、归约、等待或更新完成标记 | GPU 互联、内存系统或网卡承担实际传输 |
+
+通信的流程取决于具体实现。一个通信线程可能等待数据就绪，读取数据并做 reduction，写入目标 buffer，再通知消费者。跨设备传输还可能由网卡或其他搬运引擎推进。“有通信线程”并不意味着全部数据都经过它的寄存器。
+
+还要区分两种并行范围。同一 kernel 内，可以让不同 warps 分工。不同 kernels 之间，也可以安排计算 kernel 与通信 kernel 并发。后者取决于 stream 依赖和可用资源，提交到不同 streams 并不保证真正重叠。线程角色也不会为其永久保留某个 CUDA Core 或 Tensor Core。
+
+来源：[NVIDIA SIMT 与硬件多线程](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html#simt-execution-model)、[CUDA 异步执行](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html)。
+
 本文的数量例子和放置图用于推导关系，不表示某个 GPU 型号的实测调度。CUDA 片段未做编译或实机验证；架构相关上限以目标设备和 NVIDIA 文档为准。Tensor 的 shape、stride 与存储关系可继续对照 [Tensor 与 GPU 内存](../PyTorch/tensors.md)。
