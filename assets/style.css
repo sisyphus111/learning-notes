@@ -80,3 +80,74 @@ article .codehilite :is(.o,.p,.w,.go){color:var(--muted)}
 :root[data-theme=dark] article .codehilite :is(.err,.gr,.gd){color:#ffb3b3}
 :root[data-theme=dark] article .codehilite .gi{color:var(--syntax-string)}
 :root[data-theme=dark] article .codehilite .hll{background:var(--wash)}
+
+/* Reading navigation and diagram viewports keep the desktop layout intact. */
+.menu-close,.mobile-toc{display:none}
+.reading-diagram{margin:22px 0;max-width:100%}
+.diagram-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:6px}
+.diagram-scroll:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+article .diagram-scroll img{display:block;margin:0 auto}
+.reading-diagram figcaption{display:none}
+@media(max-width:1200px){
+  .mobile-toc{display:block;margin:0 0 26px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+  .mobile-toc summary{padding:12px 16px;font-size:14px;font-weight:600}
+  .mobile-toc nav{display:grid;gap:2px;max-height:50vh;overflow:auto;overscroll-behavior:contain;padding:0 12px 12px}
+  .mobile-toc a{padding:9px 6px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+  .mobile-toc a.level-2{padding-left:14px}
+}
+@media(max-width:1024px){
+  :root{font-size:16px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  .page{margin-left:0}
+  .reading-layout{padding:26px 16px 32px}
+  .page-intro h1{font-size:28px;overflow-wrap:anywhere}
+  .subtitle{margin-bottom:24px;overflow-wrap:anywhere}
+  article p,article li,article h1,article h2,article h3,footer{overflow-wrap:anywhere}
+  article ul,article ol{padding-left:22px}
+  article blockquote{margin-inline:0;padding-inline:14px}
+  .home-meta{flex-wrap:wrap;gap:6px 16px;font-size:12px}
+  .home-lead>p{font-size:21px}
+  .card h3{font-size:16px}
+  .card p,.section-desc{font-size:14px}
+  .reading-note{padding:18px}
+  .reading-note p{font-size:14px}
+  .topbar{min-height:60px;height:auto;padding:8px max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));gap:8px}
+  .topbar .crumb{font-size:13px;white-space:nowrap}
+  .topbar .menu-toggle,.toolbar .theme-toggle{width:44px;height:44px;flex-shrink:0}
+  .topbar .menu-toggle{display:block;padding:0;font-size:18px}
+  .toolbar .search-toggle{min-width:44px;min-height:44px;padding:6px 10px}
+  .toolbar .search-toggle:before{font-size:14px}
+  .sidebar{width:min(320px,calc(100vw - 48px));visibility:hidden;transform:translateX(-100%);transition:transform .18s;padding:18px 20px max(24px,env(safe-area-inset-bottom));overscroll-behavior:contain}
+  body.nav-open{overflow:hidden}
+  body.nav-open:before{content:'';position:fixed;inset:0;z-index:15;background:#0007}
+  body.nav-open .sidebar{visibility:visible;transform:translateX(0)}
+  .menu-close{display:block;min-height:44px;margin:0 0 18px auto;font-size:14px}
+  .sidebar nav a{min-height:44px;padding:9px 10px;font-size:15px;line-height:1.7}
+  .nav-label{font-size:12px}
+  .codehilite pre{padding:54px 14px 16px;overscroll-behavior-x:contain}
+  .codehilite pre code{font-size:14px}
+  .copy-button{min-width:52px;min-height:36px;font-size:12px}
+  .code-tabs button{min-height:44px;padding:7px 15px;font-size:14px}
+  article table{max-width:100%;font-size:14px;overscroll-behavior-x:contain}
+  article th,article td{padding:9px 11px}
+  .display-math{max-width:100%;overscroll-behavior-x:contain;padding-block:4px}
+  .reading-diagram{border:1px solid var(--line);border-radius:8px;background:var(--paper);overflow:hidden}
+  article .diagram-scroll img{width:900px;max-width:none}
+  .reading-diagram figcaption{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;padding:9px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+  .reading-diagram figcaption a{display:inline-flex;align-items:center;min-height:32px}
+  dialog{width:calc(100vw - 24px);max-width:100%;max-height:85dvh;padding:16px;overflow:auto}
+  .search-heading{gap:12px}
+  .search-heading label{font-size:16px}
+  .search-heading button{min-height:44px;font-size:14px;flex-shrink:0}
+  #search-input{font-size:16px;min-height:48px}
+  #search-results{min-width:0}
+  .search-result{padding:12px;overflow-wrap:anywhere}
+  .search-result small{font-size:12px}
+  .search-result span{font-size:15px}
+}
+@media print{
+  .mobile-toc,.menu-close{display:none!important}
+  .diagram-scroll{overflow:visible}
+  article .diagram-scroll img{width:100%;max-width:100%}
+  .reading-diagram{border:0}
+  .reading-diagram figcaption{display:none}
+}

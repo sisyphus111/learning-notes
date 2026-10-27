@@ -195,49 +195,64 @@
 .gemm-demo .gd-storage small { display:block; color:var(--muted); font-size:9px; padding-top:8px; }
 @media (max-width:600px) {
   .gemm-demo:is(.gd-explore,.gd-walk,.gd-timeline) { padding:16px 12px; }
+  .gemm-demo { font-size:14px; }
+  .gemm-demo .gd-scene { max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; padding:4px; }
+  .gemm-demo .gd-options select { font-size:16px; min-height:44px; }
+  .gemm-demo .gd-options label { font-size:14px; }
+  .gemm-demo .gd-controls button,.gemm-demo .gd-play { min-height:44px; font-size:14px; }
   .gemm-demo figcaption { display:block; }
   .gemm-demo .gd-kind { display:block; margin-bottom:5px; }
-  .gemm-demo .gd-cell { width:26px; height:26px; }
+  .gemm-demo .gd-cell { width:30px; height:30px; font-size:13px; }
+  .gemm-demo button.gd-cell { width:40px; height:40px; }
+  .gemm-demo .gd-label { font-size:13px; }
   .gemm-demo .gd-operator { display:none; }
   .gemm-demo .gd-products { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .gemm-demo .gd-reuse,.gemm-demo .gd-comparison { grid-template-columns:1fr; }
   .gemm-demo .gd-compare-bars>div { grid-template-columns:105px 1fr 55px; gap:6px; font-size:11px; }
-  .gemm-demo .gd-reg-panels { gap:22px 14px; }
+  .gemm-demo .gd-reg-panels { display:grid; grid-template-columns:minmax(0,1fr); gap:22px; }
+  .gemm-demo .gd-reg-matrix { min-width:0; }
+  .gemm-demo .gd-reg-grid { width:100%; max-width:100%; overflow-x:auto; padding:3px; overscroll-behavior-x:contain; }
   .gemm-demo .gd-register-example { --reg-cell:32px; }
-  .gemm-demo .gd-register-dense { --reg-cell:24px; }
+  .gemm-demo .gd-register-dense { --reg-cell:32px; }
   .gemm-demo .gd-reg-detail { padding:12px; }
   .gemm-demo .gd-bank-case { grid-template-columns:1fr; }
-  .gemm-demo .gd-bank-loads { grid-template-columns:repeat(16,minmax(0,1fr)); height:102px; row-gap:18px; }
-  .gemm-demo .gd-table { font-size:11px; }
+  .gemm-demo .gd-bank-loads { grid-template-columns:repeat(8,minmax(0,1fr)); height:auto; row-gap:18px; }
+  .gemm-demo .gd-bank-loads>span { height:40px; }
+  .gemm-demo .gd-bank-loads b { font-size:12px; }
+  .gemm-demo .gd-bank-loads small { top:41px; font-size:10px; }
+  .gemm-demo .gd-table { display:block; overflow-x:auto; font-size:13px; }
   .gemm-demo .gd-table th,.gemm-demo .gd-table td { padding:7px 5px; }
-  .gemm-demo .gd-track { grid-template-columns:65px 1fr; gap:5px; }
-  .gemm-demo .gd-track>span { font-size:10px; }
-  .gemm-demo .gd-bar { font-size:10px; }
+  .gemm-demo .gd-timeline { min-width:480px; padding-right:12px; }
+  .gemm-demo .gd-track { grid-template-columns:80px 1fr; gap:8px; }
+  .gemm-demo .gd-track>span { font-size:12px; }
+  .gemm-demo .gd-bar { font-size:12px; }
   .gemm-demo .gd-slots { grid-template-columns:1fr; gap:8px; }
-  .gemm-demo .gd-tma-data { grid-template-columns:1fr 12px 1fr 12px 1fr; gap:3px; }
-  .gemm-demo .gd-tma-data .gd-node { padding:10px 4px; font-size:11px; }
+  .gemm-demo .gd-tma-data { grid-template-columns:1fr; gap:8px; }
+  .gemm-demo .gd-tma-data>b { transform:rotate(90deg); }
+  .gemm-demo .gd-tma-data .gd-node { padding:12px; font-size:14px; }
   .gemm-demo .gd-metrics-stack { flex-direction:row; width:100%; }
   .gemm-demo .gd-metrics-stack .gd-metric { min-width:70px; padding:5px 7px; }
-  .gemm-demo .gd-wave-grid { grid-template-columns:42px repeat(8,minmax(0,1fr)); gap:3px; }
-  .gemm-demo .gd-wave-grid small { font-size:8px; }
-  .gemm-demo .gd-wave-grid>b { font-size:9px; }
+  .gemm-demo .gd-wave-grid { min-width:460px; grid-template-columns:60px repeat(8,minmax(0,1fr)); gap:5px; }
+  .gemm-demo .gd-wave-grid small { font-size:11px; }
+  .gemm-demo .gd-wave-grid>b { font-size:12px; }
+  .gemm-demo .gd-split { min-width:480px; }
   .gemm-demo .gd-branches { gap:5px; }
-  .gemm-demo .gd-branches .gd-node { font-size:10px; padding:8px 3px; }
-  .gemm-demo .gd-assignment>div { grid-template-columns:48px 1fr 12px 1fr 12px 1fr; gap:3px; font-size:11px; }
+  .gemm-demo .gd-branches .gd-node { font-size:13px; padding:10px 5px; }
+  .gemm-demo .gd-assignment>div { grid-template-columns:48px 1fr 12px 1fr 12px 1fr; gap:3px; font-size:13px; }
   .gemm-demo .gd-task { padding:8px 3px; }
-  .gemm-demo .gd-experts>div { grid-template-columns:80px 1fr 42px; gap:7px; }
-  .gemm-demo .gd-experts b,.gemm-demo .gd-experts code { font-size:10px; }
-  .gemm-demo .gd-experts small { font-size:9px; }
+  .gemm-demo .gd-experts { min-width:420px; }
+  .gemm-demo .gd-experts>div { grid-template-columns:90px 1fr 52px; gap:9px; }
+  .gemm-demo .gd-experts b,.gemm-demo .gd-experts code { font-size:13px; }
+  .gemm-demo .gd-experts small { font-size:11px; }
   .gemm-demo .gd-epilogue>div { grid-template-columns:1fr auto; gap:8px; }
-  .gemm-demo .gd-epilogue ol { grid-row:2; grid-column:1/-1; gap:13px; }
-  .gemm-demo .gd-epilogue li { padding:8px 4px; font-size:10px; }
-  .gemm-demo .gd-epilogue li+li:before { left:-12px; }
+  .gemm-demo .gd-epilogue ol { grid-row:2; grid-column:1/-1; flex-direction:column; gap:18px; }
+  .gemm-demo .gd-epilogue li { padding:10px; font-size:13px; }
+  .gemm-demo .gd-epilogue li+li:before { content:'↓'; left:50%; top:-19px; transform:translateX(-50%); }
   .gemm-demo .gd-layout-rows code { float:none; display:block; margin-top:4px; }
-  .gemm-demo .gd-storage { gap:2px; }
-  .gemm-demo .gd-storage>span { font-size:10px; }
-  .gemm-demo .gd-storage small { font-size:8px; }
-  .gemm-demo .gd-controls button,.gemm-demo .gd-play { min-height:40px; }
-  .gemm-demo .gd-time { min-height:32px; }
+  .gemm-demo .gd-storage { min-width:480px; gap:3px; }
+  .gemm-demo .gd-storage>span { font-size:13px; }
+  .gemm-demo .gd-storage small { font-size:10px; }
+  .gemm-demo .gd-time { min-height:44px; }
 }
 @media (prefers-reduced-motion:reduce) { .gemm-demo .gd-cursor { transition:none; } }
 @media print {

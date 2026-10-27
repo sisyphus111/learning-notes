@@ -45,16 +45,81 @@ for (const example of document.querySelectorAll('.code-example')) {
     }
 }
 const menuButton = document.querySelector('.menu-toggle');
+const sidebar = document.querySelector('.sidebar');
+const menuClose = document.createElement('button');
+menuClose.className = 'menu-close';
+menuClose.type = 'button';
+menuClose.textContent = '关闭导航 ×';
+sidebar.prepend(menuClose);
+function closeMenu() {
+    document.body.classList.remove('nav-open');
+    menuButton.setAttribute('aria-expanded', 'false');
+}
 menuButton.addEventListener('click', () => {
     const open = document.body.classList.toggle('nav-open');
     menuButton.setAttribute('aria-expanded', String(open));
+    if (open) menuClose.focus();
+});
+menuClose.addEventListener('click', () => {
+    closeMenu();
+    menuButton.focus();
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && document.body.classList.contains('nav-open')) {
+        closeMenu();
+        menuButton.focus();
+    }
+});
+window.matchMedia('(max-width: 1024px)').addEventListener('change', (event) => {
+    if (!event.matches) closeMenu();
 });
 document.addEventListener('click', (event) => {
     if (document.body.classList.contains('nav-open') && !event.target.closest('.sidebar, .menu-toggle')) {
-        document.body.classList.remove('nav-open');
-        menuButton.setAttribute('aria-expanded', 'false');
+        closeMenu();
     }
 });
+// Reuse the existing chapter links when the desktop side TOC is hidden.
+const chapterNav = document.querySelector('.toc nav');
+if (chapterNav) {
+    const contents = document.createElement('details');
+    contents.className = 'mobile-toc';
+    contents.innerHTML = '<summary>本页目录</summary>';
+    contents.append(chapterNav.cloneNode(true));
+    document.querySelector('article').before(contents);
+    contents.addEventListener('click', (event) => {
+        const link = event.target.closest('a');
+        if (!link) return;
+        // Close before the anchor scroll so the destination keeps its position.
+        contents.open = false;
+        const heading = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+        if (heading) {
+            heading.tabIndex = -1;
+            heading.focus({preventScroll: true});
+        }
+    });
+}
+// Preserve readable diagram labels on narrow screens with a local scroll area.
+for (const image of document.querySelectorAll('article img[src$=".svg"]')) {
+    const figure = document.createElement('figure');
+    figure.className = 'reading-diagram';
+    const viewport = document.createElement('div');
+    viewport.className = 'diagram-scroll';
+    viewport.tabIndex = 0;
+    viewport.setAttribute('role', 'region');
+    viewport.setAttribute('aria-label', `${image.alt}；可横向滚动`);
+    const caption = document.createElement('figcaption');
+    const hint = document.createElement('span');
+    hint.textContent = '左右滑动查看图示';
+    const original = document.createElement('a');
+    original.href = image.getAttribute('src');
+    original.textContent = '查看原图 ↗';
+    caption.append(hint, original);
+    const parent = image.parentElement;
+    if (parent.tagName === 'P' && parent.childNodes.length === 1) parent.replaceWith(figure);
+    else image.replaceWith(figure);
+    viewport.append(image);
+    figure.append(viewport, caption);
+}
 for (const block of document.querySelectorAll('.codehilite')) {
     const button = document.createElement('button');
     button.className = 'copy-button';
@@ -87,6 +152,7 @@ async function loadIndex() {
     searchIndex = await indexPromise;
 }
 async function openSearch() {
+    closeMenu();
     dialog.showModal();
     input.focus();
     status.textContent = searchIndex ? '输入题号、题目或容器 / API 名称' : '正在加载搜索索引…';

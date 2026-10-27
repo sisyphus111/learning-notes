@@ -157,6 +157,14 @@
         </div>
         <div class="gd-reg-detail"><span>选中输出 <b>acc[${m},${n}]</b></span><div><span>原值</span><b>+</b><span class="gd-reg-factor is-a">A[${m},${k}] = ${aValue(m,k)}</span><b>×</b><span class="gd-reg-factor is-b">B[${k},${n}] = ${bValue(k,n)}</span><b>=</b><strong>原值 + ${aValue(m,k)*bValue(k,n)}</strong></div></div>
         <p class="gd-reg-reuse">一个 A 值用于同一输出行的 <b>${size}</b> 个位置；一个 B 值用于同一输出列的 <b>${size}</b> 个位置。</p></div>`;
+      // Rerendering replaces the grids. Keep matching cells in view without
+      // scrolling the page away from the reader's chosen output.
+      for (const grid of scene.querySelectorAll('.gd-reg-grid')) {
+        const selected=grid.querySelector('.gd-reg-selected');
+        const left=selected.getBoundingClientRect().left-grid.getBoundingClientRect().left;
+        if (left<3) grid.scrollLeft+=left-3;
+        else if (left+selected.offsetWidth>grid.clientWidth-3) grid.scrollLeft+=left+selected.offsetWidth-grid.clientWidth+3;
+      }
       return `点击绿色格子查看输入对应关系。切换 k 只查看这一轮的贡献；沿完整 K 计算时，${size*size} 个 acc 持续累加，不随输入更换而清零。`;
     }
   });
