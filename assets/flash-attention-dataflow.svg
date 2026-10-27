@@ -1,35 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 785" role="img" aria-labelledby="title desc"><title id="title">FlashAttention 避免物化完整注意力矩阵</title><desc id="desc">上方面板中，朴素实现将完整分数矩阵 S 和概率矩阵 P 写入 HBM。下方面板中，分块算法在片上更新行最大值 m、分母 l 和未归一化输出 u，仅输出 O 及需要时的 L。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 785" role="img" aria-labelledby="title desc"><title id="title">FlashAttention 避免物化完整注意力矩阵</title><desc id="desc">上方面板中，朴素实现将完整分数矩阵 S 和概率矩阵 P 写入 HBM。下方面板固定 query 块 i，遍历 KV 块 j，在片上更新逐行最大值 m_i、分母 ℓ_i 和输出分子 U_i，最终按行归一化得到 O_i；L_i 是用于反向重算的逐行 log-sum-exp。</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="var(--arrow)"/></marker></defs>
 <style>
 :root{--fg:#26364e;--muted:#5b6b80;--paper:white;--wash:#f8fafc;--line:#d4dce8;--blue:#285da8;--blue-bg:#eef4fd;--green:#328a59;--green-bg:#eef8f1;--orange:#b47a41;--orange-bg:#fff6ec;--arrow:#64748b}
 @media(prefers-color-scheme:dark){:root{--fg:#e8e8e8;--muted:#b6b6b6;--paper:#191919;--wash:#252525;--line:#454545;--blue:#9dc8f5;--blue-bg:#1d2936;--green:#a8d7bb;--green-bg:#1e2c24;--orange:#dfbc8c;--orange-bg:#30291e;--arrow:#a3a3a3}}
 text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:var(--fg);font-size:24px}.title{font-size:29px;font-weight:650}.label{font-size:25px;font-weight:600}.small{font-size:22px;fill:var(--muted)}.flow{fill:none;stroke:var(--arrow);stroke-width:2;marker-end:url(#arrow)}.panel{fill:var(--wash);stroke:var(--line);stroke-width:1.5}.input{fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5}.compute{fill:var(--green-bg);stroke:var(--green);stroke-width:1.5}.storage{fill:var(--orange-bg);stroke:var(--orange);stroke-width:1.5}
+.math{font-family:"STIX Two Text","Cambria Math","Times New Roman",serif;font-style:italic}.math.small{font-size:23px}.roman{font-style:normal}.sub{font-size:65%;baseline-shift:sub}.sup{font-size:65%;baseline-shift:super}
 </style>
 <rect width="1040" height="785" rx="12" fill="var(--paper)"/>
 <text x="28" y="44" class="title" text-anchor="start">从完整中间矩阵，改为片上状态递推</text>
-<text x="28" y="84" class="small" text-anchor="start">以单个 head 的 N × N attention 为例；箭头表示逻辑数据流。</text>
+<text x="28" y="84" class="small" text-anchor="start">单个 head 的 N × N attention；省略缩放和 mask，箭头表示逻辑数据流。</text>
 <rect x="24" y="112" width="992" height="245" rx="8" class="panel"/>
 <text x="46" y="151" class="label" text-anchor="start">朴素实现：S 和 P 写入 HBM</text>
 <rect x="44" y="188" width="100" height="91" rx="8" class="input"/>
-<text x="94.0" y="225" class="" text-anchor="middle">Q、K</text>
+<text x="94.0" y="225" class="math" text-anchor="middle">Q<tspan class="roman">、</tspan>K</text>
 <text x="94.0" y="260" class="small" text-anchor="middle">输入</text>
 <rect x="176" y="188" width="115" height="91" rx="8" class="compute"/>
-<text x="233.5" y="225" class="" text-anchor="middle">QKᵀ</text>
+<text x="233.5" y="225" class="math" text-anchor="middle">QK<tspan class="sup roman">T</tspan></text>
 <text x="233.5" y="260" class="small" text-anchor="middle">矩阵乘</text>
 <rect x="323" y="188" width="104" height="91" rx="8" class="storage"/>
-<text x="375.0" y="225" class="" text-anchor="middle">S</text>
+<text x="375.0" y="225" class="math" text-anchor="middle">S</text>
 <text x="375.0" y="260" class="small" text-anchor="middle">N × N</text>
 <rect x="459" y="188" width="132" height="91" rx="8" class="compute"/>
 <text x="525.0" y="225" class="" text-anchor="middle">softmax</text>
 <text x="525.0" y="260" class="small" text-anchor="middle">按行</text>
 <rect x="623" y="188" width="104" height="91" rx="8" class="storage"/>
-<text x="675.0" y="225" class="" text-anchor="middle">P</text>
+<text x="675.0" y="225" class="math" text-anchor="middle">P</text>
 <text x="675.0" y="260" class="small" text-anchor="middle">N × N</text>
 <rect x="759" y="188" width="104" height="91" rx="8" class="compute"/>
-<text x="811.0" y="225" class="" text-anchor="middle">PV</text>
+<text x="811.0" y="225" class="math" text-anchor="middle">PV</text>
 <text x="811.0" y="260" class="small" text-anchor="middle">矩阵乘</text>
 <rect x="895" y="188" width="100" height="91" rx="8" class="input"/>
-<text x="945.0" y="225" class="" text-anchor="middle">O</text>
+<text x="945.0" y="225" class="math" text-anchor="middle">O</text>
 <text x="945.0" y="260" class="small" text-anchor="middle">输出</text>
 <path d="M144 233 H176" class="flow"/>
 <path d="M291 233 H323" class="flow"/>
@@ -37,27 +38,28 @@ text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 <path d="M591 233 H623" class="flow"/>
 <path d="M727 233 H759" class="flow"/>
 <path d="M863 233 H895" class="flow"/>
-<text x="811" y="324" class="small" text-anchor="middle">V</text>
+<text x="811" y="324" class="math small" text-anchor="middle">V</text>
 <path d="M811 304 V279" class="flow"/>
-<text x="46" y="327" class="small" text-anchor="start">橙色块：需要存储并再次读取的完整 N² 中间结果</text>
+<text x="46" y="327" class="small" text-anchor="start">橙色块：需要存储并再次读取的完整 N<tspan class="sup">2</tspan> 中间结果</text>
 <rect x="24" y="387" width="992" height="350" rx="8" class="panel"/>
 <text x="46" y="429" class="label" text-anchor="start">FlashAttention：循环遍历 K/V tile，更新片上状态</text>
+<text x="48" y="462" class="small" text-anchor="start">固定 query 块 i，遍历 KV 块 j</text>
 <rect x="48" y="481" width="158" height="122" rx="8" class="input"/>
-<text x="127" y="518" class="" text-anchor="middle">Qᵢ、Kⱼ、Vⱼ</text>
+<text x="127" y="518" class="math" text-anchor="middle">Q<tspan class="sub">i</tspan><tspan class="roman">、</tspan>K<tspan class="sub">j</tspan><tspan class="roman">、</tspan>V<tspan class="sub">j</tspan></text>
 <text x="127" y="556" class="small" text-anchor="middle">分块读取</text>
 <text x="127" y="588" class="small" text-anchor="middle">来自 HBM</text>
 <rect x="268" y="474" width="467" height="154" rx="8" class="compute"/>
-<text x="501" y="513" class="" text-anchor="middle">QᵢKⱼᵀ → softmax 更新 → P̃ᵢⱼVⱼ</text>
-<text x="501" y="554" class="" text-anchor="middle">m：行最大值 · l：分母</text>
-<text x="501" y="592" class="" text-anchor="middle">u：未归一化输出</text>
+<text x="501" y="513" class="math" text-anchor="middle">Q<tspan class="sub">i</tspan> K<tspan class="sub">j</tspan><tspan class="sup roman" dx="-0.3em">T</tspan><tspan class="roman"> → softmax 更新 → </tspan>P̃<tspan class="sub">ij</tspan> V<tspan class="sub">j</tspan></text>
+<text x="501" y="554" text-anchor="middle"><tspan class="math">m<tspan class="sub">i</tspan></tspan>：行最大值 · <tspan class="math">ℓ<tspan class="sub">i</tspan></tspan>：分母</text>
+<text x="501" y="592" text-anchor="middle"><tspan class="math">U<tspan class="sub">i</tspan></tspan>：输出分子（未归一化）</text>
 <path d="M206 543 H268" class="flow"/>
 <rect x="814" y="481" width="177" height="122" rx="8" class="input"/>
-<text x="902" y="520" class="" text-anchor="middle">Oᵢ = u / l</text>
-<text x="902" y="559" class="small" text-anchor="middle">Lᵢ = m + log l</text>
-<text x="902" y="591" class="small" text-anchor="middle">最终写回</text>
+<text x="902" y="520" class="math" text-anchor="middle">O<tspan class="sub">i</tspan><tspan class="roman"> = </tspan>U<tspan class="sub">i</tspan><tspan class="roman"> / </tspan>ℓ<tspan class="sub">i</tspan></text>
+<text x="902" y="559" class="math small" text-anchor="middle">L<tspan class="sub">i</tspan><tspan class="roman"> = </tspan>m<tspan class="sub">i</tspan><tspan class="roman"> + ln </tspan>ℓ<tspan class="sub">i</tspan></text>
+<text x="902" y="591" class="small" text-anchor="middle">归一化后写回</text>
 <path d="M735 543 H814" class="flow"/>
 <text x="902" y="465" class="small" text-anchor="middle">遍历结束</text>
 <path d="M670 628 V673 H243 V579 H268" class="flow"/>
-<text x="450" y="704" class="small" text-anchor="middle">同一组 m、l、u 继续处理下一块</text>
+<text x="450" y="704" class="small" text-anchor="middle">同一组 <tspan class="math">m<tspan class="sub">i</tspan></tspan>、<tspan class="math">ℓ<tspan class="sub">i</tspan></tspan>、<tspan class="math">U<tspan class="sub">i</tspan></tspan> 继续处理下一块</text>
 <text x="28" y="773" class="small" text-anchor="start">片上只保留 tile 与行状态；不向 HBM 写完整的 S、P。L 用于反向重算。</text>
 </svg>
