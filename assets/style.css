@@ -700,12 +700,10 @@ summary {
   top: 80px;
   align-self: start;
   max-height: calc(100vh - 110px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
   border-left: 2px solid var(--line);
   padding-left: 16px;
   font-size: 12px;
+  overflow: hidden;
 }
 
 .toc > p {
@@ -718,6 +716,10 @@ summary {
 .toc nav {
   display: grid;
   gap: 8px;
+  max-height: calc(100vh - 160px);
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black calc(100% - 40px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 40px), transparent 100%);
 }
 
 .toc a {
