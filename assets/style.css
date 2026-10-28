@@ -703,7 +703,36 @@ summary {
   border-left: 2px solid var(--line);
   padding-left: 16px;
   font-size: 12px;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.toc::-webkit-scrollbar {
+  width: 6px;
+}
+
+.toc::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+.toc::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+:root[data-theme=dark] .toc::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+}
+
+:root[data-theme=dark] .toc::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
 }
 
 .toc > p {
