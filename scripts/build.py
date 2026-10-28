@@ -74,6 +74,8 @@ ATTENTION_REFERENCES = [
      '文本到 token · Q/K/V · 多头与 GQA · FFN · prefill / decode · KV cache · 训练'),
     ('CUDA/flash-attention.md', 'cuda-flash-attention.html', 'FlashAttention 1–4',
      'online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM'),
+    ('Attention/flash-linear-attention.md', 'attention-flash-linear-attention.html', 'Flash Linear Attention',
+     '状态递推 · chunkwise · GLA · DeltaNet / Gated DeltaNet · FLA 接口'),
 ]
 GPU_REFERENCES = [
     ('GPU/driver-runtime-framework.md', 'gpu-driver-runtime-framework.html', '驱动、运行时与框架',

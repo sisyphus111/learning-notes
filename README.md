@@ -16,6 +16,7 @@
 - [浮点格式、混合精度与量化](GPU/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
 - [GEMM 计算与优化](CUDA/gemm.md) 从点积和 K 分段讲起，连接 CTA/register tiling、内存布局、Tensor Core、异步流水线、Split-K、persistent/grouped GEMM、融合与 scale 转置。
 - Attention 独立成板块：[Transformer 运行全过程](Attention/transformer-runtime.md) 从文本、Q/K/V、每层计算走到 prefill、KV cache、decode 与训练；[FlashAttention 1–4](CUDA/flash-attention.md) 从 online softmax 推导讲到四代前后向、Ampere/Hopper/Blackwell、TMA/TMEM、条件缩放与 2-CTA，并附教学实现和源码入口。
+- [Flash Linear Attention](Attention/flash-linear-attention.md) 讲清线性注意力的矩阵状态、causal 递推、chunkwise 公式、GLA 遗忘门、DeltaNet/Gated DeltaNet、GPU 执行与 FLA 库接口，并提供 Torch 参考实现。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、冰蓝浅色与中性深灰主题及手机阅读。深色模式提高正文与代码的可读性；首次访问跟随系统主题，手动选择后记住偏好。
 
 ## 内容来源

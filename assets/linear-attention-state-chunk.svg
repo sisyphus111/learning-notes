@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 800" role="img" aria-labelledby="title desc">
+<title id="title">线性注意力的递推状态与分块计算</title>
+<desc id="desc">单步递推将 key-value 外积加入旧状态，再用 query 读取。一个 chunk 的输出由入站历史状态贡献和带 causal mask 的块内贡献相加，出站状态供下一块使用。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="var(--muted)"/></marker></defs>
+<style>
+:root{--paper:#fff;--fg:#26364e;--muted:#5b6b80;--wash:#f8fafc;--line:#d4dce8;--blue:#285da8;--blue-bg:#eef4fd;--green:#328a59;--green-bg:#eef8f1;--orange:#b46823;--orange-bg:#fff6ec}
+@media(prefers-color-scheme:dark){:root{--paper:#191919;--fg:#e8e8e8;--muted:#b6b6b6;--wash:#252525;--line:#454545;--blue:#9dc8f5;--blue-bg:#1d2936;--green:#a8d7bb;--green-bg:#1e2c24;--orange:#dfbc8c;--orange-bg:#30291e}}
+text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:23px;fill:var(--fg)}.title{font-size:29px;font-weight:650}.label{font-size:25px;font-weight:600}.small{font-size:21px;fill:var(--muted)}.edge{fill:none;stroke:var(--muted);stroke-width:2;marker-end:url(#arrow)}.box{stroke-width:1.5;rx:8}
+</style>
+<rect width="1040" height="800" rx="12" fill="var(--paper)"/>
+<text x="28" y="43" class="title">从一个 token 的状态更新，到一块 token 的矩阵计算</text>
+<text x="28" y="80" class="small">不带 gate 的逻辑示意；只画分子状态，normalized 形式还需维护 z。</text>
+<rect x="24" y="107" width="992" height="272" rx="10" fill="var(--wash)" stroke="var(--line)"/>
+<text x="46" y="146" class="label">单步 decode：先写入当前 KV，再读取</text>
+<rect class="box" x="50" y="218" width="235" height="90" fill="var(--blue-bg)" stroke="var(--blue)"/>
+<text x="167" y="254" text-anchor="middle">旧状态 Sₜ₋₁</text><text x="167" y="288" text-anchor="middle" class="small">[r, dᵥ]</text>
+<rect class="box" x="397" y="166" width="260" height="48" fill="var(--orange-bg)" stroke="var(--orange)"/>
+<text x="527" y="198" text-anchor="middle">当前写入 kₜᵀ vₜ</text>
+<rect class="box" x="397" y="254" width="260" height="62" fill="var(--green-bg)" stroke="var(--green)"/>
+<text x="527" y="294" text-anchor="middle">新状态 Sₜ</text>
+<path class="edge" d="M285 263 H350 V285 H397"/>
+<path class="edge" d="M527 214 V254"/><text x="547" y="243" class="small">相加</text>
+<rect class="box" x="778" y="254" width="210" height="62" fill="var(--blue-bg)" stroke="var(--blue)"/>
+<text x="883" y="294" text-anchor="middle">uₜ = qₜ Sₜ</text>
+<path class="edge" d="M657 285 H778"/><text x="678" y="267" class="small">qₜ 读取</text>
+<text x="46" y="352" class="small">状态的两维是 key / value 特征；其中没有按历史 token 编号的轴。</text>
+<rect x="24" y="400" width="992" height="325" rx="10" fill="var(--wash)" stroke="var(--line)"/>
+<text x="46" y="440" class="label">chunk prefill：历史贡献 + 当前块内的 causal 贡献</text>
+<rect class="box" x="50" y="466" width="420" height="92" fill="var(--blue-bg)" stroke="var(--blue)"/>
+<text x="260" y="502" text-anchor="middle">Q꜀ Sᵢₙ</text>
+<text x="260" y="539" text-anchor="middle" class="small">读取更早 chunk 的摘要</text>
+<rect class="box" x="548" y="466" width="440" height="92" fill="var(--orange-bg)" stroke="var(--orange)"/>
+<text x="768" y="502" text-anchor="middle">((Q꜀ K꜀ᵀ) ⊙ tril) V꜀</text>
+<text x="768" y="539" text-anchor="middle" class="small">只看本 chunk 的自己与过去</text>
+<path class="edge" d="M260 558 V595 H410"/><path class="edge" d="M768 558 V595 H630"/>
+<rect class="box" x="410" y="570" width="220" height="52" fill="var(--green-bg)" stroke="var(--green)"/>
+<text x="520" y="605" text-anchor="middle">相加得到 U꜀</text>
+<text x="54" y="670">Sₒᵤₜ = Sᵢₙ + K꜀ᵀ V꜀</text>
+<path class="edge" d="M370 662 H663"/><text x="685" y="670">作为下一块的 Sᵢₙ</text>
+<text x="28" y="765" class="small">输出使用入站 Sᵢₙ；若提前改用 Sₒᵤₜ，会把当前块的未来 token 混入历史项。</text>
+</svg>

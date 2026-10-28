@@ -1,5 +1,7 @@
 # FlashAttention 1–4：从 online softmax 到 Ampere、Hopper 与 Blackwell
 
+可递推的 linear attention、GLA、DeltaNet 及 FLA 库，见 [Flash Linear Attention](../Attention/flash-linear-attention.md)。本页讨论 softmax attention 的高效实现，两个名称对应不同的数学与软件层次。
+
 ## 1. 固定 attention 的计算与维度
 
 FlashAttention 计算 scaled dot-product attention。它接收已经投影好的 Q、K、V，输出 attention 结果。生成 Q/K/V 的 Linear、RoPE 和最终输出投影是相邻步骤，不全部包含在下面的公式中。

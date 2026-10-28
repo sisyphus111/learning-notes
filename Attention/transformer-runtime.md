@@ -435,7 +435,7 @@ $$
 
 例如“causal GQA + paged KV + FlashAttention”可以同时成立：三个词分别描述可见性、head 关系与执行/存储方式。
 
-落实到 GPU，一次 block 通常涉及 RMSNorm、QKV GEMM、RoPE/cache 写入、attention kernel、输出 GEMM、残差、FFN GEMM 和逐元素运算。实现可以融合相邻步骤，所以数学步骤数不等于 kernel 数。[GEMM 教程](../CUDA/gemm.md) 解释矩阵工作，[FlashAttention 1–4](../CUDA/flash-attention.md) 解释 attention 内部的数据流，[CUDA Graph](../GPU/graphs-and-compilation.md) 则解释如何复用提交安排。
+落实到 GPU，一次 block 通常涉及 RMSNorm、QKV GEMM、RoPE/cache 写入、attention kernel、输出 GEMM、残差、FFN GEMM 和逐元素运算。实现可以融合相邻步骤，所以数学步骤数不等于 kernel 数。[GEMM 教程](../CUDA/gemm.md) 解释矩阵工作，[FlashAttention 1–4](../CUDA/flash-attention.md) 解释 softmax attention 的数据流，[Flash Linear Attention](flash-linear-attention.md) 解释矩阵状态递推与分块计算，[CUDA Graph](../GPU/graphs-and-compilation.md) 则解释如何复用提交安排。
 
 ## 17. 把一次生成的控制流连起来
 
