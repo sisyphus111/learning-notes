@@ -3,9 +3,9 @@
 <title>计算图、编译与 CUDA Graph · 求知录</title><meta name="description" content="torch.compile · capture / replay · 虚拟地址 · 图内分配 · 共享 pool">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -17,7 +17,7 @@
 <article><p>计算图用节点和边描述计算及依赖。编译器可以据此改变计算实现；执行系统也可以据此批量提交已有工作。<strong>“把工作组织成图”不自动意味着融合成一个 kernel，也不自动意味着所有节点并行执行。</strong></p>
 <p><code>torch.compile</code> 是编译入口，TorchDynamo 捕获算子图，TorchInductor 优化并生成实现。CUDA Graph 记录 CUDA 工作与依赖，重点是复用执行安排、减少 CPU 提交开销。GPU 软件库的定位见 <a href="gpu-software-stack.html">GPU 软件栈</a>。</p>
 <h2 id="1-三种常见的图分别记录什么">1. 三种常见的图分别记录什么</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>图</th>
@@ -46,7 +46,7 @@
 <td>CUDA 执行系统</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>算子图中的一个 matmul 节点，后端可能实现为一个或多个 kernels；几个逐元素节点也可能合并成一个 kernel。图节点的数量不能直接当作 kernel 数量。</p>
 <p>autograd 图服务于梯度计算。<code>torch.compile</code> 也支持不求梯度的推理函数，因此编译图并不依赖程序必须先有一张反向求导图。训练路径中的 AOTAutograd 会准备前向、反向图，再交给后端编译。<a href="https://docs.pytorch.org/docs/2.9/torch.compiler.html">PyTorch 编译组件</a></p>
 <h2 id="2-用同一个函数区分优化与重放">2. 用同一个函数区分优化与重放</h2>
@@ -64,14 +64,14 @@
 <p>图中上半部分改变计算实现，下半部分复用提交安排。两者能够组合：先编译得到 kernel，再记录这些 kernel 的执行图。</p>
 <h3 id="算子图提供优化机会">算子图提供优化机会</h3>
 <p>算子图可以表达为：</p>
-<div class="codehilite"><pre><span></span>a ─┐
+<div class="codehilite text-diagram"><pre><span></span>a ─┐
    add → multiply(0.5) → relu → output
 b ─┘
 </pre></div>
 
 
 <p>编译器看到完整的数据依赖后，可能生成一个逐元素融合 kernel：</p>
-<div class="codehilite"><pre><span></span>读 a[i]、b[i]
+<div class="codehilite text-diagram"><pre><span></span>读 a[i]、b[i]
     → 在局部临时值中计算 max((a[i] + b[i]) * 0.5, 0)
     → 写 output[i]
 </pre></div>
@@ -80,7 +80,7 @@ b ─┘
 <p>融合可以减少 kernel 启动，也可以消除 t/u 两个中间 Tensor 的物化。它改变了执行实现与数据移动。能否融合取决于算子支持、布局、依赖和后端策略。上面的一个 kernel 是说明用的可能结果，没有实机验证。</p>
 <h3 id="cuda-graph-提供执行重放">CUDA Graph 提供执行重放</h3>
 <p>如果记录的是已有的三个 kernels，重放时仍然执行这三个 kernels：</p>
-<div class="codehilite"><pre><span></span>逐个提交：CPU → launch A；CPU → launch B；CPU → launch C
+<div class="codehilite text-diagram"><pre><span></span>逐个提交：CPU → launch A；CPU → launch B；CPU → launch C
 
 图重放：  CPU → graph launch → A → B → C
 </pre></div>
@@ -88,7 +88,7 @@ b ─┘
 
 <p>CUDA Graph 保存工作、参数和依赖，并在实例化后复用执行安排。它不负责把上述三个逐元素 kernel 改写成一个融合 kernel。重放减少了重复的 host 端参数准备和逐项提交开销；GPU 上仍有对应的执行与调度成本。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html">CUDA Graph 官方说明</a></p>
 <h2 id="3-torch-compile-dynamo-与-inductor-的关系">3. torch.compile、Dynamo 与 Inductor 的关系</h2>
-<div class="codehilite"><pre><span></span>torch.compile(f)                         用户入口
+<div class="codehilite text-diagram"><pre><span></span>torch.compile(f)                         用户入口
     ↓
 TorchDynamo                             捕获 Tensor 计算，建立 guards
     ↓
@@ -124,7 +124,7 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <h2 id="4-cuda-graph-的创建与重放">4. CUDA Graph 的创建与重放</h2>
 <p><strong>CUDA 定义底层操作怎样组成图并执行；PyTorch 把 Tensor 程序接到这套机制上，并管理内存和框架状态。</strong> 最终执行的仍然是 CUDA 原生图。</p>
 <h3 id="cuda-原生对象与阶段">CUDA 原生对象与阶段</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象或阶段</th>
@@ -153,7 +153,7 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <td>向 stream 提交可执行图，按依赖执行</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>节点可以表示 kernel、memcpy、memset、事件、内存分配/释放，也有专门的 host、子图和条件节点。边表达执行依赖，节点必须等其前置条件满足后才能执行。</p>
 <p>例如，kernel 节点记录函数、grid/block 配置、参数与依赖。它使用的是参数中的地址，不会根据 Python 变量名重新查找 Tensor。</p>
 <p>Stream capture 本身就是 CUDA 提供的构图方式。捕获期间，提交到被捕获 stream 的工作进入图，不按普通 stream 工作立即执行。Python 或 C++ 的 host 代码仍在运行。显式构图与 stream capture 最终都得到 CUDA 图。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html">CUDA Graph 创建与执行</a></p>
@@ -194,7 +194,7 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <p>显式建图适合直接管理节点；stream capture 方便复用已有的 kernel 和支持捕获的库调用。两者可以结合，例如先捕获，再修改图。<a href="https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__GRAPH.html">CUDA Graph Runtime API</a>、<a href="https://developer.nvidia.com/blog/constructing-cuda-graphs-with-dynamic-parameters/">NVIDIA 构图示例</a></p>
 <h3 id="capture-mode-控制检查范围-不代表捕获所有-stream">capture mode 控制检查范围，不代表捕获所有 stream</h3>
 <p><code>cudaStreamBeginCapture(stream, mode)</code> 中的 <code>mode</code>，控制捕获期间对潜在不安全 API 调用的限制范围。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>mode</th>
@@ -215,10 +215,10 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <td>放宽此类检查；与捕获必然冲突的操作仍然不允许</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>Global</code> 不表示自动记录所有 stream、线程或 GPU 的工作。捕获从指定 stream 开始，其他 stream 需要按规则加入。同样，<code>Relaxed</code> 不会把任意 CPU 操作或普通 <code>cudaMalloc</code> 自动转换成图节点。<a href="https://docs.nvidia.com/cuda/cuda-runtime-api/cuda_runtime_api/group__CUDART__STREAM.html">CUDA Stream Capture API</a></p>
 <h3 id="pytorch-api-怎样对应到-cuda">PyTorch API 怎样对应到 CUDA</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>PyTorch API 或行为</th>
@@ -251,7 +251,7 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <td>获取 PyTorch 捕获池的标识，用于共享内存；它不是图节点</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>torch.cuda.graph</code> 是上下文管理器，<code>torch.cuda.CUDAGraph</code> 是图资源的包装对象。未指定 stream 时，上下文管理器使用内部 side stream。当前接口也支持 <code>keep_graph=True</code>，保留原生图供高级用户检查或修改。这时需要显式实例化，或在首次 replay 时实例化。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.cuda.graph.html">PyTorch graph 接口</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.cuda.CUDAGraph.html">CUDAGraph 接口</a></p>
 <p>一行 Tensor 运算不一定对应一个节点：<code>view</code> 可能只修改元数据，一个复杂算子也可能提交多个 kernels。PyTorch 的 capture 路径会调用 <code>cudaStreamBeginCapture</code>、<code>cudaStreamEndCapture</code>；replay 路径最终调用 <code>cudaGraphLaunch</code>。<a href="https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/cuda/CUDAGraph.cpp">PyTorch CUDAGraph 实现</a></p>
 <h3 id="捕获-python-产生的工作-不会重放-python-本身">捕获 Python 产生的工作，不会重放 Python 本身</h3>
@@ -272,7 +272,7 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <p>普通 Python <code>for range(3)</code> 会在捕获时展开为当时产生的工作；普通 Python <code>if</code> 也不会自动成为可重放的条件节点。CUDA 原生支持专门的图更新和条件节点机制，但需要显式使用相应接口或受支持的上层功能。kernel 内部按照输入数据判断分支，与 Python 在 host 端重新选择工作，是不同的控制流层次。</p>
 <h3 id="多-stream-用-event-建立分支与汇合">多 stream：用 event 建立分支与汇合</h3>
 <p>假设 A 准备输入，B、C 分别计算两个结果，D 消费两个结果：</p>
-<div class="codehilite"><pre><span></span>             ┌→ B ─┐
+<div class="codehilite text-diagram"><pre><span></span>             ┌→ B ─┐
          A ──┤     ├──→ D
              └→ C ─┘
 </pre></div>
@@ -301,7 +301,7 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>依赖的来源</th>
@@ -322,14 +322,14 @@ TorchInductor（默认后端）                优化、组织计算并生成实
 <td>C → D</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>普通的捕获内 event record / wait 会转化成图依赖，不要求保留为运行时 event 节点。CUDA 也有显式保留 event 节点的 external event 用法；上例使用默认的内部依赖方式。</p>
 <p>这里遵循 <strong>fork / join</strong>：其他 stream 通过 event 加入同一张图，所有分支在结束前汇回起始 stream。<code>cudaStreamEndCapture()</code> 必须在起始 stream 上调用。仅在 s0 开始捕获，不会自动捕获没有关联的 s1。两个独立开始的 capture 也不会因为一次普通 event wait 就自动合并。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#cross-stream-dependencies-and-events">CUDA 跨 stream 捕获规则</a></p>
 <p>重放只需一次 <code>cudaGraphLaunch(executable, launch_stream)</code>。launch stream 用于安排整张图与外部工作的顺序，不会把图内所有节点强制串行化。B、C 具备并行条件，但实际能否重叠取决于资源。CUDA 保留依赖关系，不承诺重放时沿用捕获时的 stream 分配。</p>
 <h3 id="stream-等-event-与-cpu-等-gpu-是两种同步">stream 等 event 与 CPU 等 GPU 是两种同步</h3>
 <p><code>cudaStreamWaitEvent</code> 表达“后续 GPU 工作等待某个前置条件”，CPU 可以继续提交。因此，CUDA 能把这种关系写成图中的边。</p>
 <p><code>cudaStreamSynchronize</code> 则要求 CPU 等到 stream 中的工作执行完成。捕获中的工作尚未作为普通工作提交执行，对正在捕获的 stream 调用它会与捕获冲突。对包含活跃捕获的 device 调用 <code>cudaDeviceSynchronize</code>，以及等待捕获中的 event，也有相应限制。</p>
-<div class="codehilite"><pre><span></span>可表达为图依赖：
+<div class="codehilite text-diagram"><pre><span></span>可表达为图依赖：
 GPU 工作 A 完成 → GPU 工作 B 才能开始
 
 不能直接靠普通 capture 重放：
@@ -341,7 +341,7 @@ GPU 工作 A 完成 → CPU 取回结果 → CPU 决定提交 B 还是 C
 <h3 id="多-gpu-每个-rank-的图包含本地计算和通信工作">多 GPU：每个 rank 的图包含本地计算和通信工作</h3>
 <p>NCCL（NVIDIA Collective Communication Library）支持捕获 collective、点对点和 group 操作。分布式程序通常让每个 rank 捕获本 GPU 的工作，再由所有参与 rank 启动各自的图。</p>
 <p>以两个 rank 的 Tensor Parallel 为例，两个 GPU 分别计算局部结果，经过 AllReduce 后继续计算：</p>
-<div class="codehilite"><pre><span></span>rank 0 的图：局部 GEMM₀ → NCCL AllReduce₀ → 后续计算₀
+<div class="codehilite text-diagram"><pre><span></span>rank 0 的图：局部 GEMM₀ → NCCL AllReduce₀ → 后续计算₀
                               ⇅ 通信
 rank 1 的图：局部 GEMM₁ → NCCL AllReduce₁ → 后续计算₁
 </pre></div>
@@ -371,10 +371,10 @@ rank 1 的图：局部 GEMM₁ → NCCL AllReduce₁ → 后续计算₁
 <p>各 rank 不需要在同一纳秒启动，但不能只启动一方就等待整个 collective 完成。某一方缺席或通信顺序不匹配，可能让其他 rank 一直等待。当前 NCCL 文档指出，同一进程控制多 GPU 时可能发生 graph launch 死锁。单线程依次启动尤其需要注意；文档推荐每个进程管理一张 GPU。<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/cudagraph.html">NCCL CUDA Graph 支持与约束</a></p>
 <h3 id="计算-stream-与通信-stream-一起捕获">计算 stream 与通信 stream 一起捕获</h3>
 <p>如果 NCCL 使用单独的 comm stream，可以在每个 rank 内复用前面的 fork / join：</p>
-<div class="codehilite"><pre><span></span>compute stream：GEMM ───────────────────→ 后续计算
+<div class="codehilite text-diagram"><pre><span></span>compute stream：GEMM ───────────────────→ 后续计算
                     │ event                 ↑ event
                     ↓                       │
-comm stream：       等 GEMM → NCCL AllReduce ┘
+comm stream：       等 GEMM → NCCL AllReduce┘
 </pre></div>
 
 
@@ -382,7 +382,7 @@ comm stream：       等 GEMM → NCCL AllReduce ┘
 <p>同一 GPU 内，图的边保证 GEMM、通信和后续计算的顺序；不同 GPU 之间，NCCL 协议保证交换与归约。CUDA 不会因为两个操作访问同一指针，就自动推导遗漏的跨 stream 依赖，调用方仍须表达这些关系。</p>
 <h2 id="5-地址固定-虚拟地址-物理显存与数据内容">5. 地址固定：虚拟地址、物理显存与数据内容</h2>
 <p>在不修改图、直接 replay 的模型中，记录的指针参数保持不变。这里指的是 <strong>GPU 虚拟地址</strong>，不是某个永远不变的 HBM 物理位置。</p>
-<div class="codehilite"><pre><span></span>kernel 参数中的虚拟地址 P
+<div class="codehilite text-diagram"><pre><span></span>kernel 参数中的虚拟地址 P
            ↓ GPU 地址转换
 支撑该地址的物理显存
            ↓
@@ -393,7 +393,7 @@ comm stream：       等 GEMM → NCCL AllReduce ┘
 <p>这三个对象要分别理解。地址保持不变，内容仍可更新。对于 CUDA 原生 graph allocation，CUDA 还可以保留虚拟地址并更换物理映射。这不表示普通 PyTorch graph pool 每次 replay 都会重新映射显存。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#graph-memory-nodes">CUDA graph allocation 的地址保证</a></p>
 <h3 id="数据可变-基础捕获模型中的地址保持稳定">数据可变，基础捕获模型中的地址保持稳定</h3>
 <p>新 batch 可以复制到固定输入缓冲区，再重放图。换一个 Tensor 对象并重新绑定 Python 变量，不会自动修改图中的指针。</p>
-<div class="codehilite"><pre><span></span>static_a 原来指向地址 P
+<div class="codehilite text-diagram"><pre><span></span>static_a 原来指向地址 P
     ↓ capture
 图中的输入指针为 P
 
@@ -425,7 +425,7 @@ static_a = new_a         只改 Python 绑定，图仍然读取 P
 
 
 <p>在 native allocator 路线中，可以分成两条路径：</p>
-<div class="codehilite"><pre><span></span>框架内存管理：
+<div class="codehilite text-diagram"><pre><span></span>框架内存管理：
 创建 tmp 的元数据 → allocator 从 private pool 安排存储 P
 
 CUDA 工作捕获：
@@ -437,7 +437,7 @@ CUDA 工作捕获：
 <p>pool 可以复用已有空闲块，也可以在捕获准备和分配过程中增长。无需在开始捕获之前一次性预分配全部空间。捕获完成后，所需内存会被保留，以供未来 replay 使用。</p>
 <h3 id="private-pool-内部仍然可以复用">private pool 内部仍然可以复用</h3>
 <p>如果捕获中的使用顺序是：</p>
-<div class="codehilite"><pre><span></span>生成 a → 使用 a → a 已无后续用途 → 生成 b → 使用 b
+<div class="codehilite text-diagram"><pre><span></span>生成 a → 使用 a → a 已无后续用途 → 生成 b → 使用 b
 </pre></div>
 
 
@@ -463,14 +463,14 @@ CUDA 工作捕获：
 
 
 <p>对应的图是：</p>
-<div class="codehilite"><pre><span></span>Alloc(bytes, P) → kernel A(P) → kernel B(P) → Free(P)
+<div class="codehilite text-diagram"><pre><span></span>Alloc(bytes, P) → kernel A(P) → kernel B(P) → Free(P)
 </pre></div>
 
 
 <p>构图时，CUDA 确定并返回虚拟地址 P；执行时，分配节点开始这次分配的有效期，释放节点结束有效期。所有访问 P 的操作都必须排在 Alloc 之后、Free 之前。跨分支的访问也需要相应依赖，不能只看 host 代码的书写顺序。</p>
 <p>这不是 GPU 执行到 Alloc 时才由 Python 决定新的 shape 或大小，也不是每次 replay 重新调用上述 C++ 函数。重放执行的是预先记录的节点。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#graph-memory-nodes">CUDA graph memory nodes</a></p>
 <h3 id="分配有效期与物理资源保留是两件事">分配有效期与物理资源保留是两件事</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象</th>
@@ -495,12 +495,12 @@ CUDA 工作捕获：
 <td>Free 后不再保证保留，下一次 Alloc 不会自动恢复旧数据</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>replay 经过 Alloc 不等于每次都向系统重新申请物理显存。经过 Free 也不等于立刻把物理显存归还系统。CUDA 可以保留资源，以降低后续分配和映射开销。</p>
 <p>若图包含 <code>Alloc P → 使用 P → Free P → Alloc Q → 使用 Q</code>，依赖已证明 P、Q 的有效期不重叠，CUDA 可以复用底层资源。若 P、Q 会同时被访问，就不能让它们的数据互相覆盖。</p>
 <p>图也可以把分配保留到自身执行结束之后，交给后续工作使用和释放。这时需要跨图或 stream 顺序保证有效期；销毁图本身不会自动释放仍然存活的 graph allocation。上面的片段在同一图内释放，避免了这类跨图所有权。</p>
 <h3 id="三种-图内分配-要分开读">三种“图内分配”要分开读</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>所谓的“图内分配”</th>
@@ -521,7 +521,7 @@ CUDA 工作捕获：
 <td>设备端动态分配机制，不等同于图内存节点</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>cudaMallocAsync</code> / <code>cudaFreeAsync</code> 具有可捕获的 stream 顺序语义。普通 <code>cudaMalloc</code> / <code>cudaFree</code> 不能当作它们的可捕获替代品。放松 capture 的错误检查也不会把普通分配自动转成内存节点。</p>
 <h2 id="8-多个图共享-pool-复用内存与执行约束">8. 多个图共享 pool：复用内存与执行约束</h2>
 <h3 id="pytorch-的共享捕获池">PyTorch 的共享捕获池</h3>
@@ -542,7 +542,7 @@ CUDA 工作捕获：
 
 
 <p><code>pool=</code> 是分配资源的共享约定，不会把两个图合并，也不会自动替调用方建立它们的执行顺序。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>使用方式</th>
@@ -563,7 +563,7 @@ CUDA 工作捕获：
 <td>必须用 stream/event 依赖确保实际执行不重叠；仅按顺序调用两个 Python 方法不够</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>图已结束，不代表它的输出已经没有用途。如果某块存储在两个图中被复用，G2 的写入可以覆盖 G1 留下的数据。共享 pool 不会为每个图保存一份历史快照。</p>
 <p>例如，需要跨后续 replay 保留 <code>y1</code> 的值时，可以在覆盖前于有序 stream 上执行 <code>saved_y1 = y1.clone()</code>。这会增加一次复制及保存结果所需的存储，应按输出的实际生命周期使用。<a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html#sharing-memory-across-captures">PyTorch sharing memory across captures</a></p>
 <p>假设两个图分别需要 100 MiB 和 160 MiB 的临时块。如果这些块都能复用，理想化估算可能接近 160 MiB，而非 260 MiB。这只是忽略碎片与长期存活输出后的容量例子。<strong>传入同一个 pool 不保证最终占用等于两个峰值的最大值</strong>。捕获期间仍存活的输出、分配顺序和块尺寸都可能限制复用。</p>
@@ -571,7 +571,7 @@ CUDA 工作捕获：
 <p>CUDA 原生内存节点有自己的资源管理。图内存分配的有效期不重叠时，CUDA 可以复用物理内存。不同图可以保留不同虚拟地址，再在允许的执行区间映射到同一批物理资源。</p>
 <p>这种由 CUDA 管理映射与有效期的复用，不等于 PyTorch native private pool 的共享约定。不能把“CUDA 可为并发图安排不同物理存储”推导成“共享 PyTorch pool 的图可以任意并发”。</p>
 <h2 id="9-pool-workspace-与显存释放分别属于哪一层">9. pool、workspace 与显存释放分别属于哪一层</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -606,13 +606,13 @@ CUDA 工作捕获：
 <td>保存调度元数据、中间结果或其他临时数据；不是一种 pool</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>一个 workspace 可以由调用者提前分配，也可以由库通过 allocator 取得。图能否安全使用它，取决于地址、容量、数据准备顺序与生命周期。几个图若共享同一个 workspace，也必须处理实际访问的重叠；pool 不同并不会消除这块外部 buffer 的冲突。</p>
 <h3 id="为什么-del-tensor-后显存还在">为什么 del Tensor 后显存还在</h3>
 <p><code>del</code> 删除 Python 引用。只有最后一个持有者释放存储，allocator 才能回收该分配；缓存池随后还可能保留内存块。对 graph-private pool，还需要考虑图将来的 replay。</p>
 <p>PyTorch 文档说明，私有池的存活期与对应图及捕获中创建的 Tensor 有关。共享池还可能被其他图引用。因此，只删除一个临时 Tensor，或只销毁其中一个图，都不保证整个池释放。<a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html#graph-memory-management">PyTorch 内存管理</a></p>
 <p><code>memory_allocated()</code> 观察 Tensor 分配占用，<code>memory_reserved()</code> 观察 allocator 管理的总量；graph pool 中保留的空闲块可以造成两者差距。统计含义还与 allocator backend 有关，不能把差值直接称作泄漏。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>操作</th>
@@ -633,12 +633,12 @@ CUDA 工作捕获：
 <td>修剪 CUDA 原生图内存池中未被活跃工作或未释放分配占用的物理资源</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>CUDA 文档明确区分后两种池。原生 graph pool 被 trim 后，图的下次执行可能需要重新分配和映射资源。因此不能把 trim 当作每次 replay 前后的固定步骤。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html#physical-memory-footprint">CUDA graph physical memory footprint</a></p>
 <h2 id="10-捕获约束与手动使用示例">10. 捕获约束与手动使用示例</h2>
 <h3 id="捕获前准备什么">捕获前准备什么</h3>
 <p>下面针对普通 PyTorch 手动捕获。具体算子和库仍需支持所在版本的 CUDA capture：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>准备或约束</th>
@@ -671,7 +671,7 @@ CUDA 工作捕获：
 <td>graph launch 是异步提交，不等于 GPU 已经完成</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="pytorch-手动捕获示意">PyTorch 手动捕获示意</h3>
 <p>下面代码与第 2 节的 <code>f</code> 配合使用。它是 CUDA 示例，未实机运行；warmup 在 side stream 上执行。代码保留静态输入、输出引用，并在同一当前 stream 上安排输入复制与 replay。</p>
 <div class="codehilite"><pre><span></span><span class="n">static_a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
@@ -701,7 +701,7 @@ CUDA 工作捕获：
 <p>这段代码中，静态输入在捕获外分配；<code>f</code> 的中间 Tensor 和输出在捕获中由 allocator 安排。默认 native allocator 的 private pool 保护后者；调用方保持前者存活。两类存储共同成为这张图的运行资源。</p>
 <p>捕获、实例化、warmup、输入复制与 GPU 执行本身仍有成本。本页仅检查文档与示例语法，不把它们作为 CUDA 执行或性能验证结果。</p>
 <h2 id="11-编译优化与-cuda-graph-能组合-但互不等同">11. 编译优化与 CUDA Graph 能组合，但互不等同</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>使用方式</th>
@@ -731,7 +731,7 @@ CUDA 工作捕获：
 <td>同时复用优化实现与执行安排</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="n">compiled_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"reduce-overhead"</span><span class="p">)</span>
 </pre></div>
 

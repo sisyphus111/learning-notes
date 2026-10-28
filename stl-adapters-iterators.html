@@ -3,9 +3,9 @@
 <title>适配器与算法 · 求知录</title><meta name="description" content="栈 · 队列 · 堆 · 迭代器 · 标准算法">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -16,7 +16,7 @@
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">STL 参考</p><h1>适配器与算法</h1><p class="subtitle">栈 · 队列 · 堆 · 迭代器 · 标准算法</p></div>
 <article><p><code>stack</code>、<code>queue</code> 和 <code>priority_queue</code> 不是新的底层存储结构，而是限制已有容器接口的适配器。算法又不拥有容器，而是通过迭代器操作半开区间。理解这两层关系，才能判断元素是否复制、算法能否使用以及修改后迭代器是否有效。</p>
 <h2 id="1-容器适配器是-受限视图">1. 容器适配器是“受限视图”</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>适配器</th>
@@ -41,7 +41,7 @@
 <td>堆，只保证 top 是最高优先级</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>它们故意不提供迭代器和任意位置访问，因为接口要维持抽象。需要遍历时，通常应直接选择底层容器，而不是试图绕过适配器。</p>
 <h2 id="2-push-是复制还是移动">2. push 是复制还是移动</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">queue</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">q</span><span class="p">;</span>
@@ -88,7 +88,7 @@
 
 <p><code>begin()</code> 指向第一个元素，<code>end()</code> 指向最后一个元素之后的位置，不能解引用。STL 统一使用半开区间 <code>[first,last)</code>，这样空区间可以写成 <code>first == last</code>，长度也容易组合。</p>
 <h2 id="5-迭代器能力由底层结构决定">5. 迭代器能力由底层结构决定</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>类别</th>
@@ -113,7 +113,7 @@
 <td>只能向前多次遍历</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>std::sort</code> 需要随机访问迭代器，因此能排序 vector，不能直接排序 list 或 map。list 提供自己的 <code>list::sort</code>；map 的顺序由 key 比较器决定，不能原地重排。</p>
 <h2 id="6-算法接收区间-不接收容器">6. 算法接收区间，不接收容器</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">values</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">values</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
@@ -128,7 +128,7 @@
 
 
 <h2 id="7-算法是否修改元素">7. 算法是否修改元素</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>类型</th>
@@ -153,7 +153,7 @@
 <td>移动保留元素，返回新逻辑结尾，不改变 size</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">new_end</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">remove</span><span class="p">(</span><span class="n">values</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">values</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
 <span class="n">values</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">new_end</span><span class="p">,</span><span class="w"> </span><span class="n">values</span><span class="p">.</span><span class="n">end</span><span class="p">());</span><span class="w"> </span><span class="c1">// 真正缩短 vector</span>
 </pre></div>

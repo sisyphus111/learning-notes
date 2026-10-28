@@ -3,9 +3,9 @@
 <title>序列容器 · 求知录</title><meta name="description" content="vector · string · deque · list">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -16,7 +16,7 @@
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">STL 参考</p><h1>序列容器</h1><p class="subtitle">vector · string · deque · list</p></div>
 <article><p>序列容器都表示“按位置排列的一组元素”，但存储结构不同：连续数组、分段数组和链表会给访问、插入、缓存局部性与引用稳定性带来完全不同的行为。</p>
 <h2 id="1-先看底层结构">1. 先看底层结构</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>容器</th>
@@ -51,7 +51,7 @@
 <td>已知位置 O(1) 插删，不能随机访问</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h2 id="2-vector-的三个状态量">2. <code>vector</code> 的三个状态量</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="p">;</span>
 <span class="n">values</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w">     </span><span class="c1">// 已构造的元素数量</span>
@@ -80,7 +80,7 @@
 
 <p><code>push_back</code> 的单次最坏成本是 O(n)，但连续多次追加的均摊成本是 O(1)。增长倍数由实现决定，不能依赖具体数值。</p>
 <h2 id="4-vector-插入删除的失效规则">4. vector 插入删除的失效规则</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>操作</th>
@@ -110,7 +110,7 @@
 <td>-</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">();</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">should_remove</span><span class="p">(</span><span class="o">*</span><span class="n">it</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">it</span><span class="p">);</span><span class="w"> </span><span class="c1">// 必须使用返回的下一个有效迭代器</span>
@@ -214,7 +214,7 @@
 
 
 <h3 id="find-函数族">find 函数族</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>函数</th>
@@ -243,7 +243,7 @@
 <td>查找第一个不在 chars 中的字符</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>重要：</strong>所有 find 函数找不到时返回 <code>std::string::npos</code>，必须检查返回值！</p>
 <h2 id="7-2-子串操作-substr">7.2 子串操作（substr）</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello world"</span><span class="p">;</span>
@@ -263,7 +263,7 @@
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>调用方式</th>
@@ -292,7 +292,7 @@
 <td>"ell"</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>常见错误：</strong><code>substr</code> 的参数是<strong>整数下标</strong>，不是迭代器！</p>
 <h2 id="7-3-字符串修改">7.3 字符串修改</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello"</span><span class="p">;</span>
@@ -404,7 +404,7 @@
 
 <p>代价是每个节点有额外指针、频繁分配、缓存局部性差，而且寻找第 k 个元素仍是 O(n)。“中间插入 O(1)”只在已经拿到目标迭代器时成立；先遍历到位置仍需 O(n)。</p>
 <h2 id="10-容器选择不是只看大-o">10. 容器选择不是只看大 O</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>需求</th>
@@ -439,7 +439,7 @@
 <td>专用字符操作和连续存储</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>默认规则：</strong>没有明确证据需要其他结构时先用 vector。链表的理论 O(1) 插入并不自动战胜 vector 的连续内存和缓存局部性。</p></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-先看底层结构">1. 先看底层结构</a><a class="level-2" href="#2-vector-的三个状态量">2. vector 的三个状态量</a><a class="level-2" href="#3-为什么-push_back-有时让引用失效">3. 为什么 push_back 有时让引用失效</a><a class="level-2" href="#4-vector-插入删除的失效规则">4. vector 插入删除的失效规则</a><a class="level-2" href="#5-emplace_back-不等于永远更快">5. emplace_back 不等于永远更快</a><a class="level-2" href="#6-operator-与-at">6. operator[] 与 at</a><a class="level-2" href="#7-string-是拥有字符的值类型">7. string 是拥有字符的值类型</a><a class="level-2" href="#7-1-字符串查找与统计">7.1 字符串查找与统计</a><a class="level-2" href="#7-2-子串操作-substr">7.2 子串操作（substr）</a><a class="level-2" href="#7-3-字符串修改">7.3 字符串修改</a><a class="level-2" href="#7-4-字符串转换">7.4 字符串转换</a><a class="level-2" href="#7-5-字符串分割">7.5 字符串分割</a><a class="level-2" href="#8-deque-为什么能高效操作两端">8. deque 为什么能高效操作两端</a><a class="level-2" href="#9-list-的节点稳定性与代价">9. list 的节点稳定性与代价</a><a class="level-2" href="#10-容器选择不是只看大-o">10. 容器选择不是只看大 O</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>

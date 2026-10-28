@@ -3,9 +3,9 @@
 <title>数组 · 求知录</title><meta name="description" content="哈希表 · 双指针 · 滑窗 · 前缀和 · 二分">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -515,7 +515,7 @@
 <p><strong>说明：</strong>你不能倾斜容器。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://aliyun-lc-upload.oss-cn-hangzhou.aliyuncs.com/aliyun-lc-upload/uploads/2018/07/25/question_11.jpg" /></p>
-<div class="codehilite"><pre><span></span>输入：[1,8,6,2,5,4,8,3,7]
+<div class="codehilite text-diagram"><pre><span></span>输入：[1,8,6,2,5,4,8,3,7]
 输出：49
 解释：图中垂直线代表输入数组 [1,8,6,2,5,4,8,3,7]。在此情况下，容器能够容纳水（表示为蓝色部分）的最大值为 49。
 </pre></div>
@@ -568,7 +568,7 @@
 <p>给定 <code>n</code> 个非负整数表示每个宽度为 <code>1</code> 的柱子的高度图，计算按此排列的柱子，下雨之后能接多少雨水。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/22/rainwatertrap.png" /></p>
-<div class="codehilite"><pre><span></span>输入：height = [0,1,0,2,1,0,1,3,2,1,2,1]
+<div class="codehilite text-diagram"><pre><span></span>输入：height = [0,1,0,2,1,0,1,3,2,1,2,1]
 输出：6
 解释：上面是由数组 [0,1,0,2,1,0,1,3,2,1,2,1] 表示的高度图，在这种情况下，可以接 6 个单位的雨水（蓝色部分表示雨水）。
 </pre></div>
@@ -1999,7 +1999,7 @@
 <p>返回一个整数，表示数组 <code>nums</code> 中合格元素的总数。</p>
 <h3 id="思路_26">思路</h3>
 <p>所谓合格元素，其实比第k大的元素还要小的元素。如果这道题是求第k大的元素是谁，那么用小顶堆（或者原地建堆的大顶堆）是更好的，但这里需要求元素的数量（无论是<strong>求第k大的元素有多少个，还是比它小的元素有多少个</strong>），那么就要回归到传统的排序+二分查找了。排完序后，第k大的元素就位于<code>nums[n-k]</code>的位置，但是因为数组可能有重复元素，所以不能通过计算位置的方式来求解。使用<code>lowerbound</code>来找出<code>nums[n-k]</code>第一次出现的位置，比这个位置的元素还小的元素就是合格元素（关键：比<code>nums[n-k]</code>这个元素要小的元素，而不是<code>[0,n-k]</code>这个范围内所有的元素，因为<code>nums[n-k-1]</code>可能和<code>nums[n-k]</code>是一样的）。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>需求</th>
@@ -2024,7 +2024,7 @@
 <td>n−lowerBound(nums,<em>x</em>+1)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="解法_24">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-36-cpp-tab" aria-controls="example-36-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-36-python-tab" aria-controls="example-36-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-36-cpp" aria-labelledby="example-36-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>

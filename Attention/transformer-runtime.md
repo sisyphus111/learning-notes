@@ -96,7 +96,7 @@ X ────────────────┐
  ↓ RMSNorm₁       │
 Q/K/V 投影        │
  ↓ RoPE、attention│
-多头合并、输出投影 │
+多头合并、输出投影│
  ↓                │
 加上 X ←──────────┘
  ↓ A ─────────────┐
@@ -411,9 +411,9 @@ $$
 
 ```text
 源句 → encoder → 源句表示 ────────────────┐
-                                       ↓ K/V
+                                          ↓ K/V
 目标前缀 → causal self-attention → cross-attention → FFN
-                                       ↑ Q
+                                          ↑ Q
 ```
 
 现代 decoder-only LLM 通常把提示词、对话和待续写内容组织成同一条序列，反复执行本文主线。它叫 decoder-only，不表示每层还暗中存在一套 encoder 或必然有 cross-attention。

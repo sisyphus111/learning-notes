@@ -3,9 +3,9 @@
 <title>可迭代对象与常用函数 · 求知录</title><meta name="description" content="生成器表达式 · all / any · sum · min / max · map / filter">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -33,7 +33,7 @@
 
 <p>这段写法是正确的：<code>diff_counts</code> 记录每个字符在两个字符串中的出现次数之差，所有差值都为零，两个字符串才是字符异位词。重复字符也会按次数比较。</p>
 <p>最后一句可以分成三个部分：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>部分</th>
@@ -54,7 +54,7 @@
 <td>所有结果都为真才返回 <code>True</code>；遇到第一个假值就返回 <code>False</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>values()</code> 本身是字典视图，上表中的列表只用于展示取到的数值。整个写法不会先创建一张完整的布尔结果列表。</p>
 <p>如果把最后一句展开，它等价于下面的循环：</p>
 <div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">all_counts_zero</span><span class="p">(</span><span class="n">diff_counts</span><span class="p">):</span>
@@ -126,7 +126,7 @@
 
 <p>第二句还有一个起始值参数 <code>10</code>，所以给生成器保留了单独的括号。</p>
 <h2 id="常用函数速查">常用函数速查</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>目标</th>
@@ -181,7 +181,7 @@
 <td>迭代器，按需产生筛选结果</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>表中的 <code>P</code> 表示返回判断结果的函数，<code>f</code> 表示一个转换或计算函数；它们不是需要导入的特殊名字。上述函数都是内置的，直接使用即可。</p>
 <h3 id="函数作为参数与-lambda">函数作为参数与 lambda</h3>
 <p><code>map</code>、<code>filter</code> 和 <code>key=</code> 等参数接收的是函数对象。例如 <code>map(double, nums)</code> 会对每个元素调用 <code>double(x)</code>，不是先写 <code>double()</code> 调用一次，再把返回值传进去。</p>

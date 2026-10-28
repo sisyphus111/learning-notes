@@ -3,9 +3,9 @@
 <title>驱动、运行时与框架 · 求知录</title><meta name="description" content="H100 · libcuda / libcudart · 内核模块 · PyTorch · 容器与版本">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -17,7 +17,7 @@
 <article><p>H100 是执行计算的设备。CPU 上的应用、计算库和驱动组织工作，把 GPU 程序和数据交给设备；GPU 再执行指令。<strong>CUDA Runtime、用户态 CUDA Driver 和 Linux 内核驱动是三个不同的软件部分。</strong></p>
 <p>本页以 Linux / x86 主机使用 H100 为例。Windows、虚拟机直通和 Grace Hopper 的部分边界不同。各计算库的用途见 <a href="gpu-software-stack.html">GPU 软件栈与工具</a>，设备代码怎样生成见 <a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a>。</p>
 <h2 id="1-先把执行位置分开">1. 先把执行位置分开</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>位置</th>
@@ -42,7 +42,7 @@
 <td>执行 GPU kernel、访问显存、传输数据和管理设备</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>用户态与内核态是 CPU 侧的权限边界。host 与 device 是主机与 GPU 的执行位置边界。不能因为一个库叫 Driver，就认定它在 Linux 内核中运行。</p>
 <p><img alt="Linux 上从 PyTorch 到 H100 的软件层与执行边界" src="assets/gpu-driver-runtime-framework.svg" loading="lazy" /></p>
 <p>图表示主要依赖关系。框架按算子选择实现，也可以直接调用 Driver API。箭头不代表每次 API 调用都经过所有矩形，更不代表每次提交都发生一次系统调用。图中计算库矩形表示 CPU 调用侧，库还可以携带供 GPU 执行的代码。</p>
@@ -53,7 +53,7 @@
 <p><strong>固件是驱动与硬件之间的另一类软件。</strong> 例如 GPU System Processor（GSP）运行配套固件，承担 GPU 初始化与管理任务。固件随驱动发布，并不等于开发者编写的 attention 或 GEMM kernel。<a href="https://download.nvidia.com/XFree86/Linux-x86_64/580.95.05/README/gsp.html">NVIDIA GSP 固件说明</a></p>
 <h2 id="3-linux-内核态驱动-让操作系统能管理设备">3. Linux 内核态驱动：让操作系统能管理设备</h2>
 <p>NVIDIA 驱动安装后，Linux 中可以加载多个内核模块。模块职责不同，计算服务器与图形桌面的配置也可以不同。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>模块</th>
@@ -82,7 +82,7 @@
 <td>为支持的 RDMA 场景提供 GPU 内存对接</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>GPU 设备、进程资源、权限、内存映射、中断和错误处理，需要驱动与操作系统协作。应用通过用户态库使用这些能力；普通 Python 代码不会直接操作内核内部的设备对象。</p>
 <p>Linux 上还常见 <code>/dev/nvidia0</code>、<code>/dev/nvidiactl</code>、<code>/dev/nvidia-uvm</code> 这样的设备节点。设备节点是驱动向用户态暴露接口的入口，不是把 HBM 当作普通文件使用。</p>
 <p><strong>Linux kernel module 与 CUDA kernel 是两种东西。</strong> 前者运行在 CPU 的操作系统内核中；后者运行在 GPU 上。名称都含 kernel，但它们不是同一种程序。</p>
@@ -90,7 +90,7 @@
 <h2 id="4-用户态-cuda-driver-libcuda-so">4. 用户态 CUDA Driver：libcuda.so</h2>
 <p><code>libcuda.so.1</code> 是 Linux 上 CUDA 用户态驱动的共享库入口。它加载到 CPU 进程的用户态地址空间，提供 CUDA Driver API，并与驱动的其他部分协作。</p>
 <p>常规 Linux 安装中，<code>libcuda</code> 与内核模块随驱动配套发布。<code>libcudart</code> 则属于 CUDA Runtime，可以来自系统 Toolkit 或应用的运行依赖。把这两个库放到同一进程中，不会改变它们各自的职责。<a href="https://docs.nvidia.com/datacenter/tesla/drivers/software-deployment-workflow.html">驱动与 Toolkit 的分发关系</a></p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>Driver API 示例</th>
@@ -123,12 +123,12 @@
 <td>管理工作顺序、依赖和重复提交</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>例如，应用已经有一份 cubin 和若干 GPU 指针，可以通过 Driver API 加载程序、找到函数，再启动函数。上层框架、JIT 系统或自定义扩展可以直接走这条路径。</p>
 <p><code>libcuda</code> 是 CPU 侧控制库，GPU kernel 才是送往设备执行的程序。前者负责调用与管理，后者负责设备上的计算。</p>
 <h2 id="5-cuda-runtime-libcudart">5. CUDA Runtime：libcudart</h2>
 <p>CUDA Runtime 提供另一套常用接口，动态链接时通常由 <code>libcudart.so</code> 提供，也有静态链接方式。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>Runtime API 示例</th>
@@ -161,10 +161,10 @@
 <td>提交可执行 CUDA Graph</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Runtime 帮调用者管理上下文与设备模块的常见用法，减少显式管理工作。Driver API 提供对上下文和模块加载的更细控制。两套 API 能协作使用；Runtime 通常使用当前进程在该设备上的 primary context，或使用显式设置的上下文。<a href="https://docs.nvidia.com/cuda/cuda-runtime-api/driver-vs-runtime-api.html">Driver API 与 Runtime API 的区别</a></p>
 <p>常见关系为：</p>
-<div class="codehilite"><pre><span></span>应用 / 计算库
+<div class="codehilite text-diagram"><pre><span></span>应用 / 计算库
     ├── Runtime API：cudaMalloc、cudaMemcpyAsync、cudaLaunchKernel
     │       ↓
     │   用户态 Driver
@@ -178,7 +178,7 @@
 <p><strong>直接调用 Driver API，不需要先绕一遍 Runtime API。</strong> <code>cu</code> 和 <code>cuda</code> 是这里两组 API 的命名线索，但名字以 cu 开头的 cuBLAS、cuDNN 并不因此成为 Driver API。</p>
 <p>这里的 runtime 指 CUDA 的执行支持库。它与模型推理 runtime、Docker 的 container runtime 各有含义，不能仅凭 runtime 这个词判断层次。</p>
 <h2 id="6-context-module-stream-event-graph-分别是什么">6. Context、module、stream、event、graph 分别是什么</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象</th>
@@ -218,12 +218,12 @@
 <td>重复提交已经准备好的工作安排</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>一个进程可以使用多个 GPU，也可以显式管理上下文。Runtime 常见的 primary context 是每进程、每设备的资源，不要把“一个进程只有一个 CUDA context”当作通用规则。</p>
 <p>stream 不是 CPU 线程，也不是为某个 SM 永久分配的通道。不同 streams 的工作是否重叠，取决于依赖、资源和硬件支持。进入同一 stream 的工作按其顺序语义执行，不要求 CPU 在提交每一步后等待。<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">CUDA 异步执行</a></p>
 <h2 id="7-计算库-cpu-接口与-gpu-实现一起工作">7. 计算库：CPU 接口与 GPU 实现一起工作</h2>
 <p>调用 <code>cublasGemmEx</code> 时，CPU 执行库的 host 端代码。库检查参数、选择算法并提交工作；设备 kernel 在 GPU 上做矩阵计算。一个算子调用可以产生多个 kernel，也可以使用已有的 workspace。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>组件</th>
@@ -258,13 +258,13 @@
 <td>库之外需要的计算实现</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>表中库名省略版本后缀。实际库文件的拆分与位置取决于发行包和构建方式。</p>
 <p>库的共享对象可以同时包含 CPU 代码与打包的设备代码。不能从 <code>.so</code> 文件名推断所有计算都在 CPU 上完成。使用 Tensor Core 的指令来自所选 kernel；CPU 驱动不会在每个矩阵元素上替 GPU 做乘加。</p>
 <p>具体库及 kernel 开发工具的关系见 <a href="gpu-software-stack.html">GPU 软件栈与工具</a>。</p>
 <h2 id="8-pytorch-与上层推理框架">8. PyTorch 与上层推理框架</h2>
 <p>PyTorch 为用户提供 Python Tensor 和模型接口，同时有 C++ 实现与不同设备后端。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -297,13 +297,13 @@
 <td>执行被选中的具体计算</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>例如，普通 CUDA 矩阵乘法可以经过 ATen 的 CUDA 实现，再调用 cuBLAS 或 cuBLASLt。CUDA 上的加法也可能直接使用框架原生 kernel；并非每个算子都要经过 cuBLAS。</p>
 <p>分发机制见 <a href="https://docs.pytorch.org/tutorials/advanced/dispatcher.html">PyTorch dispatcher</a>。可对照 PyTorch v2.9.0 的 <a href="https://github.com/pytorch/pytorch/blob/v2.9.0/aten/src/ATen/native/cuda/Blas.cpp">CUDA 矩阵算子实现</a> 与 <a href="https://github.com/pytorch/pytorch/blob/v2.9.0/aten/src/ATen/cuda/CUDABlas.cpp">cuBLAS 调用封装</a>；具体路径受版本、输入和配置影响。</p>
 <p><code>torch.compile</code> 位于程序捕获与编译的一侧，可以生成 kernel 或选择已有实现。它不会替代 CUDA Driver。编译结果仍需要加载和提交，才能在 GPU 上执行。详见 <a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a>。</p>
 <p>SGLang、vLLM 位于请求与模型执行的一侧，组织请求、batch、KV cache 和多卡工作。TensorRT、TensorRT-LLM 提供模型推理优化与运行时能力。它们可以选择不同的计算实现，但底层设备访问仍需要驱动支持。</p>
 <p>各层接收和解释的对象也不同：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>层次</th>
@@ -332,7 +332,7 @@
 <td>机器指令、线程工作与存储访问</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>因此 Driver 不需要理解某个请求的聊天内容，计算库也不负责决定下一轮服务哪个用户。每层把需要的信息转换成下一层能使用的对象。</p>
 <h2 id="9-跟着一次矩阵乘法走完流程">9. 跟着一次矩阵乘法走完流程</h2>
 <p>下面是用于解释调用关系的 CUDA 示例，未运行：</p>
@@ -357,7 +357,7 @@
 <h3 id="执行与取回结果">执行与取回结果</h3>
 <p>CUDA 提交通常对 CPU 异步，因此得到 Tensor 对象 y，不表示 GPU 已经写完其内容。同一 stream 的顺序语义能连接填充、复制与计算；CPU 不必在每一步之间主动同步。</p>
 <p><code>y.cpu()</code> 要把结果放进 CPU 存储，必须正确等待所需的 GPU 工作与复制完成。这与“CPU 拿到一个 GPU Tensor 的 Python 对象”是不同的动作。异步语义见 <a href="https://docs.pytorch.org/docs/2.9/notes/cuda.html#asynchronous-execution">PyTorch CUDA semantics</a>。</p>
-<div class="codehilite"><pre><span></span>Python 表达 x @ w
+<div class="codehilite text-diagram"><pre><span></span>Python 表达 x @ w
     → PyTorch 分发与 CUDA 实现
     → 计算库或框架 kernel 的 host 端准备
     → CUDA Runtime / Driver API
@@ -368,7 +368,7 @@
 
 
 <h2 id="10-编译工具与运行库分处不同阶段">10. 编译工具与运行库分处不同阶段</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>阶段</th>
@@ -398,10 +398,10 @@
 <td>提交工作并管理依赖</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>编译可以提前完成，也可以在首次使用时完成。已有 cubin 可以加载执行；兼容的 PTX 也可以在运行时针对目标 GPU 编译。编译不是每次算子调用都必经的一次完整流程。详细路径见 <a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a>。</p>
 <p>不同文件也有不同含义：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>文件或表示</th>
@@ -430,14 +430,14 @@
 <td>GPU 原生机器指令的汇编表示，不是 Linux 驱动模块</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h2 id="11-安装-容器与版本号怎样对应">11. 安装、容器与版本号怎样对应</h2>
 <h3 id="toolkit-driver-与应用依赖">Toolkit、Driver 与应用依赖</h3>
 <p>CUDA Toolkit 是开发工具包，包含开发库、头文件和编译工具。NVIDIA Driver 安装提供与设备配合的驱动组件。应用运行时需要相应库，但不一定需要系统安装完整 Toolkit。预编译应用可以携带或依赖运行所需的库。</p>
 <p>例如，CUDA 版 PyTorch wheel 可以通过配套依赖提供运行库和计算库。它仍需要主机驱动。编译自定义 CUDA C++ 扩展则可能需要 Toolkit 中的 nvcc 和头文件；Triton 与 CuTe DSL 有各自的编译依赖。<a href="https://docs.nvidia.com/datacenter/tesla/drivers/software-deployment-workflow.html">NVIDIA 部署说明</a></p>
 <h3 id="容器共享主机内核驱动">容器共享主机内核驱动</h3>
 <p>Linux GPU 容器中的应用通常使用镜像内的框架与 CUDA 运行依赖。NVIDIA Container Toolkit 配合容器引擎暴露所选 GPU 设备及所需驱动库，使应用能够访问主机 GPU。</p>
-<div class="codehilite"><pre><span></span>容器内用户态：Python、PyTorch、libcudart、计算库
+<div class="codehilite text-diagram"><pre><span></span>容器内用户态：Python、PyTorch、libcudart、计算库
     ↓ 配合暴露的设备与驱动接口
 主机 NVIDIA 驱动 / Linux 内核
     ↓
@@ -448,7 +448,7 @@ H100
 <p>容器没有为每个镜像启动一份独立的 Linux GPU 内核驱动。具体暴露的库、设备与能力由运行配置决定；兼容包等特殊配置还需要单独核对。<a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html">Container Toolkit 架构</a>、<a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/docker-specialized.html">容器 GPU 能力配置</a></p>
 <h3 id="常见版本号不是同一个对象">常见版本号不是同一个对象</h3>
 <p><code>nvidia-smi</code> 的字段名会随版本变化。下面同时列出常见旧名称与新版名称。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>看到的位置</th>
@@ -477,13 +477,13 @@ H100
 <td>各自组件的版本</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>多个版本号不同并不自动表示错误。较新驱动通常能够运行使用较早 CUDA 版本构建的应用，但还存在最低驱动、PTX 与特性要求。具体兼容范围应按对应版本矩阵检查。<a href="https://docs.nvidia.com/cuda/cuda-compatibility/index.html">CUDA 兼容性</a>、<a href="https://docs.nvidia.com/deploy/nvidia-smi/index.html">nvidia-smi 文档</a></p>
 <h2 id="12-监控工具与调度职责">12. 监控工具与调度职责</h2>
 <p><code>nvidia-smi</code> 通过 NVIDIA Management Library（NVML）查询设备与进程状态。Linux 上常见的 NVML 库名是 <code>libnvidia-ml.so.1</code>。这是管理和监控接口；<code>libcuda.so.1</code> 提供 CUDA Driver API，<code>libcudart</code> 提供 Runtime API，它们不是同一个库。<a href="https://docs.nvidia.com/deploy/nvml-api/nvml-api-reference.html">NVML 文档</a></p>
 <p><code>nvidia-smi</code> 成功，只能证明相应管理访问能够工作。它不能单独证明某个 Python 环境已经安装 CUDA 版框架，也不能证明某段 kernel 已编译并运行。</p>
 <p>“调度”也有不同粒度：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>调度层次</th>
@@ -508,7 +508,7 @@ H100
 <td>已提交工作怎样驻留并使用执行资源</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>CPU 侧的框架不会为每次标量运算决定使用哪一个 CUDA Core。H100 负责执行提交的设备程序，具体线程组织见 <a href="cuda-execution-hierarchy.html">CUDA 执行层级与硬件映射</a>。</p>
 <p>本页核对了官方接口文档和所标版本的源码。图示表达职责与边界，未抓取某台 H100 的实际调用跟踪；CUDA 示例未运行。</p></article><footer>GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-先把执行位置分开">1. 先把执行位置分开</a><a class="level-2" href="#2-硬件与固件-gpu-接收什么工作">2. 硬件与固件：GPU 接收什么工作</a><a class="level-2" href="#3-linux-内核态驱动-让操作系统能管理设备">3. Linux 内核态驱动：让操作系统能管理设备</a><a class="level-2" href="#4-用户态-cuda-driver-libcuda-so">4. 用户态 CUDA Driver：libcuda.so</a><a class="level-2" href="#5-cuda-runtime-libcudart">5. CUDA Runtime：libcudart</a><a class="level-2" href="#6-context-module-stream-event-graph-分别是什么">6. Context、module、stream、event、graph 分别是什么</a><a class="level-2" href="#7-计算库-cpu-接口与-gpu-实现一起工作">7. 计算库：CPU 接口与 GPU 实现一起工作</a><a class="level-2" href="#8-pytorch-与上层推理框架">8. PyTorch 与上层推理框架</a><a class="level-2" href="#9-跟着一次矩阵乘法走完流程">9. 跟着一次矩阵乘法走完流程</a><a class="level-2" href="#10-编译工具与运行库分处不同阶段">10. 编译工具与运行库分处不同阶段</a><a class="level-2" href="#11-安装-容器与版本号怎样对应">11. 安装、容器与版本号怎样对应</a><a class="level-2" href="#12-监控工具与调度职责">12. 监控工具与调度职责</a></nav></aside></div>
 </div>

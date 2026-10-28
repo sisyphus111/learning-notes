@@ -3,11 +3,11 @@
 <title>GEMM 计算与优化 · 求知录</title><meta name="description" content="分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <link rel="stylesheet" href="assets/gemm.css?v=6a06755bc0">
 <script defer src="assets/gemm.js?v=2dfc190475"></script>
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -19,7 +19,7 @@
 <article><p>attention 怎样把两次 GEMM 与 softmax 接起来，并随 GPU 架构改变流水线，见 <a href="cuda-flash-attention.html">FlashAttention 1–4</a>。</p>
 <h2 id="1-先固定矩阵与维度的含义">1. 先固定矩阵与维度的含义</h2>
 <p>GEMM 是 General Matrix Multiplication，常见接口计算 <span class="math">\(D=\alpha AB+\beta C\)</span>。其中 <span class="math">\(\alpha\)</span>、<span class="math">\(\beta\)</span> 是标量，<span class="math">\(C\)</span> 是原有输入，<span class="math">\(D\)</span> 是新输出。先令 <span class="math">\(\alpha=1\)</span>、<span class="math">\(\beta=0\)</span>，只看 <span class="math">\(D=AB\)</span>：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>矩阵</th>
@@ -44,7 +44,7 @@
 <td>M×N 个点积结果</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="math display-math">\[
 D[m,n]=\sum_{k=0}^{K-1}A[m,k]B[k,n]
 \]</div>
@@ -54,7 +54,7 @@ D[m,n]=\sum_{k=0}^{K-1}A[m,k]B[k,n]
 <p>来源：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#matrix-multiplication-background">NVIDIA 矩阵乘法背景</a>。</p>
 <h2 id="2-一个点积为什么要分段计算">2. 一个点积为什么要分段计算</h2>
 <p>用六个元素的点积说明 K 分段：</p>
-<div class="codehilite"><pre><span></span>[1, 2, 3, 4, 5, 6] · [1, 2, 3, 4, 5, 6]
+<div class="codehilite text-diagram"><pre><span></span>[1, 2, 3, 4, 5, 6] · [1, 2, 3, 4, 5, 6]
 
 第 0 段：1×1 + 2×2 =  5
 第 1 段：3×3 + 4×4 = 25
@@ -77,7 +77,7 @@ D[m,n]=\sum_{k=0}^{K-1}A[m,k]B[k,n]
 
 
 <p><strong>不同线程执行相同代码，但各自持有独立的 <code>acc</code>。</strong> 例如 <code>A[2,4] @ B[4,2] → D[2,2]</code>，用 4 个线程说明输出分工：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>线程</th>
@@ -107,7 +107,7 @@ D[m,n]=\sum_{k=0}^{K-1}A[m,k]B[k,n]
 <td>A 第 1 行与 B 第 1 列的点积</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>每个线程把 K 的全部 4 项累加到自己的寄存器，再写入自己负责的输出位置。4 个线程既不共用一个 <code>acc</code>，也不写同一个 <code>D[m,n]</code>。这个小例子只说明 SIMT 分工，不表示应当用 4 个线程配置实际 GEMM。</p>
 <p>thread 0 和 thread 1 都读取 A 第 0 行，但更新各自的累加器。<strong>共同读取准备好的输入，与共同修改同一个输出，是两件不同的事。</strong></p>
 <p>问题在于复用：计算 <code>D[m,0]</code>、<code>D[m,1]</code> 的线程都需要 A 的第 m 行；计算 <code>D[0,n]</code>、<code>D[1,n]</code> 的线程都需要 B 的第 n 列。若各线程独立加载，相同数据会被反复请求。</p>
@@ -116,7 +116,7 @@ D[m,n]=\sum_{k=0}^{K-1}A[m,k]B[k,n]
 <h2 id="4-cta-tiling-一个-block-负责一块输出">4. CTA tiling：一个 block 负责一块输出</h2>
 <p>CTA 是 Cooperative Thread Array，在这里就是 CUDA thread block。把输出 D 分成 <code>BM×BN</code> 的 tile；在一个基础实现中，每个 block 负责其中一块。</p>
 <p>对于从 <code>(m0,n0)</code> 开始的输出 tile，每一轮 K 循环需要：</p>
-<div class="codehilite"><pre><span></span>A_tile：A[m0:m0+BM, k0:k0+BK]    形状 [BM, BK]
+<div class="codehilite text-diagram"><pre><span></span>A_tile：A[m0:m0+BM, k0:k0+BK]    形状 [BM, BK]
 B_tile：B[k0:k0+BK, n0:n0+BN]    形状 [BK, BN]
 acc：                           形状 [BM, BN]
 
@@ -127,7 +127,7 @@ acc += A_tile @ B_tile
 <p><img alt="同一输出 tile 沿 K 累加多组 A/B tile" src="assets/gemm-tiling.svg" loading="lazy" /></p>
 <p>不同 K 段都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；这些 blocks 的启动先后顺序不由图示规定。</p>
 <p>用 <code>M=N=K=1024</code>、<code>BM=BN=128</code>、<code>BK=32</code> 做一次手算：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象</th>
@@ -156,7 +156,7 @@ acc += A_tile @ B_tile
 <td>同一块 <code>[128,128]</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>32 次 K 循环不会把 grid 变成 64×32 个 blocks。它们发生在负责该输出 tile 的 block 内；后面的 Split-K 才会把 K 工作进一步分给不同 blocks。</p>
 <p>下面是分工的概念代码，未处理边界：</p>
 <div class="codehilite"><pre><span></span><span class="c1"># 不同 (m0, n0) 对应的输出 tile 可以并行计算。</span>
@@ -173,7 +173,7 @@ acc += A_tile @ B_tile
 <h3 id="4-1-cta-内的线程怎样保存和更新累加器">4.1 CTA 内的线程怎样保存和更新累加器</h3>
 <p><strong><code>acc[BM,BN]</code> 表示整个 CTA 的逻辑输出 tile，不表示所有线程共同修改一个普通数组。</strong> 在基础 SIMT 分工中，线程分别负责不同输出；一个线程也可以持有多个输出的累加器，第 6 节会展开这种 register tiling。</p>
 <p>对某个输出元素，假设连续四段 K 的贡献为 <code>10、20、30、40</code>。持有这个元素的线程持续更新同一个累加器：</p>
-<div class="codehilite"><pre><span></span>初始 acc = 0
+<div class="codehilite text-diagram"><pre><span></span>初始 acc = 0
 第 0 段之后：10
 第 1 段之后：30
 第 2 段之后：60
@@ -182,7 +182,7 @@ acc += A_tile @ B_tile
 
 
 <p>数学上，这已经是沿 K 的归约（reduction）。下一段接着更新上一段的结果，不需要额外收集其他线程对这个元素的部分和。输入搬运、缓冲区复用和异步计算仍须遵守相应同步协议。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>存储位置</th>
@@ -207,7 +207,7 @@ acc += A_tile @ B_tile
 <td>原始矩阵和最终输出；Split-K 也可在这里保存跨 CTA 的部分结果</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>在寄存器累加路径中，输出 tile 分布在参与计算的线程寄存器里，通常持续保留到 K 循环结束。shared memory 暂存 A/B，不意味着每一轮都把输出部分和写回 shared memory 或显存。</p>
 <p>Tensor Core 指令另有规定的协作方式。例如 <code>mma.sync</code> 由一个 warp 集体执行，矩阵 fragment 按指令布局分布在各线程寄存器中。硬件完成矩阵乘加，不能把“每线程独立计算整个点积”原样套到这个过程；也不能把它理解成 32 个线程对同一个共享地址各自执行普通 <code>+=</code>。</p>
 <p><strong>同属一个 CTA 不会自动消除写冲突。</strong> 若主动把同一输出的不同 K 段分给多个线程，就会形成多份部分和，也需要 CTA 内归约。warp 内可用 shuffle 交换并相加；跨 warp 可使用 shared memory 配合同步。<code>__syncthreads()</code> 让参与线程在正确的位置协调读写，但不会自动求和，也不会把并发 <code>+=</code> 变成原子操作。</p>
@@ -215,7 +215,7 @@ acc += A_tile @ B_tile
 <h2 id="5-shared-memory-把重复读取变成-block-内复用">5. Shared memory：把重复读取变成 block 内复用</h2>
 <p>一个 K tile 中，A 的每个元素会参与 BN 个输出的计算，B 的每个元素会参与 BM 个输出的计算。block 可以协作把 A/B tile 加载到 shared memory，再让计算线程重复使用。</p>
 <p>以 <code>BM=BN=128</code>、<code>BK=32</code> 为例，单轮需要：</p>
-<div class="codehilite"><pre><span></span>A：128×32 = 4096 个元素
+<div class="codehilite text-diagram"><pre><span></span>A：128×32 = 4096 个元素
 B：32×128 = 4096 个元素
 合计：8192 个元素
 
@@ -229,7 +229,7 @@ B：32×128 = 4096 个元素
 <h2 id="6-register-tiling-一个线程计算多个输出">6. Register tiling：一个线程计算多个输出</h2>
 <p>Shared memory 解决 block 内复用；寄存器分块进一步减少 shared memory 的重复访问。</p>
 <p>假设一个线程负责 2×2 个输出。在某个 k 上，它先读取两个 A 值和两个 B 值：</p>
-<div class="codehilite"><pre><span></span>a0 = A[m,   k]       b0 = B[k, n]
+<div class="codehilite text-diagram"><pre><span></span>a0 = A[m,   k]       b0 = B[k, n]
 a1 = A[m+1, k]       b1 = B[k, n+1]
 
 acc00 += a0*b0       acc01 += a0*b1
@@ -249,7 +249,7 @@ D_{\mathrm{small}}=A_{\mathrm{small}}B_{\mathrm{small}}+C_{\mathrm{small}}
 <p>一个较大的 CTA tile 会被拆成多次矩阵指令。kernel 还得负责准备数据、等待传输、组织指令和写回输出；不能因为调用了矩阵指令，就自动消除所有瓶颈。</p>
 <h3 id="7-1-计算路径-谁发起指令-数据放在哪里">7.1 计算路径：谁发起指令，数据放在哪里</h3>
 <p>Hopper、Blackwell 是 GPU 架构名，Tensor Core 是计算硬件，<code>mma.sync</code> 这些名字则是矩阵指令。这里的“路径”指 kernel 用哪类指令、怎样组织线程，以及操作数和累加结果放在哪里。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>常见路径</th>
@@ -279,20 +279,20 @@ D_{\mathrm{small}}=A_{\mathrm{small}}B_{\mathrm{small}}+C_{\mathrm{small}}
 <td>A 来自 shared memory 或 TMEM，B 来自 shared memory，累加结果在 TMEM 中</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>mma.sync</code> 中的 register fragment，就是某个线程持有的矩阵片段。32 个线程按指令要求提供各自的片段，共同完成一块矩阵乘加。它们不是各自计算一次完整的矩阵乘法。<code>tcgen05.mma</code> 的“一个线程发起”则表示提交硬件计算任务，实际矩阵运算仍由 Tensor Core 执行。</p>
 <p>Hopper 也可以使用 <code>mma.sync</code>，架构名不表示只能选择表中的一行。这里的 <code>tcgen05</code> / TMEM 路线以 B200 等 SM100 GPU 为例。RTX 5090 所属的 SM120 使用不同的矩阵指令路线，不能仅凭“Blackwell”这个名字就照搬。</p>
 <p>数据类型、指令形状、转置形式和对齐条件由硬件及指令决定。不存在一条适用于所有 GPU、所有精度的“矩阵边长是某个倍数就一定最快”规则。</p>
 <p>来源：<a href="https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#matrix-multiply-accumulate-operation">PTX 矩阵指令</a>、<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_functionality.html">CUTLASS Blackwell SM100 GEMM</a>。</p>
 <h3 id="7-2-tmem-为-tensor-core-增加专门的片上存储">7.2 TMEM：为 Tensor Core 增加专门的片上存储</h3>
 <p><strong>Tensor Memory（TMEM）是 SM100 上额外的一块片上存储，独立于普通寄存器和 shared memory。</strong> TMEM 主要保存 Tensor Core 的矩阵累加结果。理解它时，先看“中间结果存在哪里”：</p>
-<div class="codehilite"><pre><span></span>Hopper WGMMA：     Tensor Core 更新计算线程寄存器中的累加结果
+<div class="codehilite text-diagram"><pre><span></span>Hopper WGMMA：     Tensor Core 更新计算线程寄存器中的累加结果
 Blackwell SM100：  Tensor Core 直接更新 TMEM 中的累加结果
 </pre></div>
 
 
 <p>分块 GEMM 沿 K 依次读取输入块，输出的中间结果却要一直保留：</p>
-<div class="codehilite"><pre><span></span>第 0 段 K：D = A₀ @ B₀
+<div class="codehilite text-diagram"><pre><span></span>第 0 段 K：D = A₀ @ B₀
 第 1 段 K：D = D + A₁ @ B₁
 第 2 段 K：D = D + A₂ @ B₂
 ……
@@ -304,7 +304,7 @@ Blackwell SM100：  Tensor Core 直接更新 TMEM 中的累加结果
 <p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/tcgen05_programming.html">NVIDIA tcgen05 编程指南</a>。</p>
 <h3 id="7-3-从输入搬运到-tmem-累加-再到输出">7.3 从输入搬运到 TMEM 累加，再到输出</h3>
 <p>采用 A、B 都来自 shared memory 的形式时，一条典型数据流是：</p>
-<div class="codehilite"><pre><span></span>global memory 中的 A、B
+<div class="codehilite text-diagram"><pre><span></span>global memory 中的 A、B
     ↓ TMA 等搬运机制
 shared memory 中的当前输入块
     ↓ tcgen05.mma 使用输入块
@@ -323,7 +323,7 @@ Tensor Core 读取并更新 TMEM 中的 D
 <p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/tcgen05_programming.html#global-memory-gmem-to-mma-data-flow-overview">NVIDIA tcgen05 数据流与结果读取</a>。</p>
 <h3 id="7-4-tmem-的分配-同步与复用">7.4 TMEM 的分配、同步与复用</h3>
 <p>TMEM 需要 kernel 显式管理，不是硬件自动填充的 cache，也不是通过 <code>cudaMalloc()</code> 分配的 global memory。kernel 通过专门指令申请空间，使用 TMEM 地址访问，结束前释放申请的空间。</p>
-<div class="codehilite"><pre><span></span>申请 TMEM
+<div class="codehilite text-diagram"><pre><span></span>申请 TMEM
     → 发起 MMA 并累加
     → 等待计算完成
     → 读取并处理结果
@@ -343,7 +343,7 @@ Tensor Core 读取并更新 TMEM 中的 D
 <h3 id="8-2-shared-memory-bank-是什么-冲突怎样产生">8.2 Shared memory：bank 是什么，冲突怎样产生</h3>
 <p><strong>Bank 是可以与其他 bank 并行访问的存储分区，包含存储单元和相应的读写电路。</strong> 一个 warp 有 32 个线程，执行同一条读取指令时，可能提供 32 个不同地址。把 shared memory 分成多个 bank，可以让这些请求分散到不同分区并行服务。</p>
 <p>现代 NVIDIA GPU 的 shared memory 通常有 32 个 bank。以下采用每线程读取一个 FP32 元素的模型：每个元素占 4 字节，连续的 32 位字依次映射到连续的 bank。假设数组 <code>x</code> 的起始地址对应 bank 0：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>Bank 0</th>
@@ -383,7 +383,7 @@ Tensor Core 读取并更新 TMEM 中的 D
 <td>…</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>一个 bank 可以保存许多元素，4 字节描述的是这里的映射粒度，不是整个 bank 的容量。Bank 也不属于某个固定线程：<strong>线程访问哪个 bank，由它提供的地址决定。</strong></p>
 <div class="math display-math">\[
 \operatorname{bank}(\text{address})
@@ -393,7 +393,7 @@ Tensor Core 读取并更新 TMEM 中的 D
 <p>对上述数组，公式简化为 <code>bank(x[i]) = i % 32</code>。</p>
 <h4 id="8-2-1-不同-bank-同-bank-同地址">8.2.1 不同 bank、同 bank、同地址</h4>
 <p>令 <code>lane</code> 为 warp 内的线程编号，取值为 0 到 31。以下三种读取的结果不同：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>每个线程读取</th>
@@ -418,7 +418,7 @@ Tensor Core 读取并更新 TMEM 中的 D
 <td>读取同一份数据并广播，不构成上述冲突</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Bank conflict 的典型情形，是同一 warp 的一次访问中，多个不同的 32 位字争用同一个 bank。</strong> 硬件把请求拆成多次无冲突的服务，降低有效带宽。普通的不同地址读取仍然得到正确结果；这是性能问题，不是数据竞争。多个线程写同一地址则另有正确性要求，不能套用读取广播的解释。</p>
 <p>这里的“32-way”描述这次访问的冲突程度，不代表整个 kernel 必然慢 32 倍。向量化访存本身也可能需要多个服务批次，不能把所有批次都算成额外冲突；FP16、宽访存和 Tensor Core 数据加载需要结合具体指令分析。</p>
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-and-memory-banks">CUDA：Shared Memory and Memory Banks</a>、<a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#shared-memory">Nsight Compute：Shared Memory 请求与 bank conflicts</a>。</p>
@@ -436,7 +436,7 @@ Tensor Core 读取并更新 TMEM 中的 D
 \]</div>
 
 <p>同一列的访问就变为：</p>
-<div class="codehilite"><pre><span></span>tile[0][0]  → bank 0
+<div class="codehilite text-diagram"><pre><span></span>tile[0][0]  → bank 0
 tile[1][0]  → bank 1
 tile[2][0]  → bank 2
 …
@@ -447,7 +447,7 @@ tile[31][0] → bank 31
 <p>矩阵数值和逻辑坐标没有改变，改变的是行与行之间的地址跨度。代价是多用 32 个 FP32 位置，即 128 字节 shared memory。这个 padding 方法针对上述访问模式，不是所有 dtype 和矩阵指令的通用布局。</p>
 <h4 id="8-2-3-swizzle-按规则重排存放位置">8.2.3 Swizzle：按规则重排存放位置</h4>
 <p>Swizzle 通过重排地址位，让需要一起访问的数据分散到合适的 bank。用一个简化的 4×4 示例说明：把逻辑元素 <code>(r,c)</code> 存到该行的物理列 <code>c XOR r</code>，行内元素顺序变成：</p>
-<div class="codehilite"><pre><span></span>物理列： 0    1    2    3
+<div class="codehilite text-diagram"><pre><span></span>物理列： 0    1    2    3
 第0行： a00  a01  a02  a03
 第1行： a11  a10  a13  a12
 第2行： a22  a23  a20  a21
@@ -464,7 +464,7 @@ tile[31][0] → bank 31
 <h3 id="8-4-显存也有-bank-为什么-kernel-优化中较少直接讨论">8.4 显存也有 bank，为什么 kernel 优化中较少直接讨论</h3>
 <p>HBM/GDDR 显存属于 DRAM，也有 bank 争用和 row-buffer conflict：同一 bank 切换到另一行时，可能需要先关闭当前行，再激活目标行。CUDA 语境中不加限定地说“bank conflict”，通常指 shared memory 的冲突，并不表示显存没有类似问题。</p>
 <p>普通 global load 要经过多层硬件：</p>
-<div class="codehilite"><pre><span></span>warp 的地址 → 合并访问与缓存查询
+<div class="codehilite text-diagram"><pre><span></span>warp 的地址 → 合并访问与缓存查询
                     ↓ 缓存未能满足请求
              内存控制器排队、调度
                     ↓
@@ -481,7 +481,7 @@ tile[31][0] → bank 31
 <p><img alt="串行加载计算与双缓冲重叠，以及 K tile 与缓冲槽的对应" src="assets/gemm-pipeline.svg" loading="lazy" /></p>
 <p>图中时间长度仅用于说明依赖，不表示某台 GPU 的实测耗时。<code>ready</code> 表示加载完成；<code>released</code> 表示计算已不再读取该槽。异步矩阵指令发出后，输入未必已经读完，所以不能只以“指令已发出”作为释放缓冲区的依据。</p>
 <p>阅读 stage 相关讨论时，需要区分三个概念：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -506,7 +506,7 @@ tile[31][0] → bank 31
 <td>一行的 128 个元素共用 scale</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>三者可以对齐，也可以不一样。例如 <code>K=1024</code>、<code>BK=64</code> 有 16 次 K 循环。<code>num_stages=3</code> 表示流水线配置有 3 个数据缓冲阶段，不会把循环变成 3 次。量化组长 128 时，两个 K tile 可能使用同一组 scale。</p>
 <p>一个粗略的稳态模型：串行每轮约 <code>Tload + Tcompute</code>；充分重叠时接近 <code>max(Tload, Tcompute)</code>，还要加启动、排空和同步成本。若带宽不足、计算太短或资源不足，就达不到理想重叠。更多 stages 会占更多 shared memory，也可能降低驻留并发。</p>
 <h2 id="10-cp-async-tma-与-warp-specialization">10. cp.async、TMA 与 warp specialization</h2>
@@ -517,7 +517,7 @@ tile[31][0] → bank 31
 <p>来源：<a href="https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html#tensor-memory-accelerator">Hopper TMA 与异步传输</a>、<a href="https://docs.nvidia.com/cuda/cuda-driver-api/cuda_driver_api/group__CUDA__TENSOR__MEMORY.html">Tensor Map 接口</a>。</p>
 <h3 id="10-2-warp-specialization-怎样分工">10.2 Warp specialization 怎样分工</h3>
 <p>同一个 block 中，可以让一部分 warps 专门组织加载，让另一些 warps 组织矩阵计算：</p>
-<div class="codehilite"><pre><span></span>Producer warps：等待空槽 → 发起加载 → 通知数据就绪
+<div class="codehilite text-diagram"><pre><span></span>Producer warps：等待空槽 → 发起加载 → 通知数据就绪
 Consumer warps：等待数据 → 执行矩阵计算 → 通知槽可以复用
 </pre></div>
 
@@ -530,14 +530,14 @@ Consumer warps：等待数据 → 执行矩阵计算 → 通知槽可以复用
 <p>以下沿用 <span class="math">\(D=AB\)</span> 的记号，先讨论一个 CTA 负责一个输出 tile 的基本方案，不含 Split-K、persistent 调度或跨 CTA 协作。数值示例是按明确假设手算的结果，不是性能实测。</p>
 <h3 id="11-1-更大的输出-tile-有哪些收益和代价">11.1 更大的输出 tile 有哪些收益和代价</h3>
 <h4 id="bm-bn-决定输出范围-bk-决定每轮累加多少项">BM、BN 决定输出范围，BK 决定每轮累加多少项</h4>
-<div class="codehilite"><pre><span></span>BM：这个 block 计算 D 的多少行
+<div class="codehilite text-diagram"><pre><span></span>BM：这个 block 计算 D 的多少行
 BN：这个 block 计算 D 的多少列
 BK：每轮处理多长的一段 K
 </pre></div>
 
 
 <p>例如 <code>BM=BN=128</code>、<code>BK=32</code>：</p>
-<div class="codehilite"><pre><span></span>每轮加载 A tile：[128, 32]
+<div class="codehilite text-diagram"><pre><span></span>每轮加载 A tile：[128, 32]
 每轮加载 B tile：[32, 128]
 乘加更新 D tile：[128, 128]
 
@@ -556,7 +556,7 @@ D_{i,j}\mathrel{+}=\sum_{k=0}^{BK-1}A_{i,k}B_{k,j}
 \]</div>
 
 <p>固定一个 <code>A[i,k]</code>，它能与 B 当前块中的 BN 个元素相乘：</p>
-<div class="codehilite"><pre><span></span>A[i,k] × B[k,0]    → 更新 D[i,0]
+<div class="codehilite text-diagram"><pre><span></span>A[i,k] × B[k,0]    → 更新 D[i,0]
 A[i,k] × B[k,1]    → 更新 D[i,1]
 ……
 A[i,k] × B[k,BN-1] → 更新 D[i,BN-1]
@@ -565,7 +565,7 @@ A[i,k] × B[k,BN-1] → 更新 D[i,BN-1]
 
 <p>同一个 A 元素用于 BN 个输出，同一个 B 元素用于 BM 个输出。因此，增大 BN 能增加 A 的复用，增大 BM 能增加 B 的复用。</p>
 <p>固定 <code>BK=32</code>，A/B 都使用 FP16，每元素 2 字节：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>每轮的计算与输入</th>
@@ -600,7 +600,7 @@ A[i,k] × B[k,BN-1] → 更新 D[i,BN-1]
 <td style="text-align: right;">64 FLOP/byte</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>BM、BN 同时翻倍，输入数据量变成 2 倍，计算量变成 4 倍。</strong> 搬进来的每份数据支持了更多计算。</p>
 <p>这个模型假设每轮的 A/B tile 各加载一次，忽略输出写回、padding 和辅助数据。跨 CTA 的 L2 复用还会改变实际 HBM 流量，不能把表中的比例直接当成实测 HBM 算术强度。</p>
 <h4 id="资源账一-shared-memory-中的输入缓冲">资源账一：shared memory 中的输入缓冲</h4>
@@ -621,7 +621,7 @@ S_{\text{input}}=P(BM\cdot BK+BK\cdot BN)s
 S_{\text{acc}}=BM\cdot BN\cdot4
 \]</div>
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>输出 tile</th>
@@ -641,9 +641,9 @@ S_{\text{acc}}=BM\cdot BN\cdot4
 <td style="text-align: right;">64 KiB</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>输出面积变成 4 倍，累加结果的存储量也变成 4 倍。寄存器累加路径把这些值分布到参与计算的线程寄存器中。假设两种实现都由 256 个线程均匀保存累加值：</p>
-<div class="codehilite"><pre><span></span>64×64：   4096 / 256 = 每线程 16 个 FP32 累加值
+<div class="codehilite text-diagram"><pre><span></span>64×64：   4096 / 256 = 每线程 16 个 FP32 累加值
 128×128：16384 / 256 = 每线程 64 个 FP32 累加值
 </pre></div>
 
@@ -652,14 +652,14 @@ S_{\text{acc}}=BM\cdot BN\cdot4
 <p>Blackwell TMEM 累加路径需要另算专用存储，不能把上述累加结果全部计入普通寄存器。</p>
 <h4 id="每个-block-资源变多-会限制-sm-的驻留数量">每个 block 资源变多，会限制 SM 的驻留数量</h4>
 <p>假设某个 SM 可供这些 blocks 使用的 shared memory 是 96 KiB。这只是说明资源约束的预算示例，不对应某个型号的固定规格：</p>
-<div class="codehilite"><pre><span></span>每个 block 使用 16 KiB → 仅看 shared memory，最多容纳 6 个 block
+<div class="codehilite text-diagram"><pre><span></span>每个 block 使用 16 KiB → 仅看 shared memory，最多容纳 6 个 block
 每个 block 使用 32 KiB → 仅看 shared memory，最多容纳 3 个 block
 </pre></div>
 
 
 <p>实际还要检查寄存器、线程数和 block 数上限。任何一项资源先用完，都可能限制驻留数量。增加缓冲槽数也会影响这个上限。</p>
 <p>驻留多个 blocks 的作用之一是隐藏等待：</p>
-<div class="codehilite"><pre><span></span>block A 的 warp：正在等待数据
+<div class="codehilite text-diagram"><pre><span></span>block A 的 warp：正在等待数据
 block B 的 warp：有已经就绪的计算
 block C 的 warp：有已经就绪的访存
 </pre></div>
@@ -669,7 +669,7 @@ block C 的 warp：有已经就绪的访存
 <p>Occupancy 是驻留活跃 warps 相对硬件上限的比例，不是 Tensor Core 使用率。低 occupancy 也可能获得高性能：大 tile 可以减少访存，并在 block 内提供独立计算和多级流水线。最终要看执行单元是否持续获得有效工作，不能单独追求 occupancy 最大。</p>
 <h4 id="整个问题也必须提供足够多的-blocks">整个问题也必须提供足够多的 blocks</h4>
 <p>即使单个 block 资源允许，还要有足够多的任务可调度。对 <code>M=N=1024</code>：</p>
-<div class="codehilite"><pre><span></span>128×128 输出 tile → 8×8 = 64 个 block
+<div class="codehilite text-diagram"><pre><span></span>128×128 输出 tile → 8×8 = 64 个 block
 64×64 输出 tile   → 16×16 = 256 个 block
 </pre></div>
 
@@ -678,7 +678,7 @@ block C 的 warp：有已经就绪的访存
 <p>这两种限制要分别判断：<strong>一个 SM 能驻留多少 block，取决于单个 block 的资源消耗；整个 GPU 有多少 block 可分，取决于问题规模和 tile 划分。</strong></p>
 <h4 id="bk-增大不会按同样方式提高输入复用">BK 增大不会按同样方式提高输入复用</h4>
 <p>固定 <code>BM=BN=128</code>，把 BK 从 32 增大到 64：</p>
-<div class="codehilite"><pre><span></span>BK=32：每轮更新 128×128 个输出，每个输出累加 32 项
+<div class="codehilite text-diagram"><pre><span></span>BK=32：每轮更新 128×128 个输出，每个输出累加 32 项
 BK=64：每轮仍更新 128×128 个输出，每个输出累加 64 项
 </pre></div>
 
@@ -694,7 +694,7 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 <p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#threadblock-level-gemm">CUTLASS GEMM 层级与线程块分工</a>、<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#pipelining">寄存器压力与软件流水线</a>。</p>
 <h3 id="11-2-tile-quantization-边界不满一块">11.2 Tile quantization：边界不满一块</h3>
 <p>设 <code>M=N=130</code>、<code>BM=BN=128</code>。每个维度都需要向上取整，因此输出需要 2×2 个 tiles。每块的有效输出范围是：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>输出 tile</th>
@@ -729,8 +729,8 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 <td style="text-align: right;">4</td>
 </tr>
 </tbody>
-</table>
-<div class="codehilite"><pre><span></span>输出坐标范围（左闭右开）：
+</table></div>
+<div class="codehilite text-diagram"><pre><span></span>输出坐标范围（左闭右开）：
 
                  列 [0,128)       列 [128,130)
 行 [0,128)       有效 128×128     有效 128×2
@@ -749,7 +749,7 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 \]</div>
 
 <p>对于 <code>130×130</code>：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>输出 tile</th>
@@ -778,14 +778,14 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 <td style="text-align: right;">66.0%</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>小 tile 减少了边界空洞，却也削弱了输入复用。表中只是面积比例，不是 Tensor Core 利用率，更不表示性能按同样比例变化。K 不能被 BK 整除时，最后一轮也可能出现尾部填充；它不包含在上述 M/N 面积比例中。</p>
 <p>这里的 quantization 指工作范围只能按整块取整，与 FP8/INT8 的数值量化不同。</p>
 <p>来源：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#tile-quantization">NVIDIA Tile Quantization</a>。</p>
 <h3 id="11-3-wave-quantization-最后一批工作填不满-gpu">11.3 Wave quantization：最后一批工作填不满 GPU</h3>
 <p>即使每个 tile 都完全有效，GPU 仍可能因为最后剩下的任务太少而空闲。</p>
 <p>假设设备有 120 个 SM，资源约束使每个 SM 一次只能驻留一个这样的 CTA，并且每个 CTA 的执行时间近似相同，记作 T：</p>
-<div class="codehilite"><pre><span></span>120 个 block：
+<div class="codehilite text-diagram"><pre><span></span>120 个 block：
 一批处理完，近似耗时 T。
 
 121 个 block：
@@ -800,7 +800,7 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 \eta_{\text{wave}}=\frac{G}{\lceil G/W\rceil W}
 \]</div>
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>block 数量 G</th>
@@ -830,12 +830,12 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 <td style="text-align: right;">66.9%</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这说明任务数刚超过并发容量的整数倍时，延迟可能出现台阶。容量填充比例不是实测执行单元利用率；实际时间还受 block 时长差异、资源竞争和调度影响。</p>
 <p>Tile 大小同时影响任务数量和每个任务的资源需求，因此也可能改变 W。比较两个 tile 配置时，不能只比较 block 数量，却假定它们的驻留能力和单 block 耗时相同。</p>
 <p>来源：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#wave-quantization">NVIDIA Wave Quantization</a>。</p>
 <h3 id="11-4-比较-tile-配置时分别计算什么">11.4 比较 tile 配置时分别计算什么</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>要检查的事</th>
@@ -864,7 +864,7 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 <td>结合该 kernel 的并发容量，检查任务数的余数</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这些计算用于解释候选限制，不能代替目标 GPU 上的性能测量。大 tile 可能在复用上获益，却在资源占用、任务数量或边界上付出代价；选择时需要同时检查这些因素。</p>
 <h2 id="12-l2-locality-改变输出-tile-的访问顺序">12. L2 locality：改变输出 tile 的访问顺序</h2>
 <p>计算 <code>D[m_tile,n_tile]</code> 时，同一个 m_tile 的不同输出列块复用 A；同一个 n_tile 的不同输出行块复用 B。如果近期工作的 tiles 共享某一输入区域，L2 有机会保留这些数据。</p>
@@ -876,7 +876,7 @@ I=\frac{2BM\cdot BN\cdot BK}{s(BM\cdot BK+BK\cdot BN)}
 <p>假设 <code>M=N=128</code>、<code>K=8192</code>，采用 <code>128×128</code> 输出 tile。基础分工只生成一个 CTA，即使 K 很长，也很难利用整个 GPU。</p>
 <p>这个 CTA 内的线程可以分担输出元素，但整个 CTA 仍运行在一个 SM 上。延长 K 循环，不会自动让其他 SM 加入计算。</p>
 <p>Split-K 把 K 分给 P 个 CTA。例如 P=4：</p>
-<div class="codehilite"><pre><span></span>CTA 0：A[:,    0:2048] @ B[   0:2048, :] → D0
+<div class="codehilite text-diagram"><pre><span></span>CTA 0：A[:,    0:2048] @ B[   0:2048, :] → D0
 CTA 1：A[:, 2048:4096] @ B[2048:4096, :] → D1
 CTA 2：A[:, 4096:6144] @ B[4096:6144, :] → D2
 CTA 3：A[:, 6144:8192] @ B[6144:8192, :] → D3
@@ -888,7 +888,7 @@ CTA 3：A[:, 6144:8192] @ B[6144:8192, :] → D3
 <p>每个 CTA 都在计算 <code>[128,2048] @ [2048,128]</code>，所以 <code>D0</code> 到 <code>D3</code> 都是 <code>[128,128]</code>。<strong>四个 CTA 负责同一片输出坐标的不同 K 段，不是分别负责输出矩阵的四个角。</strong></p>
 <h3 id="13-2-原来的累加也是归约-split-k-新增跨-cta-合并">13.2 原来的累加也是归约，Split-K 新增跨 CTA 合并</h3>
 <p>沿用第 4.1 节的一个输出元素。单 CTA 可以持续把 <code>10、20、30、40</code> 加到同一个累加器；Split-K 则得到四份独立结果：</p>
-<div class="codehilite"><pre><span></span>CTA 0 的局部累加器：10
+<div class="codehilite text-diagram"><pre><span></span>CTA 0 的局部累加器：10
 CTA 1 的局部累加器：20
 CTA 2 的局部累加器：30
 CTA 3 的局部累加器：40
@@ -898,7 +898,7 @@ CTA 3 的局部累加器：40
 
 
 <p>“额外归约”指新增的结果合并阶段。普通 CTA 不能直接读取另一 CTA 的线程寄存器。普通 shared memory 也以 CTA 为作用域；即使两个 CTA 驻留在同一个 SM 上，也不会自动共享这块存储。显式使用 cluster distributed shared memory 时另有访问和同步要求，不能把它当作任意 CTA 之间的普通共享数组。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>跨 CTA 的困难</th>
@@ -919,10 +919,10 @@ CTA 3 的局部累加器：40
 <td>合并时保留每一份贡献，避免覆盖或丢失更新</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="13-3-普通-为什么会丢失结果">13.3 普通 <code>+=</code> 为什么会丢失结果</h3>
 <p>假设两个 CTA 对同一个 global memory 地址执行 <code>D[m,n] += partial</code>。普通读、加、写可能交错成：</p>
-<div class="codehilite"><pre><span></span>D[m,n] 初始为 0
+<div class="codehilite text-diagram"><pre><span></span>D[m,n] 初始为 0
 CTA 0 读取 0，准备加 10
 CTA 1 也读取 0，准备加 20
 CTA 0 写回 10
@@ -935,7 +935,7 @@ CTA 1 写回 20
 <p><code>__syncthreads()</code> 只协调当前 CTA 的线程，不能等待整个 grid 的其他 CTA。普通 CTA 的执行顺序也没有保证，并且不一定同时驻留；不能随意插入“所有 CTA 自旋等待彼此”的全局 barrier。</p>
 <h3 id="13-4-workspace-与归约-kernel-怎样完成合并">13.4 Workspace 与归约 kernel 怎样完成合并</h3>
 <p>一种实现先让各 CTA 写不同的临时区域，再由另一个 kernel 合并：</p>
-<div class="codehilite"><pre><span></span>阶段一：Split-K GEMM kernel
+<div class="codehilite text-diagram"><pre><span></span>阶段一：Split-K GEMM kernel
 CTA 0 → workspace[0, :, :] = D0
 CTA 1 → workspace[1, :, :] = D1
 CTA 2 → workspace[2, :, :] = D2
@@ -972,7 +972,7 @@ CTA 3 → workspace[3, :, :] = D3
 <p>Cluster Launch Control（CLC）提供硬件辅助的工作获取机制，可以用于动态 tile 调度。它优化的是任务分配环节，不替代 TMA 搬运、矩阵指令或部分和归约；支持 CLC 也不表示任意 GEMM 都一定从动态调度获益。</p>
 <p>来源：<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_cluster_launch_control.html">CUTLASS CLC 调度说明</a>。</p>
 <h2 id="15-batched-grouped-gemm-把多个矩阵问题放在一起">15. Batched / grouped GEMM：把多个矩阵问题放在一起</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>方式</th>
@@ -997,9 +997,9 @@ CTA 3 → workspace[3, :, :] = D3
 <td>合并任务、减少多次小 launch，并均衡工作</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>MoE 的一个线性投影常见：</p>
-<div class="codehilite"><pre><span></span>Expert 0：X0[ 37,K] @ W0[N,K].T → Y0[ 37,N]
+<div class="codehilite text-diagram"><pre><span></span>Expert 0：X0[ 37,K] @ W0[N,K].T → Y0[ 37,N]
 Expert 1：X1[112,K] @ W1[N,K].T → Y1[112,N]
 Expert 2：X2[  9,K] @ W2[N,K].T → Y2[  9,N]
 </pre></div>
@@ -1010,7 +1010,7 @@ Expert 2：X2[  9,K] @ W2[N,K].T → Y2[  9,N]
 <p>来源：<a href="https://docs.nvidia.com/cuda/cublas/index.html#cublas-t-gemmstridedbatched">cuBLAS batched 接口</a>、<a href="https://github.com/deepseek-ai/DeepGEMM#grouped-gemms-contiguous-layout">DeepGEMM grouped 布局</a>。</p>
 <h2 id="16-epilogue-fusion-结果还在片上时完成后处理">16. Epilogue fusion：结果还在片上时完成后处理</h2>
 <p>Mainloop 沿 K 完成矩阵乘加；epilogue 处理最终累加结果，例如缩放、加 bias、加残差、激活、类型转换和写回。</p>
-<div class="codehilite"><pre><span></span>分开执行：GEMM → 写中间矩阵 → 激活 kernel 读入 → 写最终矩阵
+<div class="codehilite text-diagram"><pre><span></span>分开执行：GEMM → 写中间矩阵 → 激活 kernel 读入 → 写最终矩阵
 融合执行：GEMM 累加器 → 激活 / 转换 → 写最终矩阵
 </pre></div>
 
@@ -1021,7 +1021,7 @@ Expert 2：X2[  9,K] @ W2[N,K].T → Y2[  9,N]
 <h2 id="17-低精度-gemm-把-scale-放回-k-循环">17. 低精度 GEMM：把 scale 放回 K 循环</h2>
 <h3 id="17-1-每个-k-分组有自己的缩放因子">17.1 每个 K 分组有自己的缩放因子</h3>
 <p>现在使用 Linear 的存储约定：<code>A[M,K]</code>、<code>W[N,K]</code>，结果 <code>D = A @ W.T</code>。假设 A 和 W 都按每行 128 个元素共享 scale：</p>
-<div class="codehilite"><pre><span></span>Aq： [M,K]             SA： [M,ceil(K/128)]
+<div class="codehilite text-diagram"><pre><span></span>Aq： [M,K]             SA： [M,ceil(K/128)]
 Wq： [N,K]             SW： [N,ceil(K/128)]
 </pre></div>
 
@@ -1036,7 +1036,7 @@ D[m,n]\approx\sum_g S_A[m,g]S_W[n,g]\,P_g[m,n]
 <h3 id="17-2-为什么-deepgemm-要转置-scale-布局">17.2 为什么 DeepGEMM 要转置 scale 布局</h3>
 <p>取 <code>M=4</code>、<code>K=384</code>，<code>SA</code> 的逻辑形状是 <code>[4,3]</code>。若每轮 K 处理 128 个元素，第 0 轮需要 <code>SA[0,0]</code> 到 <code>SA[3,0]</code>，第 1 轮需要第 1 列，以此类推。</p>
 <p><img alt="同一 K 分组的 scale 在重排后连续存储" src="assets/gemm-scale-layout.svg" loading="lazy" /></p>
-<div class="codehilite"><pre><span></span>逻辑矩阵不变：
+<div class="codehilite text-diagram"><pre><span></span>逻辑矩阵不变：
         K组0  K组1  K组2
 M行0     a0    a1    a2
 M行1     b0    b1    b2
@@ -1063,7 +1063,7 @@ M 连续的物理排列：a0 b0 c0 d0 | a1 b1 c1 d1 | a2 b2 c2 d2
 <h2 id="18-看一个-gemm-为什么慢-把优化对应到问题">18. 看一个 GEMM 为什么慢：把优化对应到问题</h2>
 <p>粗略估算总 FLOPs 约为 <span class="math">\(2MNK\)</span>。输入/输出只读写一次、忽略 cache 和额外数据时，最低数据量可以估算为 <span class="math">\(b_A MK+b_B KN+b_D MN\)</span> 字节，<span class="math">\(b\)</span> 表示各类型的字节数；若需要原有 C，还要加 C 的读取。由此得到理想化算术强度。</p>
 <p>Roofline 的第一步是比较计算时间下界 <code>FLOPs / 算力</code> 和传输时间下界 <code>bytes / 带宽</code>。这只能指出候选限制：小问题的 launch、任务不够、依赖等待、边界浪费和布局转换可能更重要。HBM、L2、shared memory 是不同层级，不能混用流量和带宽。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>观察到的具体问题</th>
@@ -1128,7 +1128,7 @@ M 连续的物理排列：a0 b0 c0 d0 | a1 b1 c1 d1 | a2 b2 c2 d2
 <td>Capture 约束、固定地址与运行组织</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>稀疏 Tensor Core 路径需要满足规定的稀疏模式及元数据，矩阵中零的数量增加并不会自动触发这种运算。CUDA Graph 主要优化提交与执行组织，也不会自动修复 GEMM 内部低效的加载方式。</p>
 <p>选择参数时，通常要针对 <code>(M,N,K)</code>、dtype、stride、GPU 和后处理调优，测量完整调用成本。大矩阵、单 token decode、小 expert GEMM 的合适配置可能完全不同。Autotuning 是比较候选实现；不能只把 BM、BK 或 stages 调到最大。</p>
 <p>本文的形状、流量与时间图用于解释机制，未执行 CUDA kernel 或性能测试。需要做性能判断时，应先确认结果正确，再用受控 benchmark 和 profiler 区分 launch、搬运、计算、同步及尾部时间。</p>

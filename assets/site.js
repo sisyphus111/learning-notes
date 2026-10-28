@@ -98,6 +98,19 @@ if (chapterNav) {
         }
     });
 }
+// Show a scroll hint and keyboard stop only when the table is actually wider.
+const tableObserver = new ResizeObserver((entries) => {
+    for (const { target } of entries) {
+        const viewport = target.matches('.table-scroll') ? target : target.parentElement;
+        const overflowing = viewport.scrollWidth > viewport.clientWidth + 1;
+        viewport.classList.toggle('is-overflowing', overflowing);
+        viewport.tabIndex = overflowing ? 0 : -1;
+    }
+});
+for (const viewport of document.querySelectorAll('.table-scroll')) {
+    tableObserver.observe(viewport);
+    tableObserver.observe(viewport.querySelector('table'));
+}
 // Preserve readable diagram labels on narrow screens with a local scroll area.
 for (const image of document.querySelectorAll('article img[src$=".svg"]')) {
     const figure = document.createElement('figure');
@@ -199,15 +212,64 @@ dialog.addEventListener('click', (event) => {
         if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
     }
 });
-const tocLinks = [...document.querySelectorAll('.toc a')];
-const byId = new Map(tocLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]));
-if (byId.size) {
-    const observer = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-            if (!entry.isIntersecting) continue;
-            for (const link of tocLinks) link.classList.remove('active');
-            byId.get(entry.target.id)?.classList.add('active');
+const tocItems = [...document.querySelectorAll('.toc a')].map((link) => ({
+    link,
+    heading: document.getElementById(decodeURIComponent(link.hash.slice(1))),
+})).filter((item) => item.heading);
+if (tocItems.length) {
+    const topbar = document.querySelector('.topbar');
+    let currentItem;
+    let pendingFrame = 0;
+    let revealCurrent = true;
+    function updateToc() {
+        // The current section starts above the reading line and ends at the next heading.
+        // Read live positions so images, formulas and code tabs cannot stale an offset cache.
+        const readingLine = Math.max(80, topbar.getBoundingClientRect().bottom + 16);
+        let low = 0;
+        let high = tocItems.length;
+        while (low < high) {
+            const middle = (low + high) >>> 1;
+            if (tocItems[middle].heading.getBoundingClientRect().top <= readingLine + 1) low = middle + 1;
+            else high = middle;
         }
-    }, { rootMargin: '-80px 0px -65% 0px' });
-    for (const id of byId.keys()) { const heading = document.getElementById(id); if (heading) observer.observe(heading); }
+        // A short final section may never reach the reading line before the page ends.
+        const atBottom = window.scrollY > 0 &&
+            Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 1;
+        const nextItem = tocItems[atBottom ? tocItems.length - 1 : Math.max(0, low - 1)];
+        if (nextItem !== currentItem) {
+            if (currentItem) {
+                currentItem.link.classList.remove('active');
+                currentItem.link.removeAttribute('aria-current');
+            }
+            nextItem.link.classList.add('active');
+            nextItem.link.setAttribute('aria-current', 'location');
+            currentItem = nextItem;
+            revealCurrent = true;
+        }
+        // Reveal on section changes, leaving manual directory scrolling alone otherwise.
+        // Scroll only the directory; scrollIntoView would also move the article.
+        if (revealCurrent && chapterNav.clientHeight) {
+            const bounds = chapterNav.getBoundingClientRect();
+            const linkBounds = currentItem.link.getBoundingClientRect();
+            if (linkBounds.top < bounds.top) chapterNav.scrollTop += linkBounds.top - bounds.top - 8;
+            else if (linkBounds.bottom > bounds.bottom) chapterNav.scrollTop += linkBounds.bottom - bounds.bottom + 8;
+            revealCurrent = false;
+        }
+    }
+    function scheduleTocUpdate() {
+        if (pendingFrame) return;
+        pendingFrame = requestAnimationFrame(() => {
+            pendingFrame = 0;
+            updateToc();
+        });
+    }
+    window.addEventListener('scroll', scheduleTocUpdate, { passive: true });
+    window.addEventListener('resize', () => {
+        revealCurrent = true;
+        scheduleTocUpdate();
+    });
+    window.addEventListener('hashchange', scheduleTocUpdate);
+    window.addEventListener('pageshow', scheduleTocUpdate);
+    new ResizeObserver(scheduleTocUpdate).observe(document.querySelector('article'));
+    scheduleTocUpdate();
 }

@@ -3,9 +3,9 @@
 <title>关联容器 · 求知录</title><meta name="description" content="map / set · unordered 系列">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -16,7 +16,7 @@
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">STL 参考</p><h1>关联容器</h1><p class="subtitle">map / set · unordered 系列</p></div>
 <article><p><code>map/set</code> 与 <code>unordered_map/unordered_set</code> 都按 key 组织元素，但一个维护有序树，一个维护哈希桶。选择它们时必须同时考虑顺序需求、复杂度保证、访问副作用和引用稳定性。</p>
 <h2 id="1-两个家族的底层模型">1. 两个家族的底层模型</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>家族</th>
@@ -39,7 +39,7 @@
 <td>平均 O(1)，最坏 O(n)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>标准规定可观察行为和复杂度，不强制某一种内部实现。代码可以依赖“map 有序、操作 O(log n)”，不能依赖具体树颜色或 unordered 的桶链表布局。</p>
 <h2 id="2-map-元素的真实类型">2. map 元素的真实类型</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">counts</span><span class="p">;</span>
@@ -62,7 +62,7 @@
 
 
 <p><code>operator[]</code> 找不到 key 时会默认构造 mapped value，所以只能用于 map，不能用于 set，也不能用于 const map。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>需求</th>
@@ -92,7 +92,7 @@
 <td>按需插入</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">it</span><span class="p">,</span><span class="w"> </span><span class="n">inserted</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">counts</span><span class="p">.</span><span class="n">try_emplace</span><span class="p">(</span><span class="s">"alice"</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
 <span class="o">++</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
 </pre></div>
@@ -186,7 +186,7 @@
 
 
 <h2 id="10-如何选择">10. 如何选择</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>需求</th>
@@ -215,7 +215,7 @@
 <td>考虑 map 或安全自定义哈希</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>掌握标准：</strong>能够解释 <code>mp[key]</code> 为什么会插入、map 的 key 为什么是 const、unordered rehash 到底使什么失效，并根据是否需要顺序和复杂度保证选择容器。</p></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-两个家族的底层模型">1. 两个家族的底层模型</a><a class="level-2" href="#2-map-元素的真实类型">2. map 元素的真实类型</a><a class="level-2" href="#3-operator-是-查找或插入">3. operator[] 是“查找或插入”</a><a class="level-2" href="#4-访问得到的是节点中-value-的引用">4. 访问得到的是节点中 value 的引用</a><a class="level-2" href="#5-map-set-的引用为什么稳定">5. map/set 的引用为什么稳定</a><a class="level-2" href="#6-比较器必须形成-strict-weak-ordering">6. 比较器必须形成 strict weak ordering</a><a class="level-2" href="#7-unordered-容器的-bucket-负载因子与-rehash">7. unordered 容器的 bucket、负载因子与 rehash</a><a class="level-2" href="#8-哈希函数与相等判断必须一致">8. 哈希函数与相等判断必须一致</a><a class="level-2" href="#9-复制-移动与传参">9. 复制、移动与传参</a><a class="level-2" href="#10-如何选择">10. 如何选择</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>

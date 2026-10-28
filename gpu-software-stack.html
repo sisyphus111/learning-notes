@@ -3,9 +3,9 @@
 <title>GPU 软件栈与工具 · 求知录</title><meta name="description" content="cuBLAS · cuDNN · CUTLASS · CuTe DSL · Triton · 编译与运行">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -19,7 +19,7 @@
 <p>数值类型与计算模式见 <a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a>：FP16、BF16、TF32、FP8、E8M0 和块缩放格式不能只按名字中的 bit 数混同。</p>
 <h2 id="1-从一层-linear-放置各个工具">1. 从一层 Linear 放置各个工具</h2>
 <p>计算 <code>y = x @ weight.T + bias</code> 时，开发者有两条常见路径：</p>
-<div class="codehilite"><pre><span></span>调用现有实现：
+<div class="codehilite text-diagram"><pre><span></span>调用现有实现：
 PyTorch / 推理框架
     → 选择 cuBLAS、cuBLASLt 或其他实现
     → 启动 GPU kernel
@@ -34,7 +34,7 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 
 <p>kernel 是运行在 GPU 上的函数。库可以提供事先编译的 kernel，也可以在运行时生成或编译特定实例。一个模型通常混用现成库和定制 kernel；这些名称不构成必须逐层经过的固定调用链。</p>
 <h2 id="2-调用计算的库">2. 调用计算的库</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -89,7 +89,7 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>Tensor contraction、维度置换与部分逐元素计算</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>BLAS 是 Basic Linear Algebra Subprograms。GEMM 是 General Matrix Multiply，常见接口表达 <code>D = alpha * op(A) @ op(B) + beta * C</code>。库根据矩阵尺寸、布局、硬件和精度约束选择实现；库内部也可能使用 Tensor Core。<a href="https://docs.nvidia.com/cuda/cublas/index.html">cuBLAS 文档</a></p>
 <p>cuBLASLt 中的 Lt 来自 lightweight。它提供更灵活的矩阵乘法描述和算法选择接口，不表示计算性能低于 cuBLAS。epilogue 指主乘加结束后的输出处理，例如缩放、加 bias、激活和类型转换。具体可融合内容由接口和配置决定。</p>
 <p>cuDNN 的范围不只包含 CNN 卷积。cuDNN 还提供 attention 实现，并通过图接口表达支持的计算组合。frontend 是构建这些操作图的接口层，backend 提供执行引擎与底层接口。<a href="https://docs.nvidia.com/cudnn/overview">cuDNN 概览</a></p>
@@ -124,7 +124,7 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <p>就像 <code>std::vector</code> 是 C++ 库提供的模板类型，<code>cutlass::gemm::device::Gemm</code> 也是库提供的模板类型。开发者用 C++ 语法实例化它；模板参数和运行时参数分别表达 kernel 的构造选择与本次计算的数据。</p>
 <p>经典 GEMM 接口的调用方式可对照 <a href="https://github.com/NVIDIA/cutlass/blob/main/examples/00_basic_gemm/basic_gemm.cu">CUTLASS basic GEMM 示例</a>。不同代际的 CUTLASS 接口并不完全相同，上面的片段用于辨认“库怎样进入 C++ 程序”。</p>
 <h3 id="3-2-cutlass-允许组合什么">3.2 CUTLASS 允许组合什么</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>可组合内容</th>
@@ -153,12 +153,12 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>组织输出缩放、融合、转换和写回</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>因此，使用 CUTLASS 可以复用已有组合，也可以替换其中的组件。开发者不必从零重写每条加载指令和每种 MMA，但仍需要理解布局、分块、资源占用与同步。</p>
 <h3 id="3-3-cute-与-cute-dsl">3.3 CuTe 与 CuTe DSL</h3>
 <p>CuTe 是 CUTLASS 中描述 Tensor 和线程映射的核心抽象之一。一个 CuTe Tensor 把数据位置与 layout 结合起来；layout 表达逻辑坐标怎样映射到地址，或数据怎样分配给线程。MMA atom 和 copy atom 表达基本计算、复制操作，再由 tiled operation 把基本操作铺到更大的区域。</p>
 <p>CuTe DSL 沿用这些概念，以 Python 语法编写 kernel。DSL 是 Domain-Specific Language，即面向特定领域的语言。其编译管线把程序转换成 GPU 代码；Python 用于表达程序，不意味着 GPU 上的每次乘加由 Python 解释器执行。<a href="https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/overview.html">CuTe DSL 概览</a></p>
-<div class="codehilite"><pre><span></span>CUTLASS 项目
+<div class="codehilite text-diagram"><pre><span></span>CUTLASS 项目
     ├── CUDA C++ 模板和 kernel 组件
     │       └── CuTe：Tensor、layout、copy、MMA 等抽象
     └── CuTe DSL：在 Python 编程方式中表达这些抽象
@@ -166,7 +166,7 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 
 
 <h2 id="4-编写-kernel-的其他工具与基础组件">4. 编写 kernel 的其他工具与基础组件</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -206,10 +206,10 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>组织基础库，包括 CUB、Thrust、libcu++</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>例如，Triton 程序通过 <code>tl.dot(a_tile, b_tile, acc)</code> 表达矩阵块乘加，编译器根据目标和约束选择指令。CUB 则能作为 CUDA C++ kernel 内的组件，例如让一个 block 合作求和。两者都帮助开发 kernel，但接口粒度不同。<a href="https://triton-lang.org/main/index.html">Triton 文档</a>、<a href="https://github.com/NVIDIA/cccl">CCCL 项目</a></p>
 <h2 id="5-编译工具与指令表示">5. 编译工具与指令表示</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -259,11 +259,11 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>组织不同抽象层次的中间表示及其转换</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>IR 是 Intermediate Representation，即编译器内部的中间表示。源代码、算子图、PTX 和机器指令位于不同抽象层次。Triton、CuTe DSL 使用自己的编译管线，不要求先生成 CUDA C++ 再调用 nvcc。编译与链接工具入口见 <a href="https://docs.nvidia.com/cuda/">CUDA 文档</a>。</p>
 <p>Tensor Core 执行特定矩阵指令。库或编译器先选择、生成使用这些指令的 kernel；硬件按指令执行。普通标量乘加循环不会因为恰好实现了矩阵乘法，就在运行时自动转成 Tensor Core 算法。</p>
 <h2 id="6-模型编译与推理框架">6. 模型编译与推理框架</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -313,10 +313,10 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>管理请求、batch、KV cache、模型与多卡执行</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>torch.compile</code>、Dynamo、Inductor 是入口与组件的关系。CUDA Graph 是执行机制，既可单独使用，也可与编译结果组合。详细过程见 <a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a>。官方入口见 <a href="https://docs.pytorch.org/docs/2.9/torch.compiler.html">PyTorch 编译文档</a>、<a href="https://docs.nvidia.com/deeplearning/tensorrt/latest/index.html">TensorRT</a>、<a href="https://github.com/NVIDIA/TensorRT-LLM">TensorRT-LLM</a>。</p>
 <h2 id="7-llm-专用-kernel-项目">7. LLM 专用 kernel 项目</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -341,10 +341,10 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>高性能 attention kernel 项目，尤其围绕 Multi-head Latent Attention</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>“FlashAttention”描述计算算法与实现，“CuTe DSL”描述 kernel 的编写方式。一份 FlashAttention 实现可以使用 CuTe DSL；上层框架再调用这份实现。其他实现也可以选择不同的 kernel 编程工具。<a href="https://github.com/Dao-AILab/flash-attention">FlashAttention</a>、<a href="https://docs.flashinfer.ai/">FlashInfer</a>、<a href="https://github.com/deepseek-ai/DeepGEMM">DeepGEMM</a>、<a href="https://github.com/deepseek-ai/FlashMLA">FlashMLA</a></p>
 <h2 id="8-通信-执行与分析工具">8. 通信、执行与分析工具</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -389,7 +389,7 @@ CUDA C++ / CUTLASS / CuTe DSL / Triton
 <td>检查 GPU 非法访存、部分竞争与同步错误</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>TP 的 Row Parallel Linear 可以先调用矩阵 kernel 产生部分和，再调用 NCCL all-reduce 合并贡献。推理框架负责把两步放进模型执行流程。计算库、通信库和上层框架分别承担计算、传输和组织职责。<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/overview.html">NCCL 概览</a></p>
 <p>通信接口、数据语义与实现算法见 <a href="gpu-communication-and-allreduce.html">MPI 与 Ring / Tree AllReduce</a>。该页用四个 rank 展开逐轮归约、部分和存储、结果传播，以及流量与延迟的取舍。</p>
 <p>CUDA Runtime 与 Driver API 都提供用户态调用接口，Driver API 不等于内核态驱动模块。Toolkit 与 Driver 也有各自的版本和安装来源。具体接口关系见 <a href="https://docs.nvidia.com/cuda/cuda-runtime-api/driver-vs-runtime-api.html">CUDA Runtime / Driver API</a>，工具入口见 <a href="https://docs.nvidia.com/cuda/">CUDA 文档目录</a>。</p>

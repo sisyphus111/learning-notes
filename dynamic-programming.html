@@ -3,9 +3,9 @@
 <title>动态规划 · 求知录</title><meta name="description" content="背包 · 线性 DP · 区间 DP · 树形 DP">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -58,7 +58,7 @@
 </ul>
 <h3 id="题目">题目</h3>
 <p><strong>斐波那契数</strong> （通常用 <code>F(n)</code> 表示）形成的序列称为 <strong>斐波那契数列</strong> 。该数列由 <code>0</code> 和 <code>1</code> 开始，后面的每一项数字都是前面两项数字的和。也就是：</p>
-<div class="codehilite"><pre><span></span>F(0) = 0，F(1) = 1
+<div class="codehilite text-diagram"><pre><span></span>F(0) = 0，F(1) = 1
 F(n) = F(n - 1) + F(n - 2)，其中 n &gt; 1
 </pre></div>
 
@@ -343,7 +343,7 @@ F(n) = F(n - 1) + F(n - 2)，其中 n &gt; 1
 <p>问总共有多少条不同的路径？</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://pic.leetcode.cn/1697422740-adxmsI-image.png" /></p>
-<div class="codehilite"><pre><span></span>输入：m = 3, n = 7
+<div class="codehilite text-diagram"><pre><span></span>输入：m = 3, n = 7
 输出：28
 </pre></div>
 
@@ -540,7 +540,7 @@ C_{n}^k=\frac{n\times(n-1)\times\ldots\times(n-1+k)}{1\times2\times\ldots\times 
 <p><strong>说明：</strong>每次只能向下或者向右移动一步。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://assets.leetcode.com/uploads/2020/11/05/minpath.jpg" /></p>
-<div class="codehilite"><pre><span></span>输入：grid = [[1,3,1],[1,5,1],[4,2,1]]
+<div class="codehilite text-diagram"><pre><span></span>输入：grid = [[1,3,1],[1,5,1],[4,2,1]]
 输出：7
 解释：因为路径 1→3→1→1→1 的总和最小。
 </pre></div>
@@ -2036,7 +2036,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>给定三个字符串 <code>s1</code>、<code>s2</code>、<code>s3</code>，请你帮忙验证 <code>s3</code> 是否是由 <code>s1</code> 和 <code>s2</code> <strong>交错</strong> 组成的。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://assets.leetcode.com/uploads/2020/09/02/interleave.jpg" /></p>
-<div class="codehilite"><pre><span></span>输入：s1 = "aabcc", s2 = "dbbca", s3 = "aadbbcbcac"
+<div class="codehilite text-diagram"><pre><span></span>输入：s1 = "aabcc", s2 = "dbbca", s3 = "aadbbcbcac"
 输出：true
 </pre></div>
 
@@ -2229,7 +2229,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <h3 id="题目_25">题目</h3>
 <p>给你两个字符串 <code>s</code> 和 <code>t</code> ，统计并返回在 <code>s</code> 的 <strong>子序列</strong> 中 <code>t</code> 出现的个数。</p>
 <p><strong>示例 1：</strong></p>
-<div class="codehilite"><pre><span></span>输入：s = "rabbbit", t = "rabbit"
+<div class="codehilite text-diagram"><pre><span></span>输入：s = "rabbbit", t = "rabbit"
 输出：3
 </pre></div>
 

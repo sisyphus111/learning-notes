@@ -3,9 +3,9 @@
 <title>Python 与其他语言互操作 · 求知录</title><meta name="description" content="pybind11 · C++ 扩展 · 类型转换 · GIL · ABI · 多语言边界">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -18,7 +18,7 @@
 <p>先读 <a href="python-modules-and-packages.html">模块、包与运行方式</a>，理解 import 和安装的区别。本页以 Python 3.10+、传统启用 GIL 的 CPython 和 C++17 为例；示例计算使用小数值，不承担数值精度或性能基准的验证。</p>
 <h2 id="多语言程序怎样连接起来">多语言程序怎样连接起来</h2>
 <p>首先区分两条路线：<strong>同一个进程内调用</strong>，或者<strong>不同进程之间传递请求与结果</strong>。前者要处理对象、内存和二进制接口；后者要约定消息格式、错误与进程生命周期。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>方式</th>
@@ -59,11 +59,11 @@
 <td>宿主管理解释器、线程与对象生命周期</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这张表是按边界选择方式的思路，不是固定的性能排名。批量调用可能让进程通信足够划算，反复传很小的数据也可能让原生扩展的转换成本占主导。这里先做 pybind11 的最小闭环，理解 Python 调用 C++ 的具体过程。</p>
 <h2 id="原生扩展为什么能被-import">原生扩展为什么能被 import</h2>
 <p>普通 Python 模块可以来自 <code>.py</code>；<strong>原生扩展模块</strong>则是实现了 Python 扩展接口的动态加载库。CPython 加载它的二进制代码，调用规定的初始化入口，建立 Python 模块对象。调用者随后仍然使用 <code>import</code>、属性访问和函数调用。</p>
-<div class="codehilite"><pre><span></span>native_ops.cpp + 绑定代码
+<div class="codehilite text-diagram"><pre><span></span>native_ops.cpp + 绑定代码
   → C++ 编译器编译、链接
   → native_ops.&lt;解释器与平台标签&gt;.so / .pyd
   → Python import native_ops
@@ -75,7 +75,7 @@
 <p>pybind11 是一套 C++ 头文件库，协助注册 Python 可见的函数或类、转换参数及返回值。它不是 Python 解释器，也不是 C++ 编译器。首次使用仍需要编译器、Python 开发头文件与构建工具。基础机制见 <a href="https://pybind11.readthedocs.io/en/stable/basics.html">pybind11 官方入门</a>。</p>
 <h2 id="一个能构建安装的-pybind11-项目">一个能构建安装的 pybind11 项目</h2>
 <p>目标仍是平方和：Python 传入 <code>[2, 3]</code>，C++ 计算后返回 <code>13.0</code>。在另一个独立目录 <code>native-demo/</code> 中创建这三个文件，避免和上一页的项目混在一起。</p>
-<div class="codehilite"><pre><span></span>native-demo/
+<div class="codehilite text-diagram"><pre><span></span>native-demo/
 ├── native_ops.cpp        ← 计算逻辑与绑定
 ├── setup.py              ← 告诉 setuptools 怎样编译扩展
 └── pyproject.toml        ← 声明构建工具与发行信息
@@ -164,7 +164,7 @@ python3 -m venv .venv
 
 <p>它构建当前项目的 wheel，而不是自动生成所有系统都能安装的包。<code>--no-deps</code> 跳过运行依赖的 wheel 构建，不取消 <code>build-system.requires</code> 的构建依赖准备。</p>
 <h2 id="这次调用中发生了哪些转换">这次调用中发生了哪些转换</h2>
-<div class="codehilite"><pre><span></span>Python 列表 [2, 3]
+<div class="codehilite text-diagram"><pre><span></span>Python 列表 [2, 3]
   → pybind11 逐元素转换、构造 std::vector&lt;double&gt;{2.0, 3.0}
   → 调用 C++ sum_squares(const std::vector&lt;double&gt;&amp;)
   → 返回 C++ double：13.0
@@ -177,7 +177,7 @@ python3 -m venv .venv
 <p>如果目标是处理大型数组，通常进一步研究 NumPy buffer / <code>py::array_t</code>、类型和连续性检查、批量调用。即便用了数组接口，也要核实是否发生类型转换或隐式复制；CPU 数组接口更不会自动变成对 GPU 显存指针的安全访问。本例只验证互操作，不用于证明加速效果。</p>
 <h2 id="所有权-异常与-gil">所有权、异常与 GIL</h2>
 <p>跨语言最容易出问题的地方，往往是双方对同一个对象的理解不一致。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>边界</th>
@@ -207,7 +207,7 @@ python3 -m venv .venv
 <td>释放 GIL 后继续调用 Python API</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>返回数值的本例比较简单；返回指针、引用或共享缓冲区时，需要了解 pybind11 的 <code>return_value_policy</code>、<code>keep_alive</code> 等所有权机制。<code>reference</code> 不会让短命对象自动延长寿命。见 <a href="https://pybind11.readthedocs.io/en/stable/advanced/classes.html#return-value-policies">返回值策略</a>。</p>
 <p>pybind11 能把许多标准 C++ 异常翻译为 Python 异常，例如 <code>std::invalid_argument</code> 对应 <code>ValueError</code>。越界导致的未定义行为、段错误和进程终止则不是普通 Python 异常；原生代码的内存错误可以直接让整个 Python 进程崩溃。需要从异常与内存安全两个层面检查。</p>
 <h3 id="c-函数会自动并行吗">C++ 函数会自动并行吗</h3>
@@ -216,7 +216,7 @@ python3 -m venv .venv
 <p>释放 GIL 只是允许其他 Python 线程有机会运行，<strong>不会给这个平方和循环自动创建工作线程</strong>。C++ 自己的数据竞争也不会由 GIL 的释放机制解决。free-threaded CPython 是另一种运行配置，其扩展支持要求需要单独确认；本页不把传统 GIL 规则推广到所有解释器。见 <a href="https://pybind11.readthedocs.io/en/stable/advanced/misc.html#global-interpreter-lock-gil">pybind11 的 GIL 说明</a>。</p>
 <h2 id="多语言兼容到底兼容哪些东西">多语言兼容到底兼容哪些东西</h2>
 <p>“Python 可以调用 C++”只说明存在接口。<strong>源码能编译、二进制能加载、输入输出语义一致，是三个不同的条件。</strong></p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>层次</th>
@@ -251,11 +251,11 @@ python3 -m venv .venv
 <td>扩展已安装，但依赖的本地库无法加载</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>ABI 可以理解为“编译后双方如何在二进制层面约定调用与内存表示”。C++ 还有名称修饰、标准库实现等细节；跨编译器直接暴露 C++ 对象较难，因此很多通用库提供边界更稳定的 C 接口，但 C 接口也仍有平台、类型大小和调用约定要求。</p>
 <p>wheel 文件名的末尾包含 <strong>Python tag、ABI tag、platform tag</strong>。例如一个带 <code>cp312-cp312-...</code> 的扩展 wheel 通常针对 CPython 3.12 及对应 ABI；<code>py3-none-any</code> 常见于不含平台二进制的纯 Python wheel。标签只帮助安装工具筛选，不会证明所有运行依赖都可用。Python 的 Stable ABI / <code>abi3</code> 有专门限制，不能把普通 pybind11 构建产物重命名就获得它。见 <a href="https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/">wheel 平台兼容标签规范</a>。</p>
 <h3 id="pyc-与-so-pyd-不能混为一谈">.pyc 与 .so / .pyd 不能混为一谈</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>文件</th>
@@ -290,7 +290,7 @@ python3 -m venv .venv
 <td>pip 安装后，解释器导入其中的模块</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>删除 <code>__pycache__</code> 不会重新编译 C++ 扩展。改了 <code>native_ops.cpp</code> 后，需要重新构建安装；重新加载正在使用的扩展也比普通 Python 模块复杂，实践中先用新进程验证构建后的产物。</p>
 <h2 id="已有工具或-c-库时-还有哪些路线">已有工具或 C 库时，还有哪些路线</h2>
 <h3 id="subprocess-调用另一个进程">subprocess：调用另一个进程</h3>

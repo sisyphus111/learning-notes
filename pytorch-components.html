@@ -3,9 +3,9 @@
 <title>常见计算与组件 · 求知录</title><meta name="description" content="Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -137,7 +137,7 @@
 <p>SiLU 是逐元素激活，gate 与 up 的乘法也是逐元素乘法；三个投影使用矩阵乘法。这里只实现 FFN 本身，residual connection 和 norm 属于外层 block。输入和权重需位于同一 GPU、使用相同浮点 dtype。</p>
 <p>官方激活接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.silu.html">functional.silu</a>。门控 FFN 的计算结构见 <a href="https://arxiv.org/abs/2002.05202">GLU Variants Improve Transformer</a>。</p>
 <h2 id="6-scaled-dot-product-attention-分数-mask-与加权求和">6. Scaled dot-product attention：分数、mask 与加权求和</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>输入/中间结果</th>
@@ -172,7 +172,7 @@
 <td>按权重组合 value</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
 

@@ -3,9 +3,9 @@
 <title>Transformer 运行全过程 · 求知录</title><meta name="description" content="文本到 token · Q/K/V · 多头与 GQA · FFN · prefill / decode · KV cache · 训练">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -16,7 +16,7 @@
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Attention 与 Transformer</p><h1>Transformer 运行全过程</h1><p class="subtitle">文本到 token · Q/K/V · 多头与 GQA · FFN · prefill / decode · KV cache · 训练</p></div>
 <article><h2 id="1-一次生成请求经过哪些步骤">1. 一次生成请求经过哪些步骤</h2>
 <p>以现代 decoder-only 语言模型为主线，采用 Llama 风格的 pre-norm、RoPE、GQA 和 SwiGLU。原始 Transformer 还有 encoder 与 cross-attention，第 15 节单独说明。不是所有模型都采用相同的 norm、FFN 或位置编码。</p>
-<div class="codehilite"><pre><span></span>文本或聊天消息
+<div class="codehilite text-diagram"><pre><span></span>文本或聊天消息
     ↓ chat template、tokenizer
 token IDs
     ↓ embedding 查表
@@ -37,7 +37,7 @@ token IDs
 <p>本文是计算与数据流说明，不安装或运行模型。Llama 风格模块的参考实现固定为 <a href="https://github.com/huggingface/transformers/blob/v4.57.1/src/transformers/models/llama/modeling_llama.py">Transformers v4.57.1 的 modeling_llama.py</a>，便于对应具体模块。一个版本的 dispatch 不能代表所有推理引擎。</p>
 <h2 id="2-全文使用同一组形状">2. 全文使用同一组形状</h2>
 <p>下面的参数是教学配置，不对应某个具体已发布模型：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>符号</th>
@@ -97,14 +97,14 @@ token IDs
 <td>32000</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>示例满足 <code>Hq × d = D</code>，<code>Hq / Hkv = 4</code>。在这个 GQA 配置中，每 4 个 query heads 共享一个 KV head。</p>
 <p><strong>S 是“这一轮计算多少个新位置”，T 是“这些位置可以读取多少个 KV 位置”。</strong> decode 时 S 可以是 1，而 T 已经达到几千。把两者都叫 seq_len，容易在矩阵乘法和 mask 上写错。</p>
 <h2 id="3-文本怎样变成-token-ids">3. 文本怎样变成 token IDs</h2>
 <p>聊天系统先按照模型的 chat template，将 system/user/assistant 消息组织成 token 序列。角色边界、消息结束标记和 assistant 开始标记都可能进入输入。</p>
 <p>tokenizer 再把内容映射为整数 ID。token 可能是词、子词、字符片段或字节片段，不能直接理解成“一个汉字一个 token”。同一句话使用不同 tokenizer，得到的序列也可能不同。<a href="https://huggingface.co/docs/transformers/main/chat_templating">Chat templates</a></p>
 <p>后面只假设输入有 4 个 token：</p>
-<div class="codehilite"><pre><span></span>input_ids.shape = [1, 4]
+<div class="codehilite text-diagram"><pre><span></span>input_ids.shape = [1, 4]
 位置：                0    1    2    3
 ID：                 a    b    c    d
 </pre></div>
@@ -113,7 +113,7 @@ ID：                 a    b    c    d
 <p>a/b/c/d 是四个合法词表 ID 的代称，不是实际 tokenizer 的编码结果。batch 中存在 padding 时，还需有效长度或 attention mask，避免把 padding 当成正文。</p>
 <h2 id="4-embedding-每个-id-查出一个长度-d-的向量">4. embedding：每个 ID 查出一个长度 D 的向量</h2>
 <p>embedding 参数形状为 <code>[Vocab,D]</code>。ID 为 a，就读取这张表的第 a 行：</p>
-<div class="codehilite"><pre><span></span>input_ids：[1, 4]
+<div class="codehilite text-diagram"><pre><span></span>input_ids：[1, 4]
 embedding weight：[32000, 1024]
     ↓ 查表
 X⁰：[1, 4, 1024]
@@ -133,11 +133,11 @@ A=X+\operatorname{AttentionBranch}(\operatorname{RMSNorm}_1(X)),
 Y=A+\operatorname{FFN}(\operatorname{RMSNorm}_2(A)).
 \]</div>
 
-<div class="codehilite"><pre><span></span>X ────────────────┐
+<div class="codehilite text-diagram"><pre><span></span>X ────────────────┐
  ↓ RMSNorm₁       │
 Q/K/V 投影        │
  ↓ RoPE、attention│
-多头合并、输出投影 │
+多头合并、输出投影│
  ↓                │
 加上 X ←──────────┘
  ↓ A ─────────────┐
@@ -163,7 +163,7 @@ RMSNorm₂          │
 Q=ZW_q^T,\qquad K=ZW_k^T,\qquad V=ZW_v^T.
 \]</div>
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>权重或结果</th>
@@ -188,7 +188,7 @@ Q=ZW_q^T,\qquad K=ZW_k^T,\qquad V=ZW_v^T.
 <td>各为 <code>[1,4,256]</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Q、K、V 使用不同权重，学习不同的表示。Q 用于本位置发起匹配，K 用于各位置被匹配，V 提供按权重汇集的内容。它们不是从外部知识库直接取来的三份数据。</p>
 <h3 id="拆-head-先-reshape-再调整轴顺序">拆 head 先 reshape，再调整轴顺序</h3>
 <div class="codehilite"><pre><span></span><span class="c1"># 形状示意，q/k/v 已经完成投影。</span>
@@ -201,7 +201,7 @@ Q=ZW_q^T,\qquad K=ZW_k^T,\qquad V=ZW_v^T.
 <p>投影将最后一个特征轴组织成 <code>head × head_dim</code>。reshape 和 transpose 本身不增加一层学习计算，只改变张量的逻辑分组与访问方式。转轴后不能直接假设存储仍连续。</p>
 <h3 id="gqa-的共享关系">GQA 的共享关系</h3>
 <p>本文 16 个 Q heads 对应 4 个 KV heads：</p>
-<div class="codehilite"><pre><span></span>Q heads  0、 1、 2、 3 → KV head 0
+<div class="codehilite text-diagram"><pre><span></span>Q heads  0、 1、 2、 3 → KV head 0
 Q heads  4、 5、 6、 7 → KV head 1
 Q heads  8、 9、10、11 → KV head 2
 Q heads 12、13、14、15 → KV head 3
@@ -222,7 +222,7 @@ Q heads 12、13、14、15 → KV head 3
 <h2 id="8-attention-分数-mask-归一化和-v-加权求和">8. attention：分数、mask、归一化和 V 加权求和</h2>
 <h3 id="每个-head-的-qk-点积">每个 head 的 QK 点积</h3>
 <p>完成 RoPE，并取得历史与当前 KV 后：</p>
-<div class="codehilite"><pre><span></span>Q：     [B,Hq,S,d]
+<div class="codehilite text-diagram"><pre><span></span>Q：     [B,Hq,S,d]
 K：     [B,Hkv,T,d]
 V：     [B,Hkv,T,d]
 
@@ -239,7 +239,7 @@ s_{b,h,i,j}=\frac{q_{b,h,i}\cdot k_{b,g(h),j}}{\sqrt d}.
 <p>i 表示当前 query 位置，j 表示被访问的 key 位置。一个 score 是两条长度 d 向量的点积，不是沿 token 位置把 Q/K 的所有元素一起相乘。</p>
 <h3 id="causal-mask-按位置关系屏蔽未来">causal mask 按位置关系屏蔽未来</h3>
 <p>prefill 的四个位置使用：</p>
-<div class="codehilite"><pre><span></span>             key 0  key 1  key 2  key 3
+<div class="codehilite text-diagram"><pre><span></span>             key 0  key 1  key 2  key 3
 query 0        ✓      ×      ×      ×
 query 1        ✓      ✓      ×      ×
 query 2        ✓      ✓      ✓      ×
@@ -257,7 +257,7 @@ o_{b,h,i}=\sum_j p_{b,h,i,j}v_{b,g(h),j}.
 
 <p>softmax 沿最后的 T 维，表示同一个 query 在各 key 之间分配权重。没有 dropout 时，这些权重非负且和为 1，输出是 V 的加权平均。</p>
 <p>例如权重 <code>[0.2,0.3,0.5]</code>，V 为 <code>[[1,0],[0,2],[2,2]]</code>，输出为 <code>[1.2,1.6]</code>。这个二维示例说明混合方式，不代表真实 head 只有两个特征。</p>
-<div class="codehilite"><pre><span></span>scores / probs：[B,Hq,S,T]
+<div class="codehilite text-diagram"><pre><span></span>scores / probs：[B,Hq,S,T]
 每个 head 的结果：[B,Hq,S,d]
 </pre></div>
 
@@ -265,7 +265,7 @@ o_{b,h,i}=\sum_j p_{b,h,i,j}v_{b,g(h),j}.
 <p>这些是逻辑形状。FlashAttention 可以直接分块计算输出，不必在显存里生成完整 score/probability 矩阵，详见 <a href="cuda-flash-attention.html">FlashAttention 1–4</a>。</p>
 <h2 id="9-合并-heads-输出投影-第一次残差">9. 合并 heads、输出投影、第一次残差</h2>
 <p>各 head 已经得到上下文相关的 value 混合结果，先还原 token-first 布局，再拼接 head 特征：</p>
-<div class="codehilite"><pre><span></span>[B,Hq,S,d]
+<div class="codehilite text-diagram"><pre><span></span>[B,Hq,S,d]
     ↓ transpose(1,2)
 [B,S,Hq,d]
     ↓ reshape
@@ -295,7 +295,7 @@ Z=\operatorname{RMSNorm}_2(A),\quad U=ZW_{up}^T,\quad G=ZW_{gate}^T,
 H=\operatorname{SiLU}(G)\odot U,\qquad Y=A+HW_{down}^T.
 \]</div>
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>中间量</th>
@@ -324,13 +324,13 @@ H=\operatorname{SiLU}(G)\odot U,\qquad Y=A+HW_{down}^T.
 <td><code>[1,4,1024]</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>up/gate/down 都是学习到的线性变换，SiLU 提供非线性。中间结果随后直接经过 down 投影，已经构成完整的这类 FFN；不要求再插入额外 Linear。</p>
 <p>这里 <span class="math">\(\operatorname{SiLU}(x)=x\,\sigma(x)\)</span>，<span class="math">\(\sigma(x)=1/(1+e^{-x})\)</span>，<span class="math">\(\odot\)</span> 表示对应元素相乘。gate 不只是一个 0/1 开关，它产生连续的逐特征调节值。</p>
 <p>FFN 在每个位置独立执行，同一层的不同 token 共用 FFN 权重。它本身不直接读取其他 token 的行，但其输入已经由 attention 混入上下文。<strong>attention 混合位置，FFN 变换每个位置的特征。</strong> 具体公式和组件实现可参见 <a href="pytorch-components.html">常见计算与组件</a>。</p>
 <h2 id="11-堆叠-l-层后-怎样得到下一个-token">11. 堆叠 L 层后，怎样得到下一个 token</h2>
 <p>Y 进入下一层，再执行 norm、attention、残差、norm、FFN、残差。本文共有 24 层，所有位置逐层推进。最后仍是 <code>[B,S,D]</code>，然后执行 final RMSNorm 与 LM head：</p>
-<div class="codehilite"><pre><span></span>最后一层输出：[1,4,1024]
+<div class="codehilite text-diagram"><pre><span></span>最后一层输出：[1,4,1024]
     ↓ final norm
 [1,4,1024]
     ↓ LM head，权重 [32000,1024]
@@ -354,7 +354,7 @@ logits：[1,4,32000]
 <p><strong>得到 e 时，缓存通常还只有 a/b/c/d，没有 e 的 K/V。</strong> e 是这次 forward 之后选出的离散结果，还没作为输入经过各层计算。</p>
 <h3 id="第一次-decode-输入-e-预测-f">第一次 decode：输入 e，预测 f</h3>
 <p>接下来只输入 e，位置为 4。每层接收 <code>[1,1,1024]</code>，为 e 生成当前层的新 Q/K/V，再把新 K/V 加入该层缓存：</p>
-<div class="codehilite"><pre><span></span>Q_new：   [1,16,1,64]
+<div class="codehilite text-diagram"><pre><span></span>Q_new：   [1,16,1,64]
 K_cache： [1, 4,5,64]   包含 a/b/c/d/e
 V_cache： [1, 4,5,64]
 scores：  [1,16,1,5]    按 GQA 关系访问 KV heads
@@ -364,7 +364,7 @@ scores：  [1,16,1,5]    按 GQA 关系访问 KV heads
 <p>e 依次经过全部 24 层，最后产生 <code>[1,1,32000]</code> logits，从中选择 f。它仍然经过完整的 block，不会因为只有一个新 token 就跳过 FFN 或输出投影。</p>
 <h3 id="第二次-decode-输入-f-预测-g">第二次 decode：输入 f，预测 g</h3>
 <p>输入 f，位置为 5。每层缓存从 5 个位置增长为 6 个位置，最后选择 g：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>阶段</th>
@@ -397,13 +397,13 @@ scores：  [1,16,1,5]    按 GQA 关系访问 KV heads
 <td>g</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>如果选出 g 后就停止，通常无须再为了缓存 g 而额外执行一次 forward。因此“已输出 token 数”和“已进入 KV cache 的生成 token 数”在停止边界处可能不同。</p>
 <p>以上是普通单 token 自回归流程。chunked prefill 会把 prompt 分段；speculative decoding 可一次验证多个候选位置，不能将这些扩展与基础 S=1 decode 混为一谈。</p>
 <h2 id="13-kv-cache-的所有权-有效期与显存">13. KV cache 的所有权、有效期与显存</h2>
 <h3 id="每一层都有自己的-k-v">每一层都有自己的 K/V</h3>
 <p>第 l 层的 K/V 由第 l 层输入及其投影权重产生，不能拿第 0 层的 K/V 供全部层复用：</p>
-<div class="codehilite"><pre><span></span>layer 0：K₀、V₀ → layer 0 attention 使用
+<div class="codehilite text-diagram"><pre><span></span>layer 0：K₀、V₀ → layer 0 attention 使用
 layer 1：K₁、V₁ → layer 1 attention 使用
 ……
 layer 23：K₂₃、V₂₃ → layer 23 attention 使用
@@ -425,7 +425,7 @@ layer 23：K₂₃、V₂₃ → layer 23 attention 使用
 <p>GQA 按 Hkv 而非 Hq 保存缓存，因此可减少 KV 元素数量。实际推理引擎通常预分配或分页管理 KV。append 可以是在空闲槽位写入并更新长度，不必每步 <code>torch.cat</code> 复制整个历史。分页改变物理寻址，不改变每个 query 应访问哪些历史内容的语义。</p>
 <h2 id="14-训练为什么能一次处理多个位置">14. 训练为什么能一次处理多个位置</h2>
 <p>训练时完整目标序列已经给定。对 <code>[a,b,c,d,e]</code>，可以组织：</p>
-<div class="codehilite"><pre><span></span>模型输入：a  b  c  d
+<div class="codehilite text-diagram"><pre><span></span>模型输入：a  b  c  d
 监督目标：b  c  d  e
 </pre></div>
 
@@ -440,7 +440,7 @@ layer 23：K₂₃、V₂₃ → layer 23 attention 使用
 <p>训练通常不用推理式 KV cache 复用历史图。它需要反向所需状态，FlashAttention 或 activation checkpointing 可以通过重计算节省中间存储。标准训练 forward 接收真实前缀，称为 teacher forcing；推理则不断把刚选出的 token 加入前缀。两者共用核心网络，但输入组织和反向路径不同。<a href="https://arxiv.org/abs/1706.03762">原始 Transformer 训练与 mask</a></p>
 <h2 id="15-原始-transformer-与现代-decoder-only-的区别">15. 原始 Transformer 与现代 decoder-only 的区别</h2>
 <p>原始 encoder-decoder Transformer 常用于翻译：先编码源句，再让 decoder 逐步生成目标句。decoder 每层除了 causal self-attention，还有读取 encoder 输出的 cross-attention。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>结构</th>
@@ -469,11 +469,11 @@ layer 23：K₂₃、V₂₃ → layer 23 attention 使用
 <td>目标位置读取有效源位置</td>
 </tr>
 </tbody>
-</table>
-<div class="codehilite"><pre><span></span>源句 → encoder → 源句表示 ────────────────┐
-                                       ↓ K/V
+</table></div>
+<div class="codehilite text-diagram"><pre><span></span>源句 → encoder → 源句表示 ────────────────┐
+                                          ↓ K/V
 目标前缀 → causal self-attention → cross-attention → FFN
-                                       ↑ Q
+                                          ↑ Q
 </pre></div>
 
 
@@ -481,7 +481,7 @@ layer 23：K₂₃、V₂₃ → layer 23 attention 使用
 <p>原始论文采用的位置编码、LayerNorm 放置和 ReLU FFN，也不同于本文的 pre-norm/RMSNorm/RoPE/SwiGLU 组合。学习“Transformer”时，应先确认讨论的是哪一种 block。<a href="https://arxiv.org/abs/1706.03762">Attention Is All You Need</a></p>
 <h2 id="16-各种-attention-应按什么关系继续学习">16. 各种 attention 应按什么关系继续学习</h2>
 <p>不同名字可能改变不同维度，不能仅按名字当成互斥的算法列表：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>讨论维度</th>
@@ -521,7 +521,7 @@ layer 23：K₂₃、V₂₃ → layer 23 attention 使用
 <td>历史 KV 怎样组织地址与容量</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>例如“causal GQA + paged KV + FlashAttention”可以同时成立：三个词分别描述可见性、head 关系与执行/存储方式。</p>
 <p>落实到 GPU，一次 block 通常涉及 RMSNorm、QKV GEMM、RoPE/cache 写入、attention kernel、输出 GEMM、残差、FFN GEMM 和逐元素运算。实现可以融合相邻步骤，所以数学步骤数不等于 kernel 数。<a href="cuda-gemm.html">GEMM 教程</a> 解释矩阵工作，<a href="cuda-flash-attention.html">FlashAttention 1–4</a> 解释 attention 内部的数据流，<a href="gpu-graphs-and-compilation.html">CUDA Graph</a> 则解释如何复用提交安排。</p>
 <h2 id="17-把一次生成的控制流连起来">17. 把一次生成的控制流连起来</h2>

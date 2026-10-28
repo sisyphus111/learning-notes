@@ -3,9 +3,9 @@
 <title>神经网络基础 · 求知录</title><meta name="description" content="torch.nn · functional · Module · 参数 · 自动求导 · 训练与推理">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -23,7 +23,7 @@
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -53,11 +53,11 @@
 <td>管理注册的子层、参数和 buffer</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>nn</code> 是 neural network 的缩写。<code>F.linear</code> 与 <code>nn.Linear</code> 都能参与自动求导；是否记录梯度取决于 Tensor 和梯度模式，不能按“函数还是层对象”判断。<code>nn.Module</code> 是层和模型共同使用的基类，单个 <code>nn.Linear</code> 也是一个 Module。</p>
 <h2 id="2-linear-同一个计算的两种用法">2. Linear：同一个计算的两种用法</h2>
 <p>Linear（线性层，也常称全连接层）对每个输入向量做 <code>y = x @ weight.T + bias</code>。<code>in_features</code> 是输入特征数，<code>out_features</code> 是输出特征数；前面的 batch、token 轴保留。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象</th>
@@ -82,7 +82,7 @@
 <td><code>[..., out_features]</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="f-linear-自己提供权重和偏置">F.linear：自己提供权重和偏置</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
@@ -99,7 +99,7 @@
 <p>第一项是 <code>1×1 + 2×0 + 3×0 + 10 = 11</code>，第二项是 <code>1+2+3+20 = 26</code>。F.linear 使用传入的 Tensor，不会替你创建或保存一套模型权重。</p>
 <h3 id="nn-linear-的构造参数与常用写法">nn.Linear 的构造参数与常用写法</h3>
 <p>构造接口是 <code>nn.Linear(in_features, out_features, bias=True, device=None, dtype=None)</code>。它创建一个层对象及其参数；随后用 <code>layer(x)</code> 传入 Tensor 做计算。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>参数</th>
@@ -134,9 +134,9 @@
 <td><code>None</code>：使用默认浮点类型；未改配置时是 float32</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>下面都是同一套构造接口的常用写法，均把最后一轴从 3 个特征变成 2 个：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>构造写法</th>
@@ -177,7 +177,7 @@
 <td>先按默认配置构造，再迁移、转换已有参数</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>最后一行的 <code>.to(...)</code> 修改刚创建的层并返回自身；直接传 device/dtype 则在目标配置下创建参数。每次调用 <code>nn.Linear(...)</code> 都创建并初始化一套独立参数；“构造写法配置相同”不代表两层的随机权重数值相同。默认 weight 和启用的 bias 都会随机初始化，不能当作零使用；需要指定数值时，见下一小节的 copy_ 示例。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
@@ -260,7 +260,7 @@
 <h3 id="为什么要把-tensor-保存到模型里">为什么要把 Tensor 保存到模型里</h3>
 <p>一个线性层计算 <code>y = x @ weight.T + bias</code>。每次输入 x 可以不同，但同一个层需要反复使用同一套 weight、bias：训练时逐步调整它们，推理时复用训练好的数值。因此，层把参数保存在对象里，每次调用 <code>layer(x)</code> 都读取当前的参数。</p>
 <p>模型还可能保存固定数据、运行统计量和临时结果，它们也可以用 Tensor 表示。<strong>把数据注册为参数或 buffer 后，PyTorch 才能按相应规则统一管理它们。</strong> 对包含很多子层的模型，参数查找、迁移和保存可以递归完成，不必逐层手动枚举。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>要做的事</th>
@@ -285,7 +285,7 @@
 <td>注册参数和持久 buffer，按名称组织</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>计算本身也可以写成 <code>F.linear(x, weight, bias)</code>；Module 将需要复用的数据和使用这些数据的计算组织在一起。普通 Tensor 属性也能保存一份引用，但不会自动进入上面的管理流程。</p>
 <h3 id="parameter-buffer-与普通属性分别是什么">Parameter、buffer 与普通属性分别是什么</h3>
 <p>假设一个模型计算 <code>y = weight * (x - offset)</code>：weight 是准备训练调整的缩放系数，offset 是本例预先给定的固定校正量，cache 用来演示普通临时数据。</p>
@@ -323,7 +323,7 @@
 <p><code>model(x)</code> 读取 weight 和 offset，进行 Tensor 运算。训练更新 weight 后，下次调用就会使用更新后的值；offset 在本例中按固定值使用。cache 没有参与这个 forward，也没有注册，所以迁移模型时不会处理它。</p>
 <h3 id="device-dtype-怎样作用于这些数据">device / dtype 怎样作用于这些数据</h3>
 <p>device 表示数值放在哪里，例如 CPU、<code>cuda:0</code>；dtype 表示数值用什么类型保存，例如 float32、float16。上例的 <code>model.to(device='cuda', dtype=torch.float16)</code> 得到：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>数据</th>
@@ -348,10 +348,10 @@
 <td>仍是 CPU / float32</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>浮点、复数参数和 buffer 会转换为指定 dtype；整型状态只迁移设备，保留其整数 dtype。模型的输入 x 是调用时从外面传入的，不属于注册状态，仍需单独迁移，例如 <code>x = x.to(device='cuda', dtype=torch.float16)</code>。</p>
 <p>再看三种保存方式对应的管理规则：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>保存方式</th>
@@ -380,11 +380,11 @@
 <td>否</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>注册身份与 requires_grad 是两个概念。</strong> requires_grad 控制是否求梯度，Parameter / buffer 的身份控制模型怎样管理 Tensor。Parameter 默认 <code>requires_grad=True</code>，也可以冻结为 False；普通 Tensor 即使要求梯度，也不会自动出现在 <code>model.parameters()</code> 中。</p>
 <p>注意调用对象的区别：<code>Tensor.to(...)</code> 返回转换结果，需要接收；目标 device/dtype 已匹配时可能返回原 Tensor。<code>Module.to(...)</code> 修改模型并返回自身。先把模型放到目标设备，再创建持有它参数的优化器。规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.parameter.Parameter.html">Parameter</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.to.html">Tensor.to</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.Module.html#torch.nn.Module.to">Module.to</a>。</p>
 <h2 id="5-常见层与-functional-写法">5. 常见层与 functional 写法</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>层对象</th>
@@ -424,12 +424,12 @@
 <td>训练时随机置零并缩放保留值；评估时直接返回输入</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这些 Module 可以插入 Sequential 或自定义模型；functional 写法适合在 forward 中显式表达计算。使用 <code>F.dropout</code> 时需要传入 <code>training=self.training</code>，它默认 <code>training=True</code>，不会自动读取所属模型的模式。接口见 <a href="https://docs.pytorch.org/docs/2.14/nn.functional.html">functional</a>；softmax、归一化与 SiLU 的具体计算见 <a href="pytorch-components.html">常见计算与组件</a>。</p>
 <h2 id="激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控：ReLU、SiLU、GELU 与 SwiGLU</h2>
 <p>激活函数通常放在 Linear 等层之后，对中间激活值做非线性变换。只堆叠 Linear 仍等价于一次线性加偏置的变换；加入非线性，模型才能表达更复杂的关系。<strong>PyTorch 已提供 ReLU、SiLU、GELU 的现成接口，不需要自己写公式才能使用。</strong></p>
 <h3 id="常用激活接口速查">常用激活接口速查</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名称</th>
@@ -470,7 +470,7 @@
 <td>双曲正切，把实数映射到 (-1, 1)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这些接口都返回 Tensor，<strong>支持任意维数，逐元素计算，不需要 dim，输出 shape 与输入相同</strong>。例如输入 <code>[B, S, D]</code>，每个 <code>x[b, s, d]</code> 分别经过激活，输出仍是 <code>[B, S, D]</code>。表中层对象没有可学习参数；输入在 GPU 上，就在 GPU 上计算，不需要给 <code>nn.ReLU()</code> 等构造器传 device。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
@@ -527,7 +527,7 @@
 
 
 <p>在常见的 SwiGLU FFN 中，gate 和 up 来自同一个输入的两次独立 Linear 投影；相乘后，再用第三个 Linear 投影回模型维度：</p>
-<div class="codehilite"><pre><span></span>x [..., D] → gate_proj → gate [..., H] → SiLU ─┐
+<div class="codehilite text-diagram"><pre><span></span>x [..., D] → gate_proj → gate [..., H] → SiLU ─┐
            → up_proj   → up   [..., H] ────────┴→ 逐元素乘 → [..., H] → down_proj → [..., D]
 </pre></div>
 
@@ -538,7 +538,7 @@
 <h2 id="6-自动求导-loss-backward-与-grad">6. 自动求导：loss、backward 与 grad</h2>
 <h3 id="从损失值到梯度">从损失值到梯度</h3>
 <p><strong>先计算一个希望降低的损失值，再计算它对各个数的变化有多敏感，把结果存到 <code>.grad</code> 中。</strong> 在神经网络中，loss 通常衡量预测与目标的差距，自动求导负责计算 loss 相对于模型参数的梯度。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名字</th>
@@ -559,7 +559,7 @@
 <td>保存计算出来的 loss 对 x 的梯度</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>先把 x 当作两个需要求梯度的数，用 <code>loss = x0² + x1²</code> 演示求导。这个目标可以理解为让它们接近 0，不需要先引入整个模型。</p>
 <h3 id="前向计算-算出-loss-并记录求导关系">前向计算：算出 loss，并记录求导关系</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -579,7 +579,7 @@
 <p>requires_grad=True 表示需要计算涉及 x 的梯度。前向运算既算出数值，也记录相关运算的求导关系；只运行 square、sum 时，x.grad 仍是 None。上例把结果 sum 成一个标量，因此可以直接调用无参数 backward；非标量输出需要传入上游梯度或先做归约。</p>
 <h3 id="梯度-4-6-表示什么">梯度 [4, 6] 表示什么</h3>
 <p>梯度表示：保持其他数不变，某个数小幅变化时，loss 大约会变化多少。平方函数的导数是 <code>2x</code>，所以 loss 对 x0 的导数为 <code>2×2=4</code>，对 x1 的导数为 <code>2×3=6</code>。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>当前的数</th>
@@ -599,17 +599,17 @@
 <td>x1 增加 0.01，loss 大约增加 0.06</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>x 的数值 <code>[2,3]</code>、loss 的数值 <code>13</code>、x.grad 的数值 <code>[4,6]</code> 描述不同事情。梯度是局部变化率，不是新的 x，也不是 loss 的各个组成项。</p>
 <h3 id="backward-沿计算关系反向应用求导规则">backward：沿计算关系反向应用求导规则</h3>
-<div class="codehilite"><pre><span></span>前向计算：x=[2,3] → square → [4,9] → sum → loss=13
+<div class="codehilite text-diagram"><pre><span></span>前向计算：x=[2,3] → square → [4,9] → sum → loss=13
 反向求导：从 loss 开始 → 穿过 sum → 穿过 square → x.grad=[4,6]
 </pre></div>
 
 
 <p>每种运算有自己的求导规则。调用 backward 时，PyTorch 沿前向记录的关系反向组合这些规则，得到 loss 对 x 的梯度。这里 sum 对每个输入项的导数为 1，square 对输入的导数为 2x，组合后就是 <code>[4,6]</code>。</p>
 <p><strong>backward 只计算并累加梯度，不更新原来的数值。</strong> 如果用学习率 0.1 做最简单的梯度下降，更新规则是 <code>新数值 = 原数值 - 学习率×梯度</code>：</p>
-<div class="codehilite"><pre><span></span>x0：2 - 0.1×4 = 1.6
+<div class="codehilite text-diagram"><pre><span></span>x0：2 - 0.1×4 = 1.6
 x1：3 - 0.1×6 = 2.4
 新的平方和：1.6² + 2.4² = 8.32，低于原来的 13
 </pre></div>
@@ -653,7 +653,7 @@ x1：3 - 0.1×6 = 2.4
 
 <p>这个标记让正常梯度记录模式下的后续可求导运算建立求导关系，<strong>不会立刻计算梯度，也不会恢复 detach 前的历史</strong>。直接调用 <code>x.requires_grad_(True)</code> 会修改原对象；若要求保留原 x 的标记，应像上面一样先 detach。它也不会覆盖外层 <code>torch.no_grad()</code> 的设置。</p>
 <h3 id="autograd-grad-与-backward-返回梯度-还是累加到-grad">autograd.grad 与 backward：返回梯度，还是累加到 .grad</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -673,7 +673,7 @@ x1：3 - 0.1×6 = 2.4
 <td>直接返回，不累加到输入的 <code>.grad</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>grad_x = torch.autograd.grad(loss, x_local)[0]</code> 表示求 loss 对 x_local 的梯度。返回 tuple 是因为可以请求多个输入的梯度，例如 <code>grad_a, grad_b = torch.autograd.grad(loss, (a, b))</code>；只请求一个时，<code>[0]</code> 取出对应的梯度 Tensor，shape 与该输入相同。</p>
 <p>这两个接口都会在调用时执行反向求导；读取 <code>.grad</code> 只是读取已有字段，不会触发懒计算。这里 loss 是实数标量，可以省略 <code>grad_outputs</code>；多元素输出通常需要显式提供它，指定各输出在反向求导中的权重。</p>
 <h3 id="完整例子-返回输入梯度-保留调用方的状态">完整例子：返回输入梯度，保留调用方的状态</h3>
@@ -732,7 +732,7 @@ x1：3 - 0.1×6 = 2.4
 
 <p><code>zero_grad</code> 清梯度，<code>backward</code> 算梯度，<code>step</code> 改参数；step 不会自动清理梯度。<code>set_to_none=True</code> 让已有梯度字段变为 None，后续 backward 再产生梯度。本例的 SGD 没有设置动量或权重衰减，因此可按 <code>参数 -= 学习率 × 梯度</code> 手算。流程见 <a href="https://docs.pytorch.org/tutorials/beginner/basics/optimization_tutorial.html">优化训练教程</a>。</p>
 <h2 id="8-train-eval-与-no_grad-模式和梯度分开控制">8. train / eval 与 no_grad：模式和梯度分开控制</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>操作</th>
@@ -757,7 +757,7 @@ x1：3 - 0.1×6 = 2.4
 <td>得到脱离当前梯度关系的 Tensor，仍共享原数值存储</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>推理时通常同时使用 eval 和 no_grad：</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
@@ -792,7 +792,7 @@ x1：3 - 0.1×6 = 2.4
 
 <p>直接保存 <code>saved = model.state_dict()</code> 时，里面的 Tensor 仍与模型共享数据，后续更新参数可能改变你看到的 saved 值；独立快照需复制数值，或当时就用 <code>torch.save(model.state_dict(), path)</code> 写入文件。加载文件可用 <code>torch.load(path, map_location='cuda', weights_only=True)</code> 再传给 load_state_dict。保存/恢复见 <a href="https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html#save-load-state-dict-recommended">官方教程</a>。</p>
 <h2 id="常见错误速查">常见错误速查</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法或判断</th>
@@ -842,7 +842,7 @@ x1：3 - 0.1×6 = 2.4
 <td>保存到文件或复制 Tensor 数值</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h2 id="接下来读什么">接下来读什么</h2>
 <p><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a>解释每一步计算怎样处理 shape、dtype、device 和 storage；<a href="pytorch-components.html">常见计算与组件</a>展开 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 与 attention 的 Tensor 实现。</p>
 <p>本文核对官方接口，示例做静态语法检查，网页做构建与链接检查。注释数值为推导预期；<strong>未执行 CUDA 示例，也未提供训练性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-torch-nn-与-f-的关系">1. torch、nn 与 F 的关系</a><a class="level-2" href="#2-linear-同一个计算的两种用法">2. Linear：同一个计算的两种用法</a><a class="level-2" href="#3-nn-module-把层组织成模型">3. nn.Module：把层组织成模型</a><a class="level-2" href="#4-parameter-buffer-与模型的-device-dtype">4. Parameter、buffer 与模型的 device / dtype</a><a class="level-2" href="#5-常见层与-functional-写法">5. 常见层与 functional 写法</a><a class="level-2" href="#激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控：ReLU、SiLU、GELU 与 SwiGLU</a><a class="level-2" href="#6-自动求导-loss-backward-与-grad">6. 自动求导：loss、backward 与 grad</a><a class="level-2" href="#局部输入求导-detach-requires_grad_-与-autograd-grad">局部输入求导：detach、requires_grad_ 与 autograd.grad</a><a class="level-2" href="#7-一次训练更新-谁计算-谁改参数">7. 一次训练更新：谁计算，谁改参数</a><a class="level-2" href="#8-train-eval-与-no_grad-模式和梯度分开控制">8. train / eval 与 no_grad：模式和梯度分开控制</a><a class="level-2" href="#9-state_dict-保存和恢复模型状态">9. state_dict：保存和恢复模型状态</a><a class="level-2" href="#常见错误速查">常见错误速查</a><a class="level-2" href="#接下来读什么">接下来读什么</a></nav></aside></div>

@@ -3,9 +3,9 @@
 <title>对象语义 · 求知录</title><meta name="description" content="构造 · 复制与移动 · 引用 · 传参">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -31,7 +31,7 @@
 
 <p>如果元素类型是指针，容器拥有的是“指针值”，不自动拥有指针指向的对象。需要独占所有权时优先使用 <code>std::unique_ptr&lt;T&gt;</code>。</p>
 <h2 id="2-构造语法可能只差一对括号">2. 构造语法可能只差一对括号</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>代码</th>
@@ -64,7 +64,7 @@
 <td>复制半开区间 <code>[first,last)</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>高频错误：</strong><code>vector&lt;int&gt;(n)</code> 表示 n 个元素，<code>vector&lt;int&gt;{n}</code> 表示一个值为 n 的元素。</p>
 <h2 id="3-复制容器是深度逐元素复制">3. 复制容器是深度逐元素复制</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s">"x"</span><span class="p">,</span><span class="w"> </span><span class="s">"y"</span><span class="p">};</span>
@@ -75,7 +75,7 @@
 
 
 <p>复制构造和复制赋值都会产生独立元素。对 n 个元素的容器，通常至少是 O(n)，元素自身的复制成本还要继续计算。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>表达式</th>
@@ -100,7 +100,7 @@
 <td>移动赋值：释放/替换 b 的资源并接管 a</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h2 id="4-移动后对象仍有效-但值未指定">4. 移动后对象仍有效，但值未指定</h2>
 <div class="codehilite"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">};</span>
 <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
@@ -120,7 +120,7 @@
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>需求</th>
@@ -150,7 +150,7 @@
 <td>接口简单，便于在函数内移动</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">store</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">member_values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">values</span><span class="p">);</span>
 <span class="p">}</span>
@@ -226,7 +226,7 @@
 
 <p>引用、指针和迭代器只是指向容器内部位置的观察者，不拥有元素。容器重新分配、移动节点或删除元素后，它们可能悬空。具体规则必须结合容器底层结构判断，后续页面会逐类展开。</p>
 <h2 id="11-一页决策表">11. 一页决策表</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -266,7 +266,7 @@
 <td>a 的旧值不可再假设</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>掌握标准：</strong>看到一次容器构造、赋值、传参、返回或访问时，能明确指出是否产生 O(n) 复制、得到的是值还是引用、以及对象的所有权和生命周期在哪里。</p></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-容器默认拥有元素">1. 容器默认拥有元素</a><a class="level-2" href="#2-构造语法可能只差一对括号">2. 构造语法可能只差一对括号</a><a class="level-2" href="#3-复制容器是深度逐元素复制">3. 复制容器是深度逐元素复制</a><a class="level-2" href="#4-移动后对象仍有效-但值未指定">4. 移动后对象仍有效，但值未指定</a><a class="level-2" href="#5-传参方式决定是否复制">5. 传参方式决定是否复制</a><a class="level-2" href="#6-返回容器通常直接按值返回">6. 返回容器通常直接按值返回</a><a class="level-2" href="#7-访问表达式常常返回引用">7. 访问表达式常常返回引用</a><a class="level-2" href="#8-const-会沿访问传播">8. const 会沿访问传播</a><a class="level-2" href="#9-结构化绑定也有复制与引用之分">9. 结构化绑定也有复制与引用之分</a><a class="level-2" href="#10-引用有效性取决于容器是否移动了元素">10. 引用有效性取决于容器是否移动了元素</a><a class="level-2" href="#11-一页决策表">11. 一页决策表</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>

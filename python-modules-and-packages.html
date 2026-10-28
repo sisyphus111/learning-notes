@@ -3,9 +3,9 @@
 <title>模块、包与运行方式 · 求知录</title><meta name="description" content="import · package · python -m · pip / venv · __pycache__">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -17,7 +17,7 @@
 <article><p>当程序从一个文件变成多个文件，你就会遇到三件事：<strong>怎样组织代码，怎样找到代码，怎样启动程序。</strong> <code>module</code> / <code>package</code> 管组织，<code>import</code> 管加载，<code>python -m</code> 管启动；<code>pip</code> 和虚拟环境则决定第三方代码安装到哪里。<code>__pycache__</code> 是解释器产生的缓存，不是你要维护的源码。</p>
 <p>本页面向刚接触 Python 项目的读者，使用 Python 3.10+ 的常见写法，运行机制以 CPython 3.12 为例。先读本页，再读 <a href="python-native-interop.html">Python 与其他语言互操作</a>。文件示例需要按标注保存到同一个项目中；它们不是可以逐块独立执行的片段。</p>
 <h2 id="先分清这几个名字">先分清这几个名字</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>名字</th>
@@ -57,12 +57,12 @@
 <td>项目里的 <code>.venv/</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>“模块就是一个 <code>.py</code> 文件”是入门时好用的近似：模块还可以由 C/C++ 扩展实现，也可以内置在解释器中。普通文件包通常有 <code>__init__.py</code>；<strong>namespace package</strong> 可以没有它，用于把同一个包的内容分布在不同位置，不需要在第一个项目里引入这种结构。</p>
 <p>发行名和导入名属于两个命名空间，并不要求一致。例如安装 <code>Pillow</code> 后使用 <code>from PIL import Image</code>。本页也刻意用不同的名字：安装 <code>studytools-demo</code>，导入 <code>studytools</code>。依据见 <a href="https://packaging.python.org/en/latest/discussions/distribution-package-vs-import-package/">PyPA 对两种 package 的区分</a>与 <a href="https://docs.python.org/3.12/reference/import.html#packages">Python import 机制</a>。</p>
 <h2 id="用一个小项目串起来">用一个小项目串起来</h2>
 <p>我们写一个“求若干数的平方和”的工具：计算函数能被其他程序复用，也能从命令行调用。先创建下面的文件结构，<code>pyproject.toml</code> 在后面的安装小节补上。</p>
-<div class="codehilite"><pre><span></span>square-demo/                 ← 项目根目录，不是导入名
+<div class="codehilite text-diagram"><pre><span></span>square-demo/                 ← 项目根目录，不是导入名
 ├── studytools/              ← 导入包
 │   ├── __init__.py          ← 包初始化与对外接口
 │   ├── stats.py             ← 计算函数
@@ -128,7 +128,7 @@ python3 -m studytools 2 3
 <p><code>import studytools.stats</code> 会先加载父包 <code>studytools</code>，再取得子模块 <code>stats</code>。首次加载一个普通 Python 模块时，解释器会执行它的顶层语句：赋值、<code>def</code>、<code>class</code>、其他 <code>import</code> 都会执行；<code>def</code> 创建函数对象，函数体要等调用才执行。</p>
 <p>对本页项目，首次 <code>import studytools</code> 会执行 <code>__init__.py</code>，它又导入 <code>stats</code>。因此不宜在模块顶层直接启动服务器、跑训练或解析命令行，否则别人只是想导入函数，也会触发这些动作。</p>
 <p>几种写法的区别在于当前文件里绑定什么名字：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -153,7 +153,7 @@ python3 -m studytools 2 3
 <td><code>st.sum_squares([2, 3])</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>from ... import ...</code> 不会跳过模块加载，也不会复制一份函数实现。<code>as</code> 只改变当前文件里使用的名字。先避免 <code>import *</code>，这样读代码时能知道每个名字从哪里来。</p>
 <p><strong>同一进程中，已经导入的模块通常会按模块名保存在 <code>sys.modules</code> 中，再次导入会复用模块对象。</strong> 它不等于每次都重新运行源文件。观察这个缓存：</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
@@ -181,7 +181,7 @@ python3 -c 'import studytools; print(studytools.__file__)'
 <p><code>PYTHONPATH</code> 是额外的导入搜索路径，不是 shell 用来找命令的 <code>PATH</code>。临时加路径可以做诊断，但长期依赖全局 <code>PYTHONPATH</code> 或在代码里到处 <code>sys.path.append(...)</code>，容易让同名模块来自意外位置。先检查来源，再修正项目的安装或启动方式。依据见 <a href="https://docs.python.org/3.12/library/sys_path_init.html">sys.path 初始化</a>。</p>
 <h2 id="python-file-py-与-python-m-的区别">python file.py 与 python -m 的区别</h2>
 <p><strong>按文件运行时，你给的是文件路径；用 <code>-m</code> 时，你给的是可导入的模块名，Python 负责找到它，再作为程序运行。</strong> <code>-m</code> 后面不用 <code>.py</code>，也不用斜杠。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>命令</th>
@@ -210,13 +210,13 @@ python3 -c 'import studytools; print(studytools.__file__)'
 <td>输出 <code>13</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这个表描述默认启动行为，未启用 <code>-I</code>、<code>-P</code> 等改变搜索路径的选项。<code>-m</code> 不会把进程的工作目录切换到包目录，也不会让 <code>open("data.txt")</code> 自动相对源码寻找文件。</p>
 <p>直接运行 <code>cli.py</code> 时，常见报错是 <code>ImportError: attempted relative import with no known parent package</code>。文件明明存在，问题在于它没有以包成员的身份启动。回到项目根目录，用 <code>python3 -m studytools.cli ...</code>；或者先安装项目，再从其他目录启动。</p>
 <p><code>python3 -m studytools</code> 还要求包提供 <code>__main__.py</code>。并不是每个可导入模块都适合 <code>-m</code>：纯库可能没有命令行入口，原生扩展通常也不能直接用它运行。依据见 <a href="https://docs.python.org/3.12/using/cmdline.html#cmdoption-m">官方 -m 说明</a>。</p>
 <h3 id="__name__-__main__-与入口保护"><code>__name__</code>、<code>__main__</code> 与入口保护</h3>
 <p><code>__name__</code> 是模块运行时的名字。普通导入 <code>studytools.cli</code> 时，它是 <code>"studytools.cli"</code>；把该模块作为入口运行时，它是 <code>"__main__"</code>。<code>-m</code> 同时保留了包上下文，所以相对导入仍可工作。</p>
-<div class="codehilite"><pre><span></span>导入 studytools.cli
+<div class="codehilite text-diagram"><pre><span></span>导入 studytools.cli
   → 定义 main
   → __name__ 不是 "__main__"
   → 不调用 main，不读取调用者的命令行参数
@@ -232,7 +232,7 @@ python3 -m studytools.cli 2 3
 <h3 id="为什么常写-python-m-pip">为什么常写 python -m pip</h3>
 <p><code>python3 -m pip install ...</code> 表示“让这个 <code>python3</code> 解释器运行它找到的 pip”。直接执行 <code>pip</code> 时，shell 会从 <code>PATH</code> 找可执行文件，它可能绑定另一套 Python。<code>-m</code> 能明确解释器，但如果 <code>python3</code> 本身选错了，仍然会装错环境。</p>
 <p>其他常见例子：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>命令</th>
@@ -257,7 +257,7 @@ python3 -m studytools.cli 2 3
 <td>编译源码以检查语法，写出字节码；不调用计算函数</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>-m</code> 的统一含义始终是“按模块名启动”，不是“安装模块”。后面的模块决定具体做什么。</p>
 <h2 id="把项目安装到环境里">把项目安装到环境里</h2>
 <p>在根目录里能导入 <code>studytools</code>，不代表它已经安装：项目根目录可能刚好在搜索路径中。安装后，才可以从别的工作目录通过该环境找到它。</p>
@@ -294,7 +294,7 @@ include = ["studytools*"]
 
 <p>用 <code>.venv/bin/python</code> 明确指向环境，不必激活。<code>source .venv/bin/activate</code> 主要是在当前 shell 中调整 <code>PATH</code>，方便把这个解释器写成 <code>python</code>。venv 默认隔离第三方包，但会使用创建它的基础 Python；它不是容器，也不会隔离操作系统与所有本地动态库。见 <a href="https://docs.python.org/3.12/library/venv.html">venv 官方说明</a>。</p>
 <h3 id="普通安装-editable-安装-wheel-与源码包">普通安装、editable 安装、wheel 与源码包</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>做法或文件</th>
@@ -323,12 +323,12 @@ include = ["studytools*"]
 <td>pip 可读取的安装项列表，可含版本约束；不会自动定义自己项目的发行元数据</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>editable 安装不等于热更新：已经导入模块的进程一般仍使用缓存，需要重启；修改入口命令、依赖或构建配置，可能需要重新安装；修改 C++ 扩展通常还需要重新编译。具体机制由后端决定，并不总是简单的符号链接。见 <a href="https://pip.pypa.io/en/stable/topics/local-project-installs/">pip 本地项目安装</a>。</p>
 <p><code>pyproject.toml</code> 不一定代表一个可安装项目，有些仓库只用它配置格式化或检查工具。也不要把一份宽泛的依赖列表当成完整可复现环境：解释器版本、平台、具体依赖版本及本地库都可能影响结果。</p>
 <h2 id="__pycache__-pyc-与内存缓存"><code>__pycache__</code>、pyc 与内存缓存</h2>
 <p>常规 CPython 源码模块的加载过程，可以这样理解：</p>
-<div class="codehilite"><pre><span></span>查找到 stats.py 的加载方式
+<div class="codehilite text-diagram"><pre><span></span>查找到 stats.py 的加载方式
   → 创建模块对象，先登记到 sys.modules
   → 检查是否有与当前解释器和源码匹配的 .pyc
   → 可用：读取字节码；不可用：编译源码得到字节码
@@ -339,7 +339,7 @@ include = ["studytools*"]
 
 <p>先登记模块对象，可以避免相互导入时无休止地重新创建模块；但另一方此时也可能拿到一个尚未完成初始化的模块，这就是循环导入报错的一种来源。</p>
 <p><code>.pyc</code> 保存的是 Python 字节码，可由解释器执行；它不同于 C++ 编译出的 CPU 机器码。导入本页的 <code>stats.py</code> 后，常见文件名类似 <code>studytools/__pycache__/stats.cpython-312.pyc</code>，其中 <code>cpython-312</code> 标识解释器实现与版本。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>缓存</th>
@@ -362,7 +362,7 @@ include = ["studytools*"]
 <td>同一进程再次导入时复用对象</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>有 <code>.pyc</code> 仍要执行模块顶层代码，也不会自动缓存函数计算结果。</strong> 它通常改善加载成本，不能由此断言平方和计算会变快。直接按路径运行的主脚本通常不会为自身写出 import 用的缓存，但它导入的其他模块可能会写出缓存。</p>
 <p>默认时间戳模式会比较源码的修改时间和大小；还有基于哈希的校验模式。缓存不可用或没有写权限时，常规源码导入仍可编译并运行。源码存在时，删掉这些缓存通常只会让以后重新生成；<strong>删缓存不能让已经运行的进程忘记 <code>sys.modules</code> 里的对象</strong>。</p>
 <div class="codehilite"><pre><span></span>python3 -B -m studytools 2 3
@@ -372,7 +372,7 @@ include = ["studytools*"]
 
 <p>项目通常把 <code>__pycache__/</code>、<code>*.pyc</code>、<code>.venv/</code> 加进 <code>.gitignore</code>。不要把缓存当作跨版本发布格式，也不要把“删除所有缓存”当作第一步排错。基础说明见 <a href="https://docs.python.org/3.12/tutorial/modules.html#compiled-python-files">Python 的 compiled files 小节</a>，显式编译工具见 <a href="https://docs.python.org/3.12/library/py_compile.html">py_compile</a>。</p>
 <h2 id="遇到报错时-先定位哪一层">遇到报错时，先定位哪一层</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>现象</th>
@@ -412,7 +412,7 @@ include = ["studytools*"]
 <td>可能是内存缓存，或运行了另一份代码</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>不要仅凭异常名称就安装或升级包。Traceback 中缺失的也可能是某个已找到包的内部依赖，需要读清楚最早失败的位置。涉及 <code>.so</code> / <code>.pyd</code> 的动态库加载错误，继续看 <a href="python-native-interop.html">原生扩展与兼容性</a>。</p>
 <h2 id="自己动手检查理解">自己动手检查理解</h2>
 <ol>

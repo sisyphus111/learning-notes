@@ -329,7 +329,7 @@ cudaGraphLaunch(executable, stream);
 compute stream：GEMM ───────────────────→ 后续计算
                     │ event                 ↑ event
                     ↓                       │
-comm stream：       等 GEMM → NCCL AllReduce ┘
+comm stream：       等 GEMM → NCCL AllReduce┘
 ```
 
 从 compute stream 开始捕获，用 event 接入 comm stream。提交 NCCL 工作后，再用 event 汇回 compute stream，最后结束捕获。

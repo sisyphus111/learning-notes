@@ -3,9 +3,9 @@
 <title>执行层级与硬件映射 · 求知录</title><meta name="description" content="thread · warp · block · cluster · grid · SM / GPC · 同步范围">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -17,7 +17,7 @@
 <article><p>一次 kernel 启动产生一个 grid；grid 包含 blocks，block 内的线程按每 32 个组成 warp。启用 thread block cluster 时，grid 里的若干 blocks 组成一个 cluster。<strong>一个 block 的所有线程在同一个 SM 上执行；一个 SM 可以同时驻留多个 blocks。</strong></p>
 <h2 id="1-工作分组与硬件位置">1. 工作分组与硬件位置</h2>
 <p>CUDA 中要分别看两套层级：一套描述程序怎样分工，一套描述承接这些工作的硬件。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>视角</th>
@@ -37,7 +37,7 @@
 <td>工作放在哪里、由哪些硬件发出和执行指令</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>GPC 是 Graphics Processing Cluster，硬件上包含一组 SM。它与软件中的 thread block cluster 是两个不同对象。CUDA Core、Tensor Core 等位于 SM 内，是执行指令的硬件；线程没有永久独占某一个 Core。</p>
 <p><img alt="CUDA 逻辑分组与硬件映射：一个 cluster 的两个 blocks 分别完整放入同一 GPC 内的 SM" src="assets/cuda-execution-hierarchy.svg" loading="lazy" /></p>
 <p>图中只展开一个含两个 blocks 的 cluster，箭头表示一种可能的放置方式。每个 block 有 256 个线程，即 8 个 warps；cluster 内的 blocks 可以位于不同 SM，但仍受同一 GPC 的位置约束。图中每个 SM 只画一个 block，不代表 SM 只能驻留一个 block。</p>
@@ -49,7 +49,7 @@
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象</th>
@@ -82,7 +82,7 @@
 <td>12 × 8 = 96 个</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>一维情况下，常用下面的式子为每个线程分配数据位置：</p>
 <div class="codehilite"><pre><span></span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">blockIdx</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">blockDim</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">threadIdx</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
 <span class="c1">// block 0：i = 0～255</span>
@@ -94,7 +94,7 @@
 <p>这些数量描述<strong>要执行多少工作</strong>。它们没有指定 GPU 必须有 12 个 SM，也没有保证 12 个 blocks 同时运行。grid、block 也可以用二维或三维索引，便于把工作对应到数据坐标；索引维度本身不规定硬件放置。</p>
 <h2 id="3-warp-是-block-内的执行分组">3. Warp 是 block 内的执行分组</h2>
 <p>一个 block 的线程按线性编号连续分组，每组 32 个。对于上面的一维 256-thread block：</p>
-<div class="codehilite"><pre><span></span>Block
+<div class="codehilite text-diagram"><pre><span></span>Block
 ├── Warp 0：thread 0～31
 ├── Warp 1：thread 32～63
 ├── …
@@ -108,7 +108,7 @@
 <h2 id="4-block-完整放入一个-sm-sm-可容纳多个-blocks">4. Block 完整放入一个 SM，SM 可容纳多个 blocks</h2>
 <p>一个 block 的所有 warps 都在同一个 SM 上执行。普通 CUDA 执行模型不会把一个 block 的一半线程放到 SM 0，另一半放到 SM 1。</p>
 <p>假设有四个 256-thread blocks，资源允许时，一种可能的放置是：</p>
-<div class="codehilite"><pre><span></span>SM 0
+<div class="codehilite text-diagram"><pre><span></span>SM 0
 ├── Block 0：8 个 warps
 └── Block 3：8 个 warps
 
@@ -120,7 +120,7 @@ SM 1
 
 <p>这里 SM 0 驻留了 16 个 warps，但不意味着它们每个时刻都在同时执行。SM 的 warp schedulers 从就绪的 warps 中选择指令，交给相应执行单元；有的 warp 可能正在等待访存或依赖结果。</p>
 <p><strong>驻留表示工作状态已经占用 SM 资源；执行表示指令正在使用相应流水线。</strong> 计算资源与存储资源都影响一个 SM 能容纳多少 blocks：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>SM 上的资源</th>
@@ -141,12 +141,12 @@ SM 1
 <td>即使存储资源尚有空余，也受硬件驻留数量上限约束</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>两个 blocks 即使碰巧落在同一个 SM，也不会自动共享普通 <code>__shared__</code> 数组，<code>__syncthreads()</code> 仍只同步调用者所属的 block。程序不能依赖某两个普通 blocks 一定相邻、同时运行或按 block 编号顺序执行。</p>
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html#hardware-multithreading">NVIDIA Hardware Multithreading</a>。</p>
 <h2 id="5-cluster-把多个-blocks-组织到同一-gpc">5. Cluster 把多个 blocks 组织到同一 GPC</h2>
 <p>启用 cluster 后，包含关系是：</p>
-<div class="codehilite"><pre><span></span>Grid：12 个 blocks
+<div class="codehilite text-diagram"><pre><span></span>Grid：12 个 blocks
 ├── Cluster 0：Block 0～3
 ├── Cluster 1：Block 4～7
 └── Cluster 2：Block 8～11
@@ -155,7 +155,7 @@ SM 1
 
 <p>这是将一维 grid 配置成每个 cluster 4 个 blocks 后的逻辑例子：每个 cluster 有 4 × 256 = 1024 个线程、32 个 warps。前面的普通 <code>&lt;&lt;&lt;12, 256&gt;&gt;&gt;</code> 本身没有指定这种四块分组；需要额外使用 cluster 启动配置或相应 kernel 声明。</p>
 <p>cluster 的价值是增加了<strong>共同驻留和局部合作的保证</strong>：其中的 blocks 在同一 GPC 内协同调度，可以跨 SM，并支持 cluster barrier 和 distributed shared memory。后者让 cluster 内的线程访问其他 block 的 shared memory，访问仍需遵守同步和存储生命周期要求。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>范围</th>
@@ -176,7 +176,7 @@ SM 1
 <td>本次启动的全部 blocks；可跨多个 GPC，普通 grid 可分批执行</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Thread block cluster 是 Compute Capability 9.0 起引入的可选分组能力；可用的 cluster 大小需要结合设备和配置检查。软件 cluster 与硬件 GPC 也不是一一对应关系，不能把一个 GPC 的全部 SM 默认看成“一个 cluster”。</p>
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html#thread-block-clusters">NVIDIA Thread Block Clusters</a>。</p>
 <h2 id="6-block-barrier-先准备数据-再跨线程使用">6. Block barrier：先准备数据，再跨线程使用</h2>
@@ -195,7 +195,7 @@ SM 1
 <p>thread 0 要读 thread 127 写入的 <code>tile[127]</code>。两者属于不同 warp；没有 barrier 时，thread 0 可能先读，而 thread 127 尚未写入。barrier 同时建立线程间的执行顺序和普通 shared memory 访问的可见性。</p>
 <p>所有参与线程需要按一致的顺序到达对应 barrier。对于 128 个仍在运行的线程，把 <code>__syncthreads()</code> 放在仅 <code>threadIdx.x &lt; 64</code> 进入的分支内，会造成不一致的参与，可能挂起或产生错误。barrier 也不等于自动等待另外发起的异步拷贝完成；异步操作需要相应的完成等待。</p>
 <p>循环复用同一份 shared memory 时，还常需要第二次 barrier：</p>
-<div class="codehilite"><pre><span></span>加载本轮 tile
+<div class="codehilite text-diagram"><pre><span></span>加载本轮 tile
 block barrier   ← 防止数据没准备好就读取
 使用本轮 tile 计算
 block barrier   ← 防止有人没读完就被下一轮覆盖
@@ -205,7 +205,7 @@ block barrier   ← 防止有人没读完就被下一轮覆盖
 
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html#shared-memory">NVIDIA Shared Memory</a>。</p>
 <h2 id="7-更大范围的同步与-kernel-完成边界">7. 更大范围的同步与 kernel 完成边界</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>需求</th>
@@ -250,7 +250,7 @@ block barrier   ← 防止有人没读完就被下一轮覆盖
 <td>调用的 CPU 线程等待此前提交的设备工作，不覆盖其他 GPU 或其他进程</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>cluster.sync()</code> 是局部集合，<code>grid.sync()</code> 是整个 grid 的集合。普通 grid 的 blocks 可能需要排队，不能随意用全局计数器和自旋构造一个全 grid barrier：若已驻留的 blocks 占着资源等待，尚未调度的 blocks 可能一直无法运行。grid-wide 同步需要 <code>cudaLaunchCooperativeKernel</code> 等合作式启动，并满足相应能力和驻留资源条件。</p>
 <p>更常见的阶段划分方式是先结束 kernel A，再执行 kernel B。下面 <code>phase_A</code>、<code>phase_B</code> 和 <code>stream</code> 已由调用方定义：</p>
 <div class="codehilite"><pre><span></span><span class="n">phase_A</span><span class="o">&lt;&lt;&lt;</span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="o">&gt;&gt;&gt;</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">intermediate</span><span class="p">);</span>
@@ -263,7 +263,7 @@ block barrier   ← 防止有人没读完就被下一轮覆盖
 <p><code>__threadfence()</code> 则是内存顺序相关操作，不能用来要求所有 blocks 到达同一个位置。判断同步时，先明确是线程集合、内存顺序、GPU 工作依赖，还是 CPU 等待完成。</p>
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cooperative-groups.html">NVIDIA Cooperative Groups</a>、<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">CUDA Streams 与 Events</a>。</p>
 <h2 id="8-层级与数量容易混淆的地方">8. 层级与数量容易混淆的地方</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>说法</th>
@@ -304,7 +304,7 @@ block barrier   ← 防止有人没读完就被下一轮覆盖
 <td>Tile 是数据或计算区域；block/warp 是执行分组，具体实现决定谁处理哪个 tile</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h2 id="9-线程的计算-搬运与通信分工">9. 线程的计算、搬运与通信分工</h2>
 <p>计算、搬运和通信是程序安排给线程的工作角色。GPU 线程没有固定的“计算线程”或“搬运线程”硬件类型；同一个线程可以先搬数据，再计算，再写回结果。理解分工时，先看线程执行哪些指令，再看指令使用哪些硬件。</p>
 <h3 id="9-1-普通-global-shared-复制为什么经过寄存器">9.1 普通 global→shared 复制为什么经过寄存器</h3>
@@ -315,7 +315,7 @@ block barrier   ← 防止有人没读完就被下一轮覆盖
 
 
 <p>即使源码直接写成一句赋值，普通 load/store 路径仍需要寄存器承接读取结果。下面是指令语义示意，不是编译器输出：</p>
-<div class="codehilite"><pre><span></span>ld.global  r, [global_address]
+<div class="codehilite text-diagram"><pre><span></span>ld.global  r, [global_address]
 st.shared  [shared_address], r
 
 数据路径：global memory → 寄存器 r → shared memory
@@ -324,7 +324,7 @@ st.shared  [shared_address], r
 
 <p><code>st.shared</code> 使用 <code>ld.global</code> 的结果，因此存在数据依赖。这里的 global memory 是地址空间；读取可能命中缓存，不代表每次都访问 HBM。具体源码怎样生成指令，需要检查目标架构上的编译结果。</p>
 <p><code>cp.async</code> 同时指定源地址、目标地址和复制大小。支持的复制路径可以直接把数据送入 shared memory，省去被复制数据在普通寄存器中的中转：</p>
-<div class="codehilite"><pre><span></span>cp.async [shared_address], [global_address], 复制字节数
+<div class="codehilite text-diagram"><pre><span></span>cp.async [shared_address], [global_address], 复制字节数
 
 数据路径：global memory → shared memory
 线程工作：计算地址 → 发起复制 → 做独立工作 → 等待完成 → 使用数据
@@ -336,7 +336,7 @@ st.shared  [shared_address], r
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html">CUDA 异步复制与 load/store 路径</a>、<a href="https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#data-movement-and-conversion-instructions-cp-async">PTX cp.async</a>。</p>
 <h3 id="9-2-所有线程轮流工作-或按-warp-固定分工">9.2 所有线程轮流工作，或按 warp 固定分工</h3>
 <p>一种常见实现让 block 内的线程先共同加载，再共同计算：</p>
-<div class="codehilite"><pre><span></span>每个线程搬一部分输入
+<div class="codehilite text-diagram"><pre><span></span>每个线程搬一部分输入
         ↓
 同步，确认数据可用
         ↓
@@ -348,7 +348,7 @@ st.shared  [shared_address], r
 
 <p>此时每个线程都兼任搬运与计算，没有专门的搬运线程组。</p>
 <p>另一种实现按 warp 安排不同角色，称为 <strong>warp specialization</strong>。负责准备数据的 producer warps 与负责使用数据的 consumer warps 可以独立推进：</p>
-<div class="codehilite"><pre><span></span>Producer warps：等空 buffer → 发起搬运 → 确认或安排完成通知 → 准备下一块
+<div class="codehilite text-diagram"><pre><span></span>Producer warps：等空 buffer → 发起搬运 → 确认或安排完成通知 → 准备下一块
 Consumer warps：等数据就绪 → 执行计算 → 通知 buffer 已用完 → 处理下一块
 </pre></div>
 
@@ -358,7 +358,7 @@ Consumer warps：等数据就绪 → 执行计算 → 通知 buffer 已用完 �
 <p>来源：<a href="https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html#tensor-memory-accelerator">Hopper TMA 与 warp specialization</a>。矩阵乘法中的流水线可继续看 <a href="cuda-gemm.html">GEMM 计算与优化</a>。</p>
 <h3 id="9-3-线程的角色与硬件执行单元">9.3 线程的角色与硬件执行单元</h3>
 <p>“线程负责计算或搬运”描述谁组织工作。实际指令还要交给相应硬件执行：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>程序中的工作</th>
@@ -388,7 +388,7 @@ Consumer warps：等数据就绪 → 执行计算 → 通知 buffer 已用完 �
 <td>GPU 互联、内存系统或网卡承担实际传输</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>通信的流程取决于具体实现。一个通信线程可能等待数据就绪，读取数据并做 reduction，写入目标 buffer，再通知消费者。跨设备传输还可能由网卡或其他搬运引擎推进。“有通信线程”并不意味着全部数据都经过它的寄存器。</p>
 <p>还要区分两种并行范围。同一 kernel 内，可以让不同 warps 分工。不同 kernels 之间，也可以安排计算 kernel 与通信 kernel 并发。后者取决于 stream 依赖和可用资源，提交到不同 streams 并不保证真正重叠。线程角色也不会为其永久保留某个 CUDA Core 或 Tensor Core。</p>
 <p>来源：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html#simt-execution-model">NVIDIA SIMT 与硬件多线程</a>、<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">CUDA 异步执行</a>。</p>

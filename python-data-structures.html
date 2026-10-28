@@ -3,9 +3,9 @@
 <title>Python 数据结构速查 · 求知录</title><meta name="description" content="语法 · 返回值 · 原地修改 · 常见错误">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -17,7 +17,7 @@
 <article><p>重点是<strong>怎么写、返回什么、是否修改原对象、哪里容易出错</strong>。示例适用于 Python 3.10+，每个代码块可以独立运行。</p>
 <p>行尾注释标出表达式的值或操作后容器的内容；方法返回值会单独注明。运行 <code>.py</code> 文件时，单独写表达式不会打印，需要使用 <code>print(...)</code>。报错示例已注释，可取消注释观察。</p>
 <h2 id="先选对容器">先选对容器</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>类型</th>
@@ -82,7 +82,7 @@
 <td>能</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>“有序”是有位置或插入顺序，不代表自动排序。<code>dict</code> 保留插入顺序；<code>set</code> 不承诺遍历顺序。<code>int</code>、<code>float</code>、<code>bool</code>、<code>None</code> 是常用值，不是多元素容器。</p>
 <h2 id="通用操作与对象引用">通用操作与对象引用</h2>
 <h3 id="长度-成员检查与真假判断">长度、成员检查与真假判断</h3>
@@ -97,7 +97,7 @@
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>对象</th>
@@ -126,7 +126,7 @@
 <td>保存的键数，不是计数之和</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>生成器、map、filter 等迭代器通常不能调用 <code>len()</code>。空容器为假；判断 <code>None</code> 用 <code>x is None</code>，不要与 <code>0</code>、<code>False</code> 或空字符串混为一谈。</p>
 <h3 id="值-对象引用与变量名">值、对象引用与变量名</h3>
 <p><code>=</code> 绑定名字，不复制对象；<code>==</code> 比较内容；<code>is</code> 比较对象身份。数字、字符串按内容比较。</p>
@@ -384,7 +384,7 @@
 
 <p>key 必须可哈希，常用数字、字符串、可哈希 tuple、frozenset 可以；list、dict、set 不可以。value 不受此限制。</p>
 <h3 id="键不存在时-返回默认值-还是插入默认值">键不存在时：返回默认值，还是插入默认值？</h3>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>操作</th>
@@ -429,7 +429,7 @@
 <td>否</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'x'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>                    <span class="c1"># 0：读取缺失 key 的默认值，不插入，d 仍为空</span>
 <span class="n">d</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">'x'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>             <span class="c1"># 0：读取或插入默认值，此处新增 'x': 0</span>
@@ -772,7 +772,7 @@
 
 <p><code>all/any</code>、生成器表达式、<code>map/filter</code>、<code>lambda</code>、<code>key=</code> 和迭代器消费规则，见 <a href="python-iterables-and-functions.html">可迭代对象与常用函数</a>。模块、包与 import 见 <a href="python-modules-and-packages.html">模块参考</a>。</p>
 <h2 id="常见错误速查">常见错误速查</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>容易写错</th>
@@ -832,7 +832,7 @@
 <td><code>''.join(chars)</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>可变默认参数在函数定义时创建，不是每次调用时创建：</p>
 <div class="codehilite"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">collect</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

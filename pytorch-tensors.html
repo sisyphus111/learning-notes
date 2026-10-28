@@ -3,9 +3,9 @@
 <title>Tensor 与 GPU 内存 · 求知录</title><meta name="description" content="shape · 广播 · 矩阵乘法 · stride · view · CUDA 执行">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -92,7 +92,7 @@
 
 <p><code>item()</code> 要求总元素数为 1，不要求一定是 0 维。一个 GPU 标量 Tensor 仍在 GPU 上；调用 <code>item()</code> 后才得到 Python 数值。</p>
 <h2 id="3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>常见 dtype</th>
@@ -132,7 +132,7 @@
 <td>mask、比较结果</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>FP16 与 BF16 虽然都占 2 字节，精度和数值范围不同。用哪种类型、计算时怎样累加，取决于算子、硬件和数值要求；不能从输入 dtype 推断所有中间计算都用同一精度。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -193,7 +193,7 @@
 <p><span id="用索引-tensor-选择元素"></span></p>
 <h3 id="三种按下标选取方式速查">三种按下标选取方式速查</h3>
 <p>下面都以二维 <code>x.shape = [B, D]</code> 为例。列下标从 0 开始；整数索引 Tensor 使用 <code>torch.long</code>，示例把它和 x 放在同一 GPU 上。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -222,7 +222,7 @@
 <td><code>[B, K]</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这三种<strong>读取</strong>都会得到独立存储的结果，允许重复下标。<code>index_select</code> 把“沿哪一个轴”写得明确；<code>gather</code> 的索引表可以为每个输出位置指定来源。高级索引还支持同时指定多个轴，见下面的配对示例。</p>
 <h3 id="高级索引-每行按同一份下标选列">高级索引：每行按同一份下标选列</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -238,7 +238,7 @@
 
 <p>对应关系是 <code>out[i, j] = x[i, columns[j]]</code>：<code>:</code> 保留所有行，columns 的第 j 个元素决定输出第 j 列从哪里取。除了整数 Tensor，也可以像上例一样用整数列表作下标。</p>
 <p>比较三种“只取下标 1 的列”的写法，数值来源相同，shape 和存储关系不同：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -263,7 +263,7 @@
 <td>否，高级索引读取</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="index_select-明确沿哪个轴选取">index_select：明确沿哪个轴选取</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -328,7 +328,7 @@
 <p><code>x == y</code> 返回逐元素的 bool Tensor；Python 的 <code>and</code> / <code>or</code> 不能用于多元素 Tensor 的逐元素逻辑，用 <code>&amp;</code> / <code>|</code> 并给比较表达式加括号。</p>
 <h2 id="常用逐元素数学运算">常用逐元素数学运算</h2>
 <p>这些运算对每个元素分别计算，返回 Tensor。下面以实数浮点 Tensor 为例：单输入运算保持 shape 和 device；二元运算按广播规则确定输出 shape。这里的写法都不原地修改 x。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -413,7 +413,7 @@
 <td>截断到区间 [a, b]；也可只指定一个边界</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>x.square()</code> 与 <code>torch.square(x)</code> 的数学含义相同；其他表中运算也有对应的 <code>torch.xxx(x, ...)</code> 写法。函数入口见 <a href="https://docs.pytorch.org/docs/2.14/torch.html#pointwise-ops">逐元素运算参考</a>。</p>
 <h3 id="平方-幂-开方与倒数">平方、幂、开方与倒数</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -465,7 +465,7 @@
 <p><code>round()</code> 不是简单的“逢 5 就增大”：1.5 → 2，2.5 → 2，−1.5 → −2。<code>x.round(decimals=2)</code> 可保留两位小数，但浮点存储不保证十进制精确，低精度时还可能溢出。规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.round.html">round</a>。</p>
 <h3 id="原地运算-带下划线的方法">原地运算：带下划线的方法</h3>
 <p><strong><code>x.mul(2)</code> / <code>x * 2</code> 返回新结果；<code>x.mul_(2)</code> 把计算结果写回 x 的现有存储。</strong> 这类原地算术方法返回 x 自身，因此通常直接调用即可，也可以接收返回值或链式调用。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>返回新结果的写法</th>
@@ -545,7 +545,7 @@
 <td>全部填入 value</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>并非每个方法都有加下划线的版本，例如归约 <code>sum()</code>、<code>mean()</code> 没有对应的 <code>sum_()</code>、<code>mean_()</code>。原地方法列表见 <a href="https://docs.pytorch.org/docs/2.14/tensors.html">Tensor API</a>，乘法接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.mul_.html">mul_</a>。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -630,7 +630,7 @@
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>表达式</th>
@@ -660,7 +660,7 @@
 <td>每行的和，保留长度为 1 的归约轴</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>keepdim=True</code> 主要用于让结果能沿原轴广播回去。例如 <code>[2, 3] / [2, 1]</code> 表示每行除以自己的一个数。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -694,7 +694,7 @@
 </pre></div>
 
 
-<div class="codehilite"><pre><span></span>x       [2, 3]
+<div class="codehilite text-diagram"><pre><span></span>x       [2, 3]
 bias       [3]  → 对齐成 [1, 3]
 result  [2, 3]
 </pre></div>
@@ -711,7 +711,7 @@ result  [2, 3]
 </pre></div>
 
 
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>两个输入 shape</th>
@@ -746,7 +746,7 @@ result  [2, 3]
 <td><code>[2, 4, 8, 16]</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>注意两个一维长度相同的数组默认按位置计算，广播不会理解你的业务意图。例如 <code>[2, 2] + [2]</code> 会给每列加数；如果你想给每行加数，仍应先变成 <code>[2, 1]</code>。</p>
 <p>规则见 <a href="https://docs.pytorch.org/docs/2.14/notes/broadcasting.html">Broadcasting semantics</a>。</p>
 <h2 id="8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</h2>
@@ -762,7 +762,7 @@ result  [2, 3]
 
 
 <p><code>a * b</code> 把对应位置相乘。<code>a @ b</code> 的一个输出元素，是 a 的一行与 b 的一列做点积，例如 <code>out[0, 0] = 1×10 + 2×30 = 70</code>。</p>
-<div class="codehilite"><pre><span></span>A: [M, K]  @  B: [K, N]  →  C: [M, N]
+<div class="codehilite text-diagram"><pre><span></span>A: [M, K]  @  B: [K, N]  →  C: [M, N]
        内轴 K 必须相等；每个输出元素沿 K 累加
 </pre></div>
 
@@ -806,7 +806,7 @@ result  [2, 3]
 <h3 id="新建-tensor-对象-不等于新建数值存储">新建 Tensor 对象，不等于新建数值存储</h3>
 <p>本节讨论普通稠密 strided Tensor。<strong>permute、transpose 返回共享原 storage 的 view；reshape 不保证共享，布局不兼容时会复制数值。</strong> 这不是由“默认参数”决定的，也不能把三个操作都理解成“不分配新显存”。</p>
 <p>Tensor 对象保存 shape、stride 等元数据，storage 保存数值。创建一个新的 view 对象，只需让新元数据指向原 storage；它不会另分配一份数值 buffer。<strong>“不复制数值”不代表连 Tensor 对象和元数据都不创建。</strong></p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -836,12 +836,12 @@ result  [2, 3]
 <td>不保证；取决于当前 stride 与目标 shape</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>共享 storage 时，修改 view 中的数值会影响原 Tensor 对应位置；改变 view 的 shape/stride 不会改变原 Tensor 的 shape/stride。要保证换 shape 时不复制，用 <code>view(shape)</code>，不兼容时它会报错；要保证数值独立，用 <code>clone()</code>。<strong>非连续不意味着 reshape 一定复制，关键是目标 shape 能否由现有布局表达。</strong> 详细例子见<a href="pytorch-tensors.html#reshape-兼容时共享-不兼容时允许复制">共享与复制</a>和<a href="pytorch-tensors.html#反例-非连续-tensor-也可能成功-view">非连续也能 view 的反例</a>。</p>
 <p>接口契约见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.permute.html">permute</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.transpose.html">transpose</a>。</p>
 <h3 id="shape-描述逻辑轴-不决定底层元素怎样排列">shape 描述逻辑轴，不决定底层元素怎样排列</h3>
 <p>先用同一组数区分三个概念：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>概念</th>
@@ -866,7 +866,7 @@ result  [2, 3]
 <td><code>(3, 1)</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>这里说的“物理排布”是 buffer 中元素的线性存储次序，不是 GPU 显存颗粒、bank 或页表等更底层结构。普通 strided Tensor 用 shape、stride 和起始偏移解释这份存储；多张不同 shape 的 Tensor 可以共享同一份数据。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -876,7 +876,7 @@ result  [2, 3]
 </pre></div>
 
 
-<div class="codehilite"><pre><span></span>底层 storage：
+<div class="codehilite text-diagram"><pre><span></span>底层 storage：
 元素位置   0   1   2   3   4   5
 保存数值  [0,  1,  2,  3,  4,  5]
 
@@ -890,7 +890,7 @@ result  [2, 3]
 <p><strong>逻辑上相邻，不保证存储位置也相邻。</strong> 改变 shape/stride 可以改变看到的矩阵，却完全不移动原来的数。下一节会把索引与地址的关系展开。</p>
 <h3 id="reshape-保持逻辑遍历顺序-重新分组">reshape：保持逻辑遍历顺序，重新分组</h3>
 <p><code>reshape</code> 保持元素总数，将当前 Tensor 按各轴顺序、最后一轴变化最快的逻辑次序读出，再按新的 shape 分组。对这里连续的 x：</p>
-<div class="codehilite"><pre><span></span>原来的逻辑顺序：0, 1, 2, 3, 4, 5
+<div class="codehilite text-diagram"><pre><span></span>原来的逻辑顺序：0, 1, 2, 3, 4, 5
 
 reshape(3,2)：每两个元素分为一行
 [[0, 1],
@@ -915,7 +915,7 @@ reshape(3,2)：每两个元素分为一行
 <h3 id="reshape-1-展平成一维-自动推断长度">reshape(-1)：展平成一维，自动推断长度</h3>
 <p><strong><code>x.reshape(-1)</code> 把所有轴合成一个轴，输出 shape 是 <code>[x.numel()]</code>。</strong> 这里的 <code>-1</code> 表示“自动算出这个轴的长度”，不是负数下标。目标只有一个轴，所以它的长度就是 x 的元素总数；原 x 的 shape 不变。</p>
 <p>以 <code>x.shape = [2, 3]</code>、总共 6 个元素为例：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -940,7 +940,7 @@ reshape(3,2)：每两个元素分为一行
 <td><code>[3, 2]</code>，二维</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.</span><span class="p">,</span> <span class="mf">4.</span><span class="p">,</span> <span class="mf">5.</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
@@ -971,7 +971,7 @@ reshape(3,2)：每两个元素分为一行
 <p><code>-1</code> 只负责推断 shape，不会自动交换轴，也不会自动保留 batch。<strong><code>reshape(-1)</code> 仍遵守 reshape 的存储规则：布局兼容时共享，否则复制。</strong> 上例 x 展平可以共享，转置后的 t 展平需要复制；原因见<a href="pytorch-tensors.html#reshape-兼容时共享-不兼容时允许复制">共享与复制</a>。参数规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.reshape.html">reshape 官方说明</a>。</p>
 <h3 id="permute-transpose-交换轴及其-stride">permute / transpose：交换轴及其 stride</h3>
 <p><code>permute(1,0)</code> 表示新第 0 轴来自原第 1 轴，新第 1 轴来自原第 0 轴。shape 和 stride 一起重排：</p>
-<div class="codehilite"><pre><span></span>原 x：shape=[2,3]，stride=(3,1)
+<div class="codehilite text-diagram"><pre><span></span>原 x：shape=[2,3]，stride=(3,1)
 新 p：shape=[3,2]，stride=(1,3)
 
 原 x：               p=x.permute(1,0)：
@@ -997,7 +997,7 @@ reshape(3,2)：每两个元素分为一行
 
 <p>为什么 p 的第一行是 <code>[0,3]</code>？因为 <code>p[0,0]</code> 的位置是 <code>0×1+0×3=0</code>，<code>p[0,1]</code> 的位置是 <code>0×1+1×3=3</code>。这一行的两个相邻元素在底层存储中间隔 3 个位置。</p>
 <p>普通 strided Tensor 的 <code>permute</code> 与 <code>transpose</code> 返回 view：改变轴与索引到地址的映射，不搬动原 buffer 中的数值。它们也不会修改原 x 的元数据。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>操作</th>
@@ -1022,7 +1022,7 @@ reshape(3,2)：每两个元素分为一行
 <td>重分组，不等于交换轴</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>三维时，<code>x.permute(1,0,2)</code> 就是把原轴 1 放到第一位、原轴 0 放到第二位、原轴 2 留在第三位。例如 <code>[B,S,D]</code> 变成 <code>[S,B,D]</code>，数值关系为 <code>out[s,b,d]=x[b,s,d]</code>。</p>
 <h3 id="shape-相同-也可能对应完全不同的矩阵">shape 相同，也可能对应完全不同的矩阵</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -1059,7 +1059,7 @@ reshape(3,2)：每两个元素分为一行
 <h2 id="10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</h2>
 <h3 id="用-stride-与-storage_offset-找到元素地址">用 stride 与 storage_offset 找到元素地址</h3>
 <p>对本节的普通 strided Tensor：</p>
-<div class="codehilite"><pre><span></span>storage 内的元素位置 = storage_offset + Σ(下标 × 对应 stride)
+<div class="codehilite text-diagram"><pre><span></span>storage 内的元素位置 = storage_offset + Σ(下标 × 对应 stride)
 
 字节地址 = storage 起始地址 + 元素位置 × element_size()
 </pre></div>
@@ -1089,7 +1089,7 @@ reshape(3,2)：每两个元素分为一行
 </pre></div>
 
 
-<div class="codehilite"><pre><span></span>x 按当前 shape 逐行读：
+<div class="codehilite text-diagram"><pre><span></span>x 按当前 shape 逐行读：
 数值/原位置  0 → 1 → 2 → 3 → 4 → 5
 相邻元素都紧接着：连续
 
@@ -1117,7 +1117,7 @@ p 按当前 shape 逐行读：
 </pre></div>
 
 
-<div class="codehilite"><pre><span></span>p：
+<div class="codehilite text-diagram"><pre><span></span>p：
 逻辑矩阵     [[0,3],[1,4],[2,5]]
 共享 storage [0,1,2,3,4,5]
 stride       (1,3)
@@ -1145,14 +1145,14 @@ stride       (2,1)
 
 
 <p>p 的逻辑展平顺序要求依次访问原位置：</p>
-<div class="codehilite"><pre><span></span>0 → 3 → 1 → 4 → 2 → 5
+<div class="codehilite text-diagram"><pre><span></span>0 → 3 → 1 → 4 → 2 → 5
   +3  -2  +3  -2  +3
 </pre></div>
 
 
 <p>一维 Tensor 只有一个 stride，表示每走一步固定跳过几个元素。这里无法用一个固定 stride 表达这组访问位置，所以 <code>p.view(6)</code> 不能成功。</p>
 <p>合并相邻轴时，一个关键兼容条件是：</p>
-<div class="codehilite"><pre><span></span>stride[i] = stride[i+1] × size[i+1]
+<div class="codehilite text-diagram"><pre><span></span>stride[i] = stride[i+1] × size[i+1]
 </pre></div>
 
 
@@ -1225,7 +1225,7 @@ stride       (2,1)
 <p>第一条路径撤销原来的轴重排，恢复连续布局后可以共享原 storage。第二条路径从连续的 <code>[B,H,S,D]</code> 出发，permute 后 H、D 的布局不兼容直接合并，本例 reshape 需要复制。<strong>同一组 shape 变换，是否复制还取决于实际输入布局。</strong></p>
 <h3 id="操作对逻辑与存储的影响速查">操作对逻辑与存储的影响速查</h3>
 <p>下表的“共享 / 复制”指底层数值存储，不是 Tensor 对象是否相同；按普通稠密 strided Tensor 的行为总结。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>操作</th>
@@ -1270,7 +1270,7 @@ stride       (2,1)
 <td>得到独立存储；不等于指定某种 memory format</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>view/permute 等操作只改元数据，通常不用复制 GPU 数值；连续化或不兼容的 reshape 需要读旧数据、写新 buffer。即使 permute 本身不搬数据，后续算子也会按不同 stride 访问，可能影响访问效率或触发内部复制。因此不应每次转置后都机械地 contiguous，也不能只看 shape 就判断布局与性能。</p>
 <p>共享、连续布局与 view 的一般规则见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>，轴重排接口见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.permute.html">permute</a>。本节代码与其他 GPU 示例一样，以注释给出推导预期，不把它们当作实测性能。</p>
 <p><span id="11-赋值-view-clone-与原地修改"></span>
@@ -1313,7 +1313,7 @@ stride       (2,1)
 <p><code>is</code> 只能判断是否是同一个 Tensor 对象，不能证明存储是否共享。view 有自己的 shape/stride 等信息，但仍读写原 storage；<code>clone()</code> 复制数值，得到独立存储。</p>
 <h3 id="存储独立与梯度关系是两件事">存储独立与梯度关系是两件事</h3>
 <p>以下按普通 Tensor 的常用行为总结；梯度列假定 x 要求梯度，并启用梯度记录。</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -1353,7 +1353,7 @@ stride       (2,1)
 <td>否</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>要隔离数值又保留梯度关系，用 <code>clone()</code>；要保存不参与梯度传播的独立数值快照，用 <code>detach().clone()</code>。<code>detach()</code> 单独使用仍共享数据；<code>contiguous()</code>、<code>reshape()</code>、<code>.to(...)</code> 也不能作为“保证复制”的通用写法。存储规则见 <a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">Tensor Views</a>，梯度规则见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.clone.html">clone</a> 与 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.detach.html">detach</a>。</p>
 <h3 id="高级索引读取会复制-直接索引赋值会写回">高级索引读取会复制，直接索引赋值会写回</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -1506,7 +1506,7 @@ stride       (2,1)
 <p><code>detach()</code> 共享数值存储，<code>clone()</code> 复制数值但保留梯度关系；完整对照见<a href="pytorch-tensors.html#存储独立与梯度关系是两件事">存储独立与梯度关系</a>。从 loss 到 backward、梯度累加、优化器更新和 no_grad 的完整流程，见<a href="pytorch-neural-networks.html#6-自动求导-loss-backward-与-grad">神经网络基础：自动求导</a>。</p>
 <p>用 <code>x.detach().requires_grad_(True)</code> 建立局部求导输入，再用 <code>torch.autograd.grad</code> 直接返回梯度而不累加到 <code>.grad</code>，见 <a href="pytorch-neural-networks.html#局部输入求导-detach-requires_grad_-与-autograd-grad">局部输入求导</a>。</p>
 <h2 id="17-常见错误速查">17. 常见错误速查</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法或判断</th>
@@ -1586,7 +1586,7 @@ stride       (2,1)
 <td>明确计时边界，使用 event 或同步计时</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><span id="常见计算与组件的实现"></span></p>
 <h2 id="神经网络与组件的后续阅读">神经网络与组件的后续阅读</h2>
 <p><a href="pytorch-neural-networks.html">神经网络基础</a>：计算函数、网络层、模型、参数，以及训练和推理流程。</p>

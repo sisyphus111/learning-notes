@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Notes Mono";
+  src: url("fonts/sarasa-fixed-sc-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
   /* 浅色模式 - 优雅的蓝灰色调 */
@@ -18,6 +26,7 @@
   --syntax-string: #10b981;
   --syntax-number: #8b5cf6;
   --syntax-function: #f59e0b;
+  --font-mono: "Notes Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;
   line-height: 1.7;
@@ -52,13 +61,16 @@
   padding: 0;
 }
 
+html {
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   transition: background-color 0.3s ease, color 0.3s ease;
-  overflow-x: hidden;
-  overflow-y: scroll;
 }
 
 a {
@@ -265,7 +277,8 @@ kbd {
 .page {
   margin-left: 240px;
   min-height: 100vh;
-  overflow-x: hidden;
+  /* Clip wide content without creating a scroll container that traps sticky. */
+  overflow-x: clip;
 }
 
 .topbar {
@@ -583,7 +596,7 @@ article hr {
 
 /* 代码样式 */
 code {
-  font: 13px/1.7 "SF Mono", ui-monospace, monospace;
+  font: 13px/1.7 var(--font-mono);
 }
 
 p code,
@@ -613,14 +626,28 @@ summary code {
   margin: 0;
   overflow: auto;
   padding: 40px 18px 18px;
+  font: 14px/1.65 var(--font-mono);
+  font-variant-ligatures: none;
+  font-kerning: none;
+  letter-spacing: 0;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
   tab-size: 4;
-  line-height: 1.65;
+  color: var(--ink);
+  overscroll-behavior-x: contain;
 }
 
 .codehilite pre code {
   display: block;
-  font-size: 13px;
-  color: var(--ink);
+  font: inherit;
+  color: inherit;
+}
+
+/* Diagram rails use fixed character cells, including two-cell CJK glyphs. */
+.text-diagram pre {
+  font-size: 15px;
+  line-height: 1.25;
 }
 
 .copy-button {
@@ -641,15 +668,63 @@ summary code {
 }
 
 /* 表格样式 */
-article table {
-  display: block;
-  overflow: auto;
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 14px;
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
   margin: 28px 0;
   border-radius: 8px;
   border: 1px solid var(--line);
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.table-scroll:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.table-scroll.is-overflowing::before {
+  content: '左右滚动查看完整表格';
+  display: block;
+  position: sticky;
+  left: 0;
+  width: fit-content;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+article table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-scroll :is(th, td) {
+  min-width: 8rem;
+  border-width: 0 1px 1px 0;
+}
+
+.table-scroll :is(th, td):first-child {
+  min-width: 5rem;
+}
+
+.table-scroll :is(th, td):last-child {
+  border-right: 0;
+}
+
+.table-scroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-scroll code {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 article th,
@@ -699,43 +774,41 @@ summary {
   position: sticky;
   top: 80px;
   align-self: start;
-  max-height: calc(100vh - 110px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 140px);
   border-left: 2px solid var(--line);
   padding-left: 16px;
   font-size: 12px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
 }
 
-.toc::-webkit-scrollbar {
+.toc nav::-webkit-scrollbar {
   width: 6px;
 }
 
-.toc::-webkit-scrollbar-track {
+.toc nav::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.toc::-webkit-scrollbar-thumb {
+.toc nav::-webkit-scrollbar-thumb {
   background: var(--line);
   border-radius: 3px;
 }
 
-.toc::-webkit-scrollbar-thumb:hover {
+.toc nav::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
 
-:root[data-theme=dark] .toc::-webkit-scrollbar-thumb {
+:root[data-theme=dark] .toc nav::-webkit-scrollbar-thumb {
   background: #2a2a2a;
 }
 
-:root[data-theme=dark] .toc::-webkit-scrollbar-thumb:hover {
+:root[data-theme=dark] .toc nav::-webkit-scrollbar-thumb:hover {
   background: #3b82f6;
 }
 
 .toc > p {
+  flex-shrink: 0;
   font-weight: 700;
   font-size: 13px;
   margin: 0 0 12px;
@@ -745,6 +818,14 @@ summary {
 .toc nav {
   display: grid;
   gap: 8px;
+  min-height: 0;
+  margin-left: -10px;
+  padding: 0 6px 0 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
 .toc a {
@@ -1053,14 +1134,6 @@ article .codehilite :is(.o, .p, .w, .go) {
 }
 
 /* 深色模式特殊调整 */
-:root[data-theme=dark] .codehilite pre {
-  font: 14px/1.75 ui-monospace, "SF Mono", monospace;
-}
-
-:root[data-theme=dark] .codehilite pre code {
-  font-size: 14px;
-}
-
 :root[data-theme=dark] article .codehilite :is(.c, .ch, .cm, .cp, .cpf, .c1, .cs) {
   font-style: normal;
   background: transparent;
@@ -1290,6 +1363,7 @@ article .diagram-scroll img {
     box-shadow: var(--shadow-lg);
   }
 
+  html:has(body.nav-open),
   body.nav-open {
     overflow: hidden;
   }
@@ -1448,10 +1522,6 @@ article .diagram-scroll img {
     overscroll-behavior-x: contain;
   }
 
-  .codehilite pre code {
-    font-size: 14px;
-  }
-
   .copy-button {
     min-width: 54px;
     min-height: 38px;
@@ -1462,12 +1532,6 @@ article .diagram-scroll img {
     min-height: 44px;
     padding: 8px 16px;
     font-size: 14px;
-  }
-
-  article table {
-    max-width: 100%;
-    font-size: 14px;
-    overscroll-behavior-x: contain;
   }
 
   article th,
@@ -1598,6 +1662,18 @@ article .diagram-scroll img {
 
   .codehilite pre {
     white-space: pre-wrap;
+  }
+
+  .table-scroll {
+    overflow: visible;
+  }
+
+  .table-scroll::before {
+    display: none;
+  }
+
+  .table-scroll :is(th, td) {
+    min-width: 0;
   }
 
   .codehilite {

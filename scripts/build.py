@@ -127,6 +127,7 @@ def render(source):
     text = (ROOT / source).read_text()
     examples = []
     formatter = HtmlFormatter(cssclass="codehilite")
+    text_formatter = HtmlFormatter(cssclass="codehilite text-diagram")
     def pair(match):
         index = len(examples)
         html = '<div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言">'
@@ -148,7 +149,7 @@ def render(source):
         index = len(examples)
         language, code = match[1], match[2]
         lexer = {'cpp': CppLexer, 'python': PythonLexer}.get(language, TextLexer)()
-        examples.append(highlight(code, lexer, formatter))
+        examples.append(highlight(code, lexer, text_formatter if language in ('text', 'plaintext') else formatter))
         return f'\n\n<div>CODEEXAMPLE{index}</div>\n\n'
     # Protect all code from prose transformations, including == and dollar signs.
     text = re.sub(r'^```(\w*)\n(.*?)^```', single, text, flags=re.M | re.S)
@@ -164,6 +165,10 @@ def render(source):
                            extension_configs={'toc': {'slugify': slug}, 'codehilite': {'guess_lang': False}},
                            tab_length=2)
     html = md.convert(text)
+    # Keep native column sizing inside a separate, keyboard-scrollable viewport.
+    html = re.sub(r'(<table>.*?</table>)',
+                  r'<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0">\1</div>',
+                  html, flags=re.S)
     for i, example in enumerate(examples):
         html = html.replace(f'<div>CODEEXAMPLE{i}</div>', example)
     for i, formula in enumerate(displays):

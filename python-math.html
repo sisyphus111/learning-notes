@@ -3,9 +3,9 @@
 <title>数学运算速查 · 求知录</title><meta name="description" content="整除与取余 · 乘方 · 取整 · math · 浮点误差">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -81,7 +81,7 @@
 <p>整数模幂用三参数 <code>pow(a, b, mod)</code>，可避免先生成完整的巨大幂。本页的模幂示例使用非负整数指数、正整数模数。</p>
 <p><code>math.pow()</code> 会转成浮点运算；整数乘方通常使用 <code>**</code> 或内置 <code>pow()</code>。</p>
 <h2 id="取整与-round-规则不同">取整与 round：规则不同</h2>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>写法</th>
@@ -116,7 +116,7 @@
 <td><code>-3</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 
 <span class="nb">int</span><span class="p">(</span><span class="o">-</span><span class="mf">2.7</span><span class="p">)</span>                       <span class="c1"># -2：去掉小数部分</span>

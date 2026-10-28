@@ -3,9 +3,9 @@
 <title>设计 · 求知录</title><meta name="description" content="最小栈 · LRU 缓存">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -16,7 +16,7 @@
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">求知录</p><h1>设计</h1><p class="subtitle">最小栈 · LRU 缓存</p></div>
 <article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a> · <a href="python-data-structures.html">Python 数据结构</a></p><details class="code-conventions"><summary>代码示例约定</summary><p>使用 C++ / Python 标签切换同一解法。C++ 采用 C++17，省略标准库头文件与 <code>using namespace std;</code>；Python 采用 3.10+，包含所需标准库导入。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。输入、输出、框架及局部片段按所在小节的上下文使用。</p></details><h1 id="焚诀">焚诀</h1>
 <p>设计类题目最常见的是有时间复杂度的限制，而使用单个的数据结构很有可能无法达到，所以通常采用<strong>空间换时间</strong>的思想，使用额外的数据结构辅助实现。下面列出常用数据结构的时间复杂度：</p>
-<table>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
 <th>数据结构</th>
@@ -61,7 +61,7 @@
 <td><span class="math">\(O(\log N)\)</span></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h1 id="栈">栈</h1>
 <h2 id="155-最小栈-中等">155.最小栈[中等]</h2>
 <h3 id="链接">链接</h3>

@@ -3,9 +3,9 @@
 <title>链表 · 求知录</title><meta name="description" content="基础操作 · 快慢指针 · 递归">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=51feba5ff2"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=81a4da63be"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
-<script defer src="assets/site.js?v=3646f385e4"></script>
+<script defer src="assets/site.js?v=b1a2f6ca86"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head><body>
@@ -524,19 +524,19 @@
 </ul>
 <h2 id="143-重排链表-中等">143.重排链表[中等]*</h2>
 <p>给定一个单链表 <code>L</code> 的头节点 <code>head</code> ，单链表 <code>L</code> 表示为：</p>
-<div class="codehilite"><pre><span></span>L0 → L1 → … → Ln - 1 → Ln
+<div class="codehilite text-diagram"><pre><span></span>L0 → L1 → … → Ln - 1 → Ln
 </pre></div>
 
 
 <p>请将其重新排列后变为：</p>
-<div class="codehilite"><pre><span></span>L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
+<div class="codehilite text-diagram"><pre><span></span>L0 → Ln → L1 → Ln - 1 → L2 → Ln - 2 → …
 </pre></div>
 
 
 <p>不能只是单纯的改变节点内部的值，而是需要实际的进行节点交换。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://pic.leetcode-cn.com/1626420311-PkUiGI-image.png" /></p>
-<div class="codehilite"><pre><span></span>输入：head = [1,2,3,4]
+<div class="codehilite text-diagram"><pre><span></span>输入：head = [1,2,3,4]
 输出：[1,4,2,3]
 </pre></div>
 
@@ -809,7 +809,7 @@
 <p>你的代码 <strong>只</strong> 接受原链表的头节点 <code>head</code> 作为传入参数。</p>
 <p><strong>示例 1：</strong></p>
 <p><img alt="img" src="https://assets.leetcode.cn/aliyun-lc-upload/uploads/2020/01/09/e1.png" /></p>
-<div class="codehilite"><pre><span></span>输入：head = [[7,null],[13,0],[11,4],[10,2],[1,0]]
+<div class="codehilite text-diagram"><pre><span></span>输入：head = [[7,null],[13,0],[11,4],[10,2],[1,0]]
 输出：[[7,null],[13,0],[11,4],[10,2],[1,0]]
 </pre></div>
 
