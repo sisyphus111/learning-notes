@@ -1,5 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#17658a"/>
-  <rect x="14" y="9" width="36" height="46" rx="4" fill="#f3f9fd"/>
-  <path d="m27 24-8 8 8 8m10-16 8 8-8 8" fill="none" stroke="#17658a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.6" />
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角背景 -->
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+
+  <!-- 书本形状 -->
+  <g opacity="0.15">
+    <rect x="16" y="14" width="32" height="36" rx="2" fill="#fff"/>
+  </g>
+
+  <!-- 代码符号 - 左括号 -->
+  <path d="M 28 22 Q 22 22 22 28 V 36 Q 22 42 28 42"
+        fill="none" stroke="#fff" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+
+  <!-- 代码符号 - 右括号 -->
+  <path d="M 36 22 Q 42 22 42 28 V 36 Q 42 42 36 42"
+        fill="none" stroke="#fff" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+
+  <!-- 中间点 -->
+  <circle cx="32" cy="26" r="2" fill="#fff" opacity="0.8"/>
+  <circle cx="32" cy="32" r="2" fill="#fff" opacity="0.8"/>
+  <circle cx="32" cy="38" r="2" fill="#fff" opacity="0.8"/>
+
+  <!-- 光晕效果 -->
+  <circle cx="32" cy="32" r="28" fill="url(#glow)" opacity="0.1"/>
 </svg>
