@@ -1,5 +1,7 @@
 # Transformer 运行全过程：从文本输入到逐 token 生成
 
+DeepSeek、Kimi、Qwen 各版本对这条基础流程的改变，见 [模型结构与注意力变体](model-architectures.md)。
+
 ## 1. 一次生成请求经过哪些步骤
 
 以现代 decoder-only 语言模型为主线，采用 Llama 风格的 pre-norm、RoPE、GQA 和 SwiGLU。原始 Transformer 还有 encoder 与 cross-attention，第 15 节单独说明。不是所有模型都采用相同的 norm、FFN 或位置编码。

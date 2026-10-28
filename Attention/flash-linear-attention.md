@@ -1,5 +1,7 @@
 # Flash Linear Attention：状态递推、分块计算与 FLA 库
 
+GDN/KDA 在具体模型中怎样与 full attention、MoE 和残差结构组合，见 [DeepSeek、Kimi 与 Qwen 架构](model-architectures.md)。
+
 ## 1. FlashAttention、linear attention 与 FLA 的关系
 
 Flash Linear Attention（FLA）把可递推的序列计算组织成适合 GPU 的 kernel。理解它需要区分数学公式、计算算法和软件库：

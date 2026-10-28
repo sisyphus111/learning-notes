@@ -76,6 +76,8 @@ ATTENTION_REFERENCES = [
      'online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM'),
     ('Attention/flash-linear-attention.md', 'attention-flash-linear-attention.html', 'Flash Linear Attention',
      '状态递推 · chunkwise · GLA · DeltaNet / Gated DeltaNet · FLA 接口'),
+    ('Attention/model-architectures.md', 'attention-model-architectures.html', 'DeepSeek、Kimi 与 Qwen 架构',
+     'MLA / GQA · DSA / CSA / QSA · KDA / GDN · MoE · 残差与缓存'),
 ]
 GPU_REFERENCES = [
     ('GPU/driver-runtime-framework.md', 'gpu-driver-runtime-framework.html', '驱动、运行时与框架',

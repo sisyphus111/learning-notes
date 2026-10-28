@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 930" role="img" aria-labelledby="title desc">
+<title id="title">DeepSeek、Kimi、Qwen 的代表性架构路线</title>
+<desc id="desc">按家族比较历史读取、FFN与跨层信息流，不将品牌名称当作唯一架构，也不表示严格版本继承顺序。</desc>
+<style>:root{--paper:#fff;--fg:#26364e;--muted:#5b6b80;--wash:#f8fafc;--line:#d4dce8;--blue:#285da8;--blue-bg:#eef4fd;--green:#328a59;--green-bg:#eef8f1;--orange:#b46823;--orange-bg:#fff6ec}@media(prefers-color-scheme:dark){:root{--paper:#191919;--fg:#e8e8e8;--muted:#b6b6b6;--wash:#252525;--line:#454545;--blue:#9dc8f5;--blue-bg:#1d2936;--green:#a8d7bb;--green-bg:#1e2c24;--orange:#dfbc8c;--orange-bg:#30291e}}text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:23px;fill:var(--fg)}.title{font-size:29px;font-weight:650}.label{font-size:25px;font-weight:600}.small{font-size:21px;fill:var(--muted)}</style>
+<rect width="1040" height="930" rx="12" fill="var(--paper)"/>
+<text x="28" y="44" class="title">同时看历史读取、FFN 与跨层信息流</text>
+<text x="28" y="81" class="small">同系列可并存多种结构；下面是代表路径，不是完整版本清单。</text>
+<text x="28" y="134" class="label">DeepSeek</text>
+<rect x="28" y="154" width="304" height="188" rx="10" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="1.5"/>
+<text x="44" y="192" class="label">V3 / V3.2</text>
+<text x="44" y="237" class="small">MLA + DeepSeekMoE</text>
+<text x="44" y="273" class="small">V3.2 增加 DSA 选 token</text>
+<text x="44" y="309" class="small">latent KV 随历史增长</text>
+<rect x="368" y="154" width="304" height="188" rx="10" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="1.5"/>
+<text x="384" y="192" class="label">V4 Flash / Pro</text>
+<text x="384" y="237" class="small">CSA / HCA + 局部窗口</text>
+<text x="384" y="273" class="small">DeepSeekMoE + mHC</text>
+<text x="384" y="309" class="small">压缩主 KV 的序列条目</text>
+<rect x="708" y="154" width="304" height="188" rx="10" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="1.5"/>
+<text x="724" y="192" class="label">V4.1 Flash</text>
+<text x="724" y="237" class="small">CED + CSA2</text>
+<text x="724" y="273" class="small">跨层 KV / 索引复用</text>
+<text x="724" y="309" class="small">Engram 与独立草稿</text>
+<text x="28" y="384" class="label">Kimi</text>
+<rect x="28" y="404" width="304" height="188" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.5"/>
+<text x="44" y="442" class="label">K2 / K2.5 / K2.6</text>
+<text x="44" y="487" class="small">MLA + MoE 文本骨架</text>
+<text x="44" y="523" class="small">多模态分支另看配置</text>
+<text x="44" y="559" class="small">不自动推断为 KDA</text>
+<rect x="368" y="404" width="304" height="188" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.5"/>
+<text x="384" y="442" class="label">Kimi Linear</text>
+<text x="384" y="487" class="small">KDA + MLA</text>
+<text x="384" y="523" class="small">固定 state + 增长的 KV</text>
+<text x="384" y="559" class="small">研究混合递推与检索</text>
+<rect x="708" y="404" width="304" height="188" rx="10" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.5"/>
+<text x="724" y="442" class="label">K3</text>
+<text x="724" y="487" class="small">KDA + gated MLA</text>
+<text x="724" y="523" class="small">Stable LatentMoE</text>
+<text x="724" y="559" class="small">Block Attention Residuals</text>
+<text x="28" y="634" class="label">Qwen</text>
+<rect x="28" y="654" width="304" height="188" rx="10" fill="var(--orange-bg)" stroke="var(--orange)" stroke-width="1.5"/>
+<text x="44" y="692" class="label">Qwen3</text>
+<text x="44" y="737" class="small">GQA</text>
+<text x="44" y="773" class="small">dense 或 MoE FFN</text>
+<text x="44" y="809" class="small">两种稀疏性分别看</text>
+<rect x="368" y="654" width="304" height="188" rx="10" fill="var(--orange-bg)" stroke="var(--orange)" stroke-width="1.5"/>
+<text x="384" y="692" class="label">Next / 3.5 / 3.8</text>
+<text x="384" y="737" class="small">GDN + gated full attention</text>
+<text x="384" y="773" class="small">dense 或 MoE 配置均有</text>
+<text x="384" y="809" class="small">保留全局 softmax 分支</text>
+<rect x="708" y="654" width="304" height="188" rx="10" fill="var(--orange-bg)" stroke="var(--orange)" stroke-width="1.5"/>
+<text x="724" y="692" class="label">3.8-Flash-Next</text>
+<text x="724" y="737" class="small">GDN + QSA</text>
+<text x="724" y="773" class="small">MoE + Gated Residual</text>
+<text x="724" y="809" class="small">另有 n-gram 参数记忆</text>
+<text x="28" y="896" class="small">核对日期：2026-10-28。模型与机制的具体对应关系见正文和固定版本配置。</text>
+</svg>
