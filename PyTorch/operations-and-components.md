@@ -60,9 +60,104 @@ print(torch.allclose(probs, reference, rtol=1e-5, atol=1e-6))  # 预期：True
 
 官方接口：[torch.softmax](https://docs.pytorch.org/docs/2.14/generated/torch.softmax.html)。
 
+## Norm、normalize 和归一化层分别做什么
+
+Transformer 中常见的归一化层有 LayerNorm 和 RMSNorm。数学里的 norm（范数）用一个数描述向量的大小；`normalize` 则用这个大小缩放向量。先区分它们的输入、输出和统计范围：
+
+| 操作 | 对一条特征向量做什么 | `x: [B,S,D]` 沿末轴计算后的 shape |
+| --- | --- | --- |
+| L1 / L2 norm | 计算一个表示大小的数 | `[B,S]`；`keepdim=True` 时为 `[B,S,1]` |
+| L2 normalize | 每个元素除以同一条向量的 L2 长度 | `[B,S,D]` |
+| LayerNorm | 减均值、除标准差，再逐特征缩放和偏移 | `[B,S,D]` |
+| RMSNorm | 除均方根，再逐特征缩放 | `[B,S,D]` |
+
+### 普通向量 Norm：L1 与 L2
+
+对实数向量 $x=(x_1,\ldots,x_D)$：
+
+$$
+\lVert x\rVert_1=\sum_{i=1}^{D}|x_i|,\qquad
+\lVert x\rVert_2=\sqrt{\sum_{i=1}^{D}x_i^2}.
+$$
+
+例如 `[3,4]` 的 L1 norm 是 7，L2 norm 是 5。求范数只得到长度，不会自动把原向量改成单位长度。
+
+```python
+import torch
+
+def l2_norm(x, dim=-1, keepdim=False):
+    """沿 dim 求 L2 范数；使用 FP32 计算并返回 FP32 结果。"""
+    values = x.float()
+    return values.square().sum(dim=dim, keepdim=keepdim).sqrt()
+
+x = torch.tensor([[3.0, 4.0], [0.0, 0.0]], device='cuda')
+lengths = l2_norm(x)                              # 预期：[5, 0]，shape [2]
+lengths_kept = l2_norm(x, keepdim=True)            # 预期：[[5], [0]]，shape [2,1]
+l1 = torch.linalg.vector_norm(x, ord=1, dim=-1)    # 预期：[7, 0]
+reference = torch.linalg.vector_norm(x.float(), ord=2, dim=-1)
+```
+
+对 `[B,S,D]` 显式指定 `dim=-1`，就是分别计算每个 token 的特征向量长度。`torch.linalg.vector_norm` 的默认 `dim=None` 会先把全部元素展平；它与逐 token 求长度的统计范围不同。[vector_norm 接口](https://docs.pytorch.org/docs/2.14/generated/torch.linalg.vector_norm.html)
+
+### L2 normalize：按长度缩放向量
+
+L2 normalize 的计算为：
+
+$$
+y_i=\frac{x_i}{\max(\lVert x\rVert_2,\epsilon)}.
+$$
+
+当输入长度不小于 eps 时，输出的 L2 长度为 1。零向量仍输出零向量。分母使用 `max(length, eps)`，与后面 Norm 层在平方根内加 eps 的写法不同。
+
+```python
+import torch
+import torch.nn.functional as F
+
+def l2_normalize(x, dim=-1, eps=1e-12):
+    """沿 dim 缩放向量；分母保留归约轴，以便广播。"""
+    values = x.float()
+    length = values.square().sum(dim=dim, keepdim=True).sqrt()
+    return (values / length.clamp_min(eps)).to(dtype=x.dtype)
+
+x = torch.tensor([[3.0, 4.0], [0.0, 0.0]], device='cuda')
+y = l2_normalize(x)                               # 预期：[[0.6,0.8], [0,0]]
+reference = F.normalize(x.float(), p=2, dim=-1, eps=1e-12).to(x.dtype)
+```
+
+`F.normalize` 默认沿 `dim=1` 计算。对 `[B,S,D]` 的特征向量归一化时，显式写 `dim=-1`。本小节的实现处理 FP16 / BF16 / FP32 实数输入，在 FP32 中计算统计量。[normalize 接口](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.normalize.html)
+
 ## 3. LayerNorm：沿特征轴减均值、除标准差
 
 `x: [..., D]`、`weight: [D]`、`bias: [D]`，输出 `[..., D]`。本实现只归一化最后一个轴；均值与方差在 FP32 中计算，方差除以 D，不用无偏估计的 D−1。
+
+### 数学公式：每个 token 单独统计
+
+固定 batch 和 token 位置，把它的 D 个特征记作 $x_1,\ldots,x_D$：
+
+$$
+\mu=\frac{1}{D}\sum_{i=1}^{D}x_i,\qquad
+\sigma^2=\frac{1}{D}\sum_{i=1}^{D}(x_i-\mu)^2,
+$$
+
+$$
+\widehat{x}_i=\frac{x_i-\mu}{\sqrt{\sigma^2+\epsilon}},\qquad
+y_i=\widehat{x}_i\gamma_i+\beta_i.
+$$
+
+`weight` 对应 $\gamma$，`bias` 对应 $\beta$。它们各有 D 个可学习参数，同一层的所有 token 共用。末尾的乘法与加法都是逐元素操作，不使用 `[D,D]` 矩阵混合特征。
+
+以 `[3,4]` 为例，均值为 3.5，中心化结果为 `[-0.5,0.5]`，方差为 0.25。忽略 eps、令 weight 为全 1、bias 为全 0，输出就是 `[-1,1]`。常量向量减均值后全为零，最终输出等于 bias。
+
+`eps>0` 时，$\widehat{x}$ 的方差为 $\sigma^2/(\sigma^2+\epsilon)$，不严格等于 1。乘 weight、加 bias 后，输出的均值和方差也不再固定。[LayerNorm 的统计与参数约定](https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html)
+
+### Torch 实现：保留统计量的特征轴
+
+| 步骤 | `x: [B,S,D]` 时的 shape | 含义 |
+| --- | --- | --- |
+| `mean` | `[B,S,1]` | 每个 token 自己的特征均值 |
+| `centered` | `[B,S,D]` | 每个特征减去对应 token 的均值 |
+| `variance` | `[B,S,1]` | 沿 D 求平均的平方偏差 |
+| `normalized`、`y` | `[B,S,D]` | 统计量广播回 D 个特征，随后应用参数 |
 
 ```python
 import torch
@@ -88,11 +183,51 @@ reference = torch.nn.functional.layer_norm(x, (3,), weight, bias, eps=1e-5)
 
 `eps` 放在开方前，避免方差为零时除零。与 BatchNorm 不同，这里不沿 batch 统计，也不维护 running mean / variance。FP16 / BF16 / FP32 输入和参数在同一 GPU 上；多轴 normalized_shape 和其他 dtype 不在这个函数的约定中。
 
+### 层对象与 functional 接口
+
+```python
+import torch
+import torch.nn.functional as F
+
+x = torch.randn(2, 4, 8, device='cuda')    # [B,S,D]
+norm = torch.nn.LayerNorm(8, eps=1e-5).to(device='cuda')
+y = norm(x)                             # [2,4,8]
+# norm.weight：[8]，初始全 1；norm.bias：[8]，初始全 0。
+reference = F.layer_norm(x, (8,), norm.weight, norm.bias, eps=1e-5)
+```
+
+`nn.LayerNorm(8)` 持有参数，`F.layer_norm` 接收调用方传入的参数。`normalized_shape=8` 对应最后一个轴；若写成 `(4,8)`，则同时统计最后两个轴，参数 shape 也变为 `[4,8]`。Transformer 中按 token 归一化特征时，这里使用 `8`。
+
 官方接口：[LayerNorm](https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html)、[functional.layer_norm](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.layer_norm.html)。
 
 ## 4. RMSNorm：按均方根缩放
 
 `x: [..., D]`、`weight: [D]`，输出 `[..., D]`。计算 `x / sqrt(mean(x²) + eps) * weight`，不减均值，不加 bias。输入使用 FP16 / BF16 / FP32，在 FP32 中计算统计量与缩放。
+
+### 数学公式：控制均方根，保留均值信息
+
+RMS 是 root mean square（均方根）。对一个 token 的 D 个特征：
+
+$$
+r^2=\frac{1}{D}\sum_{i=1}^{D}x_i^2,\qquad
+y_i=\frac{x_i}{\sqrt{r^2+\epsilon}}\gamma_i.
+$$
+
+它先求平方、沿特征轴取平均、加 eps、开平方，再用这个分母缩放所有特征。每个 token 有自己的分母；每个特征有自己的 weight。在乘 weight 之前，正值向量归一化后仍然为正。
+
+以 `[3,4]` 为例，均方为 12.5，均方根为 $\sqrt{12.5}\approx3.5355$。忽略 eps、令 weight 全 1，输出约为 `[0.8485,1.1314]`。归一化后的 RMS 为 1，但每个元素的绝对值不必为 1。
+
+RMS 与 L2 范数存在关系：
+
+$$
+\operatorname{RMS}(x)=\frac{\lVert x\rVert_2}{\sqrt D}.
+$$
+
+因此，对非零向量忽略 eps 且令 weight 全 1 时，RMSNorm 输出的 L2 长度为 $\sqrt D$；L2 normalize 输出的长度为 1。两者使用不同的尺度。
+
+### Torch 实现：平方均值仍要 keepdim
+
+对 `[B,S,D]`，`mean_square` 的 shape 为 `[B,S,1]`，广播缩放后恢复 `[B,S,D]`。如果不保留末轴，统计量通常无法按预期广播回特征轴。
 
 ```python
 import torch
@@ -112,6 +247,31 @@ reference = torch.nn.functional.rms_norm(x, (3,), weight, eps=1e-6)
 ```
 
 对照官方结果时显式指定相同的 eps，不能把不同默认 eps 的结果直接比较。本实现的低精度中间计算与转换顺序是明确的教学选择，不保证与所有后端逐位一致。
+
+### 层对象：只有逐特征 weight
+
+```python
+import torch
+import torch.nn.functional as F
+
+x = torch.randn(2, 4, 8, device='cuda')
+norm = torch.nn.RMSNorm(8, eps=1e-6).to(device='cuda')
+y = norm(x)                             # [2,4,8]
+# norm.weight：[8]，初始全 1；这个模块没有 bias 参数。
+reference = F.rms_norm(x, (8,), norm.weight, eps=1e-6)
+```
+
+官方 LayerNorm 和 RMSNorm 都可用 `elementwise_affine=False` 关闭可学习的逐元素变换。两者在训练和推理时都使用当前输入的统计量，不维护 BatchNorm 式的 running statistics。实际模型中可以放在 attention / FFN 分支之前，位置关系见 [Transformer 运行全过程](../Attention/transformer-runtime.md#5-一个-transformer-block-的完整顺序)。
+
+### 用同一个向量比较三种归一化
+
+以下均忽略 eps；Norm 层的 weight 全为 1，LayerNorm 的 bias 全为 0：
+
+| 输入 `[3,4]` | 分母 | 输出 | 输出的 L2 长度 |
+| --- | --- | --- | --- |
+| L2 normalize | $\sqrt{3^2+4^2}=5$ | `[0.6,0.8]` | 1 |
+| LayerNorm | 中心化后的标准差 0.5 | `[-1,1]` | $\sqrt2$ |
+| RMSNorm | $\sqrt{(3^2+4^2)/2}=\sqrt{12.5}$ | 约 `[0.8485,1.1314]` | $\sqrt2$ |
 
 官方接口：[RMSNorm](https://docs.pytorch.org/docs/2.14/generated/torch.nn.RMSNorm.html)。
 

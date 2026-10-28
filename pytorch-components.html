@@ -65,8 +65,135 @@
 
 <p>两个归约都保留长度为 1 的轴，以便广播回输入。低精度输出有舍入误差，不能要求逐元素完全相等。输入包含 NaN、正无穷或整行负无穷时，需要另外定义数值处理策略；这里不处理这些输入。</p>
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.softmax.html">torch.softmax</a>。</p>
+<h2 id="norm-normalize-和归一化层分别做什么">Norm、normalize 和归一化层分别做什么</h2>
+<p>Transformer 中常见的归一化层有 LayerNorm 和 RMSNorm。数学里的 norm（范数）用一个数描述向量的大小；<code>normalize</code> 则用这个大小缩放向量。先区分它们的输入、输出和统计范围：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>对一条特征向量做什么</th>
+<th><code>x: [B,S,D]</code> 沿末轴计算后的 shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L1 / L2 norm</td>
+<td>计算一个表示大小的数</td>
+<td><code>[B,S]</code>；<code>keepdim=True</code> 时为 <code>[B,S,1]</code></td>
+</tr>
+<tr>
+<td>L2 normalize</td>
+<td>每个元素除以同一条向量的 L2 长度</td>
+<td><code>[B,S,D]</code></td>
+</tr>
+<tr>
+<td>LayerNorm</td>
+<td>减均值、除标准差，再逐特征缩放和偏移</td>
+<td><code>[B,S,D]</code></td>
+</tr>
+<tr>
+<td>RMSNorm</td>
+<td>除均方根，再逐特征缩放</td>
+<td><code>[B,S,D]</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="普通向量-norm-l1-与-l2">普通向量 Norm：L1 与 L2</h3>
+<p>对实数向量 <span class="math">\(x=(x_1,\ldots,x_D)\)</span>：</p>
+<div class="math display-math">\[
+\lVert x\rVert_1=\sum_{i=1}^{D}|x_i|,\qquad
+\lVert x\rVert_2=\sqrt{\sum_{i=1}^{D}x_i^2}.
+\]</div>
+
+<p>例如 <code>[3,4]</code> 的 L1 norm 是 7，L2 norm 是 5。求范数只得到长度，不会自动把原向量改成单位长度。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">l2_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""沿 dim 求 L2 范数；使用 FP32 计算并返回 FP32 结果。"""</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">values</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="n">keepdim</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">lengths</span> <span class="o">=</span> <span class="n">l2_norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                              <span class="c1"># 预期：[5, 0]，shape [2]</span>
+<span class="n">lengths_kept</span> <span class="o">=</span> <span class="n">l2_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>            <span class="c1"># 预期：[[5], [0]]，shape [2,1]</span>
+<span class="n">l1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">vector_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">ord</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>    <span class="c1"># 预期：[7, 0]</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">vector_norm</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span> <span class="nb">ord</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+
+
+<p>对 <code>[B,S,D]</code> 显式指定 <code>dim=-1</code>，就是分别计算每个 token 的特征向量长度。<code>torch.linalg.vector_norm</code> 的默认 <code>dim=None</code> 会先把全部元素展平；它与逐 token 求长度的统计范围不同。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.linalg.vector_norm.html">vector_norm 接口</a></p>
+<h3 id="l2-normalize-按长度缩放向量">L2 normalize：按长度缩放向量</h3>
+<p>L2 normalize 的计算为：</p>
+<div class="math display-math">\[
+y_i=\frac{x_i}{\max(\lVert x\rVert_2,\epsilon)}.
+\]</div>
+
+<p>当输入长度不小于 eps 时，输出的 L2 长度为 1。零向量仍输出零向量。分母使用 <code>max(length, eps)</code>，与后面 Norm 层在平方根内加 eps 的写法不同。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">l2_normalize</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""沿 dim 缩放向量；分母保留归约轴，以便广播。"""</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">values</span> <span class="o">/</span> <span class="n">length</span><span class="o">.</span><span class="n">clamp_min</span><span class="p">(</span><span class="n">eps</span><span class="p">))</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">l2_normalize</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                               <span class="c1"># 预期：[[0.6,0.8], [0,0]]</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span> <span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+</pre></div>
+
+
+<p><code>F.normalize</code> 默认沿 <code>dim=1</code> 计算。对 <code>[B,S,D]</code> 的特征向量归一化时，显式写 <code>dim=-1</code>。本小节的实现处理 FP16 / BF16 / FP32 实数输入，在 FP32 中计算统计量。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.normalize.html">normalize 接口</a></p>
 <h2 id="3-layernorm-沿特征轴减均值-除标准差">3. LayerNorm：沿特征轴减均值、除标准差</h2>
 <p><code>x: [..., D]</code>、<code>weight: [D]</code>、<code>bias: [D]</code>，输出 <code>[..., D]</code>。本实现只归一化最后一个轴；均值与方差在 FP32 中计算，方差除以 D，不用无偏估计的 D−1。</p>
+<h3 id="数学公式-每个-token-单独统计">数学公式：每个 token 单独统计</h3>
+<p>固定 batch 和 token 位置，把它的 D 个特征记作 <span class="math">\(x_1,\ldots,x_D\)</span>：</p>
+<div class="math display-math">\[
+\mu=\frac{1}{D}\sum_{i=1}^{D}x_i,\qquad
+\sigma^2=\frac{1}{D}\sum_{i=1}^{D}(x_i-\mu)^2,
+\]</div>
+
+<div class="math display-math">\[
+\widehat{x}_i=\frac{x_i-\mu}{\sqrt{\sigma^2+\epsilon}},\qquad
+y_i=\widehat{x}_i\gamma_i+\beta_i.
+\]</div>
+
+<p><code>weight</code> 对应 <span class="math">\(\gamma\)</span>，<code>bias</code> 对应 <span class="math">\(\beta\)</span>。它们各有 D 个可学习参数，同一层的所有 token 共用。末尾的乘法与加法都是逐元素操作，不使用 <code>[D,D]</code> 矩阵混合特征。</p>
+<p>以 <code>[3,4]</code> 为例，均值为 3.5，中心化结果为 <code>[-0.5,0.5]</code>，方差为 0.25。忽略 eps、令 weight 为全 1、bias 为全 0，输出就是 <code>[-1,1]</code>。常量向量减均值后全为零，最终输出等于 bias。</p>
+<p><code>eps&gt;0</code> 时，<span class="math">\(\widehat{x}\)</span> 的方差为 <span class="math">\(\sigma^2/(\sigma^2+\epsilon)\)</span>，不严格等于 1。乘 weight、加 bias 后，输出的均值和方差也不再固定。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html">LayerNorm 的统计与参数约定</a></p>
+<h3 id="torch-实现-保留统计量的特征轴">Torch 实现：保留统计量的特征轴</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th><code>x: [B,S,D]</code> 时的 shape</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mean</code></td>
+<td><code>[B,S,1]</code></td>
+<td>每个 token 自己的特征均值</td>
+</tr>
+<tr>
+<td><code>centered</code></td>
+<td><code>[B,S,D]</code></td>
+<td>每个特征减去对应 token 的均值</td>
+</tr>
+<tr>
+<td><code>variance</code></td>
+<td><code>[B,S,1]</code></td>
+<td>沿 D 求平均的平方偏差</td>
+</tr>
+<tr>
+<td><code>normalized</code>、<code>y</code></td>
+<td><code>[B,S,D]</code></td>
+<td>统计量广播回 D 个特征，随后应用参数</td>
+</tr>
+</tbody>
+</table></div>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">layer_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">bias</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
@@ -90,9 +217,39 @@
 
 
 <p><code>eps</code> 放在开方前，避免方差为零时除零。与 BatchNorm 不同，这里不沿 batch 统计，也不维护 running mean / variance。FP16 / BF16 / FP32 输入和参数在同一 GPU 上；多轴 normalized_shape 和其他 dtype 不在这个函数的约定中。</p>
+<h3 id="层对象与-functional-接口">层对象与 functional 接口</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>    <span class="c1"># [B,S,D]</span>
+<span class="n">norm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                             <span class="c1"># [2,4,8]</span>
+<span class="c1"># norm.weight：[8]，初始全 1；norm.bias：[8]，初始全 0。</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">layer_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="mi">8</span><span class="p">,),</span> <span class="n">norm</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">norm</span><span class="o">.</span><span class="n">bias</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+</pre></div>
+
+
+<p><code>nn.LayerNorm(8)</code> 持有参数，<code>F.layer_norm</code> 接收调用方传入的参数。<code>normalized_shape=8</code> 对应最后一个轴；若写成 <code>(4,8)</code>，则同时统计最后两个轴，参数 shape 也变为 <code>[4,8]</code>。Transformer 中按 token 归一化特征时，这里使用 <code>8</code>。</p>
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html">LayerNorm</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.layer_norm.html">functional.layer_norm</a>。</p>
 <h2 id="4-rmsnorm-按均方根缩放">4. RMSNorm：按均方根缩放</h2>
 <p><code>x: [..., D]</code>、<code>weight: [D]</code>，输出 <code>[..., D]</code>。计算 <code>x / sqrt(mean(x²) + eps) * weight</code>，不减均值，不加 bias。输入使用 FP16 / BF16 / FP32，在 FP32 中计算统计量与缩放。</p>
+<h3 id="数学公式-控制均方根-保留均值信息">数学公式：控制均方根，保留均值信息</h3>
+<p>RMS 是 root mean square（均方根）。对一个 token 的 D 个特征：</p>
+<div class="math display-math">\[
+r^2=\frac{1}{D}\sum_{i=1}^{D}x_i^2,\qquad
+y_i=\frac{x_i}{\sqrt{r^2+\epsilon}}\gamma_i.
+\]</div>
+
+<p>它先求平方、沿特征轴取平均、加 eps、开平方，再用这个分母缩放所有特征。每个 token 有自己的分母；每个特征有自己的 weight。在乘 weight 之前，正值向量归一化后仍然为正。</p>
+<p>以 <code>[3,4]</code> 为例，均方为 12.5，均方根为 <span class="math">\(\sqrt{12.5}\approx3.5355\)</span>。忽略 eps、令 weight 全 1，输出约为 <code>[0.8485,1.1314]</code>。归一化后的 RMS 为 1，但每个元素的绝对值不必为 1。</p>
+<p>RMS 与 L2 范数存在关系：</p>
+<div class="math display-math">\[
+\operatorname{RMS}(x)=\frac{\lVert x\rVert_2}{\sqrt D}.
+\]</div>
+
+<p>因此，对非零向量忽略 eps 且令 weight 全 1 时，RMSNorm 输出的 L2 长度为 <span class="math">\(\sqrt D\)</span>；L2 normalize 输出的长度为 1。两者使用不同的尺度。</p>
+<h3 id="torch-实现-平方均值仍要-keepdim">Torch 实现：平方均值仍要 keepdim</h3>
+<p>对 <code>[B,S,D]</code>，<code>mean_square</code> 的 shape 为 <code>[B,S,1]</code>，广播缩放后恢复 <code>[B,S,D]</code>。如果不保留末轴，统计量通常无法按预期广播回特征轴。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">rms_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
@@ -111,6 +268,51 @@
 
 
 <p>对照官方结果时显式指定相同的 eps，不能把不同默认 eps 的结果直接比较。本实现的低精度中间计算与转换顺序是明确的教学选择，不保证与所有后端逐位一致。</p>
+<h3 id="层对象-只有逐特征-weight">层对象：只有逐特征 weight</h3>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">norm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">RMSNorm</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                             <span class="c1"># [2,4,8]</span>
+<span class="c1"># norm.weight：[8]，初始全 1；这个模块没有 bias 参数。</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">rms_norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="mi">8</span><span class="p">,),</span> <span class="n">norm</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">)</span>
+</pre></div>
+
+
+<p>官方 LayerNorm 和 RMSNorm 都可用 <code>elementwise_affine=False</code> 关闭可学习的逐元素变换。两者在训练和推理时都使用当前输入的统计量，不维护 BatchNorm 式的 running statistics。实际模型中可以放在 attention / FFN 分支之前，位置关系见 <a href="attention-transformer-runtime.html#5-一个-transformer-block-的完整顺序">Transformer 运行全过程</a>。</p>
+<h3 id="用同一个向量比较三种归一化">用同一个向量比较三种归一化</h3>
+<p>以下均忽略 eps；Norm 层的 weight 全为 1，LayerNorm 的 bias 全为 0：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>输入 <code>[3,4]</code></th>
+<th>分母</th>
+<th>输出</th>
+<th>输出的 L2 长度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L2 normalize</td>
+<td><span class="math">\(\sqrt{3^2+4^2}=5\)</span></td>
+<td><code>[0.6,0.8]</code></td>
+<td>1</td>
+</tr>
+<tr>
+<td>LayerNorm</td>
+<td>中心化后的标准差 0.5</td>
+<td><code>[-1,1]</code></td>
+<td><span class="math">\(\sqrt2\)</span></td>
+</tr>
+<tr>
+<td>RMSNorm</td>
+<td><span class="math">\(\sqrt{(3^2+4^2)/2}=\sqrt{12.5}\)</span></td>
+<td>约 <code>[0.8485,1.1314]</code></td>
+<td><span class="math">\(\sqrt2\)</span></td>
+</tr>
+</tbody>
+</table></div>
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.RMSNorm.html">RMSNorm</a>。</p>
 <h2 id="5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</h2>
 <p>ReLU、SiLU、GELU 的现成接口，以及 SwiGLU 与普通 GLU 的区别，见 <a href="pytorch-neural-networks.html#激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控</a>。</p>
@@ -203,7 +405,7 @@
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.scaled_dot_product_attention.html">functional.scaled_dot_product_attention</a>。</p>
 <h2 id="运行约定与验证范围">运行约定与验证范围</h2>
 <p>上述代码块各自包含导入，GPU 调用使用 <code>device='cuda'</code>；需要支持 CUDA 的 PyTorch 和可用的 NVIDIA GPU。函数自身跟随输入的 device；没有 CPU fallback 或自动设备迁移。</p>
-<p>标出的数值和 shape 是推导预期，<code>reference</code> 用来说明对应的官方接口，不表示已执行对照。只做 Python 语法、网站构建和链接检查，未执行 GPU 实机验证，也没有性能测量结果。回查基础写法见 <a href="pytorch-tensors.html">Tensor 与 GPU 内存</a>。</p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-linear-线性层">1. Linear：线性层</a><a class="level-2" href="#2-stable-softmax-归一化为权重">2. Stable softmax：归一化为权重</a><a class="level-2" href="#3-layernorm-沿特征轴减均值-除标准差">3. LayerNorm：沿特征轴减均值、除标准差</a><a class="level-2" href="#4-rmsnorm-按均方根缩放">4. RMSNorm：按均方根缩放</a><a class="level-2" href="#5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</a><a class="level-2" href="#6-scaled-dot-product-attention-分数-mask-与加权求和">6. Scaled dot-product attention：分数、mask 与加权求和</a><a class="level-2" href="#运行约定与验证范围">运行约定与验证范围</a></nav></aside></div>
+<p>标出的数值和 shape 是推导预期，<code>reference</code> 用来说明对应的官方接口，不表示已执行对照。只做 Python 语法、网站构建和链接检查，未执行 GPU 实机验证，也没有性能测量结果。回查基础写法见 <a href="pytorch-tensors.html">Tensor 与 GPU 内存</a>。</p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-linear-线性层">1. Linear：线性层</a><a class="level-2" href="#2-stable-softmax-归一化为权重">2. Stable softmax：归一化为权重</a><a class="level-2" href="#norm-normalize-和归一化层分别做什么">Norm、normalize 和归一化层分别做什么</a><a class="level-2" href="#3-layernorm-沿特征轴减均值-除标准差">3. LayerNorm：沿特征轴减均值、除标准差</a><a class="level-2" href="#4-rmsnorm-按均方根缩放">4. RMSNorm：按均方根缩放</a><a class="level-2" href="#5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</a><a class="level-2" href="#6-scaled-dot-product-attention-分数-mask-与加权求和">6. Scaled dot-product attention：分数、mask 与加权求和</a><a class="level-2" href="#运行约定与验证范围">运行约定与验证范围</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>

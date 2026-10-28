@@ -1123,7 +1123,19 @@ print(alias.tolist())            # 预期：[8.0, 9.0]
 
 `add_`、`zero_`、`fill_`、`copy_` 是常见原地操作。`x.copy_(src)` 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 [copy_](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html)。这些方法返回自身，共享存储的 view 会看到修改。常用算术方法与具体限制见[原地运算](#原地运算-带下划线的方法)。
 
-## 12. expand 与 repeat：复用存储还是复制元素
+## 12. expand、repeat 与 repeat_interleave：扩展与重复
+
+这三个操作都能增加逻辑元素数量，但数据顺序和存储行为不同：
+
+| 操作 | 参数表示什么 | 重复方式与存储 |
+| --- | --- | --- |
+| `expand(*sizes)` | 目标 shape；已有轴可用 `-1` 保持长度 | 扩展长度为 1 的轴，返回共享存储的 view |
+| `repeat(*repeats)` | 每个轴的重复倍数 | 将原来的整段数据按轴平铺，复制数值 |
+| `repeat_interleave(repeats, dim=...)` | 指定轴上每个位置重复几次 | 每个元素或切片连续重复，结果有独立数值存储 |
+
+只为逐元素运算对齐 shape 时，先考虑广播。确实需要重复后的数值和排列时，再选择对应操作。
+
+### expand：扩展长度为 1 的轴，复用原存储
 
 ```python
 import torch
@@ -1140,7 +1152,117 @@ print(repeated.tolist())         # 预期：[[10, 20, 30], [10, 20, 30]]
 
 expand 的行 stride 为 0，表示“换一行仍访问同样的地址”；这不是为第二行另分配数值。不要把 expanded 的逻辑位置当作互相独立的位置来批量原地写；需要独立可写数据时先 `clone()`。
 
-`repeat(2, 1)` 的数字是各轴的重复次数，不是最终 shape。对原 shape `[1, 3]`，结果是 `[1×2, 3×1] = [2, 3]`。一般只为参与逐元素广播，不必先 repeat。
+`x.expand(2, -1)` 也会得到 `[2,3]`，其中 `-1` 保持第二个轴的长度。原来长度为 3 的轴不能直接 expand 成 6；`expand` 的扩展规则与广播有关。[expand 接口](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.expand.html)
+
+### repeat：把整段数据平铺多次
+
+`repeat(2, 1)` 的数字是各轴的重复次数，不是最终 shape。对原 shape `[1,3]`，结果是 `[1×2,3×1]=[2,3]`。
+
+```python
+import torch
+
+x = torch.tensor([10, 20, 30], device='cuda')
+print(x.repeat(2).tolist())             # 预期：[10,20,30,10,20,30]
+
+m = torch.tensor([[1, 2], [3, 4]], device='cuda')
+print(m.repeat(2, 1).tolist())           # 预期：[[1,2],[3,4],[1,2],[3,4]]
+print(m.repeat(1, 2).tolist())           # 预期：[[1,2,1,2],[3,4,3,4]]
+print(tuple(m.repeat(2, 3).shape))       # 预期：(4,6)
+```
+
+沿行平铺时先保留原来的行顺序，再重复整组行；沿列平铺也保留整段列顺序。参数数量至少等于输入维数；更多参数会在前面引入新轴。例如一维 `x.repeat(2, 1)` 得到 `[2,3]`。重复倍数使用非负整数，不能用 `-1` 表示保持原长度。
+
+`torch.tile(x, dims)` 也按整段平铺。例如 `torch.tile(x, (2,))` 与这里的 `x.repeat(2)` 顺序一致。`tile` 允许倍数元组比输入维数短，此时会在倍数前补 1；`repeat` 要求显式提供足够的倍数。官方接口：[repeat](https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.repeat.html)、[tile](https://docs.pytorch.org/docs/2.14/generated/torch.tile.html)。
+
+### repeat_interleave：先连续重复当前项，再处理下一项
+
+常用调用形式是 `torch.repeat_interleave(x, repeats, dim=None, *, output_size=None)`；也可以写成 `x.repeat_interleave(repeats, dim=...)`。`output_size` 只能按关键字传入。对一维输入：
+
+```python
+import torch
+
+x = torch.tensor([10, 20, 30], device='cuda')
+whole = x.repeat(2)
+each = x.repeat_interleave(2)
+print(whole.tolist())                    # 预期：[10,20,30,10,20,30]
+print(each.tolist())                     # 预期：[10,10,20,20,30,30]
+```
+
+两者 shape 都是 `[6]`，但位置含义不同。`repeat` 保留 `[10,20,30]` 这整组，再接一组；`repeat_interleave` 先放两个 10，再放两个 20，最后放两个 30。
+
+对多维输入，`dim` 决定连续重复哪一种切片。沿 `dim=0` 重复行，沿 `dim=1` 重复列，其他轴长度保持不变：
+
+```python
+import torch
+
+x = torch.tensor([[1, 2], [3, 4]], device='cuda')  # [2,2]
+rows = x.repeat_interleave(2, dim=0)              # [4,2]
+cols = x.repeat_interleave(2, dim=1)              # [2,4]
+flat = x.repeat_interleave(2)                     # [8]
+print(rows.tolist())                   # 预期：[[1,2],[1,2],[3,4],[3,4]]
+print(cols.tolist())                   # 预期：[[1,1,2,2],[3,3,4,4]]
+print(flat.tolist())                   # 预期：[1,1,2,2,3,3,4,4]
+```
+
+**省略 `dim` 会先把输入展平，再返回一维结果。** 要保留 batch、token、head 等轴的语义，显式写出 `dim`；负轴编号也可用，例如 `dim=-1` 对应最后一个轴。
+
+### 每个位置使用不同的重复次数
+
+`repeats` 可以是一维整型 Tensor，为指定轴的每个位置提供非负计数。计数为 0 时，该位置不出现在输出中：
+
+```python
+import torch
+
+x = torch.tensor([10, 20, 30], device='cuda')
+counts = torch.tensor([1, 0, 2], dtype=torch.long, device='cuda')
+y = torch.repeat_interleave(x, counts, dim=0)
+print(y.tolist())                       # 预期：[10,30,30]
+```
+
+这里沿 `dim=0` 的三个位置分别重复 1、0、2 次，输出轴长度为 `1+0+2=3`。一维计数 Tensor 的长度应与指定轴一致；只提供一个计数时，可以广播给这个轴的所有位置。计数针对轴上的位置，不针对数值大小。
+
+还有一个只传 `repeats` 的重载：`torch.repeat_interleave(counts)` 会返回位置编号。本例结果为 `[0,2,2]`，可以用来生成“每项属于哪个组”的索引。它与把 counts 自身的数值作为输入重复的调用不同。[repeat_interleave 接口与重载](https://docs.pytorch.org/docs/2.14/generated/torch.repeat_interleave.html)
+
+### output_size：已知输出轴长度时直接提供
+
+当计数放在 GPU 上时，确定输出长度可能需要流同步。如果调用方已经知道该长度，可以传入 `output_size`，省去为确定输出 shape 而需要的同步：
+
+```python
+import torch
+
+x = torch.tensor([[1, 2], [3, 4]], device='cuda')
+counts = torch.tensor([1, 2], dtype=torch.long, device='cuda')
+y = torch.repeat_interleave(x, counts, dim=1, output_size=3)
+print(y.tolist())                       # 预期：[[1,2,2],[3,4,4]]
+print(tuple(y.shape))                   # 预期：(2,3)
+```
+
+`output_size=3` 是重复后 **dim=1 这个轴的长度**，不是输出总元素数 6。它必须与计数之和一致，不负责截断、补零或改变重复次数。若先用 `counts.sum().item()` 从 GPU 取出这个长度，仍可能引入等待。调用方已知输出长度时，可以直接传入，省去这一步查询。
+
+### GQA 示例：按连续分组匹配 KV heads
+
+假设有 8 个 query heads、2 个 KV heads，每 4 个连续的 query heads 共用一个 KV head。教学实现可以沿 head 轴重复 K/V：
+
+```python
+import torch
+
+B, Hq, Hkv, S, D, Dv = 2, 8, 2, 5, 16, 8
+k = torch.randn(B, Hkv, S, D, device='cuda')
+v = torch.randn(B, Hkv, S, Dv, device='cuda')
+assert Hq % Hkv == 0
+groups = Hq // Hkv
+k_for_q = k.repeat_interleave(groups, dim=1)  # [2,8,5,16]
+v_for_q = v.repeat_interleave(groups, dim=1)  # [2,8,5,8]
+# 输出 head 的来源编号：[0,0,0,0,1,1,1,1]
+```
+
+如果改用 `k.repeat(1, groups, 1, 1)`，来源顺序会变成 `[0,1,0,1,0,1,0,1]`。即使 shape 一样，也改变了 query head 与 KV head 的对应关系。可对照官方 [SDPA 的 GQA 等价表达](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.scaled_dot_product_attention.html)。
+
+`repeat` 与 `repeat_interleave` 都复制数值。上面的 K/V 输出元素数各变为原来的 4 倍；KV cache 仍应按原来的 Hkv 保存。这段代码用于展开分组关系，融合的 GQA kernel 可以直接使用共享的 KV heads，无需生成这份展开数据。
+
+`expand` 可以先增加长度为 1 的分组轴，再扩成共享存储的 view。将这个分组轴合并回 head 轴时，`reshape` 可能复制。判断显存开销时，需要结合后续操作，不能只看中间用了 `expand`。布局兼容条件见 [reshape 与存储关系](#reshape-兼容时共享-不兼容时允许复制)。
+
+对参与 autograd 的浮点输入，复制数值仍会保留梯度关系；重复位置的梯度会累加回对应的源元素。存储与梯度的区别见 [存储独立与梯度关系](#存储独立与梯度关系是两件事)。
 
 ## 13. cat、stack 与拆分
 

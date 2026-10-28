@@ -1386,7 +1386,36 @@ stride       (2,1)
 
 
 <p><code>add_</code>、<code>zero_</code>、<code>fill_</code>、<code>copy_</code> 是常见原地操作。<code>x.copy_(src)</code> 将数值写入已有 x，不会把 x 改绑为 src；返回 x 自身，见 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.copy_.html">copy_</a>。这些方法返回自身，共享存储的 view 会看到修改。常用算术方法与具体限制见<a href="pytorch-tensors.html#原地运算-带下划线的方法">原地运算</a>。</p>
-<h2 id="12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</h2>
+<h2 id="12-expand-repeat-与-repeat_interleave-扩展与重复">12. expand、repeat 与 repeat_interleave：扩展与重复</h2>
+<p>这三个操作都能增加逻辑元素数量，但数据顺序和存储行为不同：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>参数表示什么</th>
+<th>重复方式与存储</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>expand(*sizes)</code></td>
+<td>目标 shape；已有轴可用 <code>-1</code> 保持长度</td>
+<td>扩展长度为 1 的轴，返回共享存储的 view</td>
+</tr>
+<tr>
+<td><code>repeat(*repeats)</code></td>
+<td>每个轴的重复倍数</td>
+<td>将原来的整段数据按轴平铺，复制数值</td>
+</tr>
+<tr>
+<td><code>repeat_interleave(repeats, dim=...)</code></td>
+<td>指定轴上每个位置重复几次</td>
+<td>每个元素或切片连续重复，结果有独立数值存储</td>
+</tr>
+</tbody>
+</table></div>
+<p>只为逐元素运算对齐 shape 时，先考虑广播。确实需要重复后的数值和排列时，再选择对应操作。</p>
+<h3 id="expand-扩展长度为-1-的轴-复用原存储">expand：扩展长度为 1 的轴，复用原存储</h3>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
@@ -1401,7 +1430,95 @@ stride       (2,1)
 
 
 <p>expand 的行 stride 为 0，表示“换一行仍访问同样的地址”；这不是为第二行另分配数值。不要把 expanded 的逻辑位置当作互相独立的位置来批量原地写；需要独立可写数据时先 <code>clone()</code>。</p>
-<p><code>repeat(2, 1)</code> 的数字是各轴的重复次数，不是最终 shape。对原 shape <code>[1, 3]</code>，结果是 <code>[1×2, 3×1] = [2, 3]</code>。一般只为参与逐元素广播，不必先 repeat。</p>
+<p><code>x.expand(2, -1)</code> 也会得到 <code>[2,3]</code>，其中 <code>-1</code> 保持第二个轴的长度。原来长度为 3 的轴不能直接 expand 成 6；<code>expand</code> 的扩展规则与广播有关。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.expand.html">expand 接口</a></p>
+<h3 id="repeat-把整段数据平铺多次">repeat：把整段数据平铺多次</h3>
+<p><code>repeat(2, 1)</code> 的数字是各轴的重复次数，不是最终 shape。对原 shape <code>[1,3]</code>，结果是 <code>[1×2,3×1]=[2,3]</code>。</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>             <span class="c1"># 预期：[10,20,30,10,20,30]</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[[1,2],[3,4],[1,2],[3,4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>           <span class="c1"># 预期：[[1,2,1,2],[3,4,3,4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>       <span class="c1"># 预期：(4,6)</span>
+</pre></div>
+
+
+<p>沿行平铺时先保留原来的行顺序，再重复整组行；沿列平铺也保留整段列顺序。参数数量至少等于输入维数；更多参数会在前面引入新轴。例如一维 <code>x.repeat(2, 1)</code> 得到 <code>[2,3]</code>。重复倍数使用非负整数，不能用 <code>-1</code> 表示保持原长度。</p>
+<p><code>torch.tile(x, dims)</code> 也按整段平铺。例如 <code>torch.tile(x, (2,))</code> 与这里的 <code>x.repeat(2)</code> 顺序一致。<code>tile</code> 允许倍数元组比输入维数短，此时会在倍数前补 1；<code>repeat</code> 要求显式提供足够的倍数。官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.Tensor.repeat.html">repeat</a>、<a href="https://docs.pytorch.org/docs/2.14/generated/torch.tile.html">tile</a>。</p>
+<h3 id="repeat_interleave-先连续重复当前项-再处理下一项">repeat_interleave：先连续重复当前项，再处理下一项</h3>
+<p>常用调用形式是 <code>torch.repeat_interleave(x, repeats, dim=None, *, output_size=None)</code>；也可以写成 <code>x.repeat_interleave(repeats, dim=...)</code>。<code>output_size</code> 只能按关键字传入。对一维输入：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">whole</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">each</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">whole</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                    <span class="c1"># 预期：[10,20,30,10,20,30]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">each</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                     <span class="c1"># 预期：[10,10,20,20,30,30]</span>
+</pre></div>
+
+
+<p>两者 shape 都是 <code>[6]</code>，但位置含义不同。<code>repeat</code> 保留 <code>[10,20,30]</code> 这整组，再接一组；<code>repeat_interleave</code> 先放两个 10，再放两个 20，最后放两个 30。</p>
+<p>对多维输入，<code>dim</code> 决定连续重复哪一种切片。沿 <code>dim=0</code> 重复行，沿 <code>dim=1</code> 重复列，其他轴长度保持不变：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>  <span class="c1"># [2,2]</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>              <span class="c1"># [4,2]</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>              <span class="c1"># [2,4]</span>
+<span class="n">flat</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>                     <span class="c1"># [8]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rows</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                   <span class="c1"># 预期：[[1,2],[1,2],[3,4],[3,4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">cols</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                   <span class="c1"># 预期：[[1,1,2,2],[3,3,4,4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                   <span class="c1"># 预期：[1,1,2,2,3,3,4,4]</span>
+</pre></div>
+
+
+<p><strong>省略 <code>dim</code> 会先把输入展平，再返回一维结果。</strong> 要保留 batch、token、head 等轴的语义，显式写出 <code>dim</code>；负轴编号也可用，例如 <code>dim=-1</code> 对应最后一个轴。</p>
+<h3 id="每个位置使用不同的重复次数">每个位置使用不同的重复次数</h3>
+<p><code>repeats</code> 可以是一维整型 Tensor，为指定轴的每个位置提供非负计数。计数为 0 时，该位置不出现在输出中：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                       <span class="c1"># 预期：[10,30,30]</span>
+</pre></div>
+
+
+<p>这里沿 <code>dim=0</code> 的三个位置分别重复 1、0、2 次，输出轴长度为 <code>1+0+2=3</code>。一维计数 Tensor 的长度应与指定轴一致；只提供一个计数时，可以广播给这个轴的所有位置。计数针对轴上的位置，不针对数值大小。</p>
+<p>还有一个只传 <code>repeats</code> 的重载：<code>torch.repeat_interleave(counts)</code> 会返回位置编号。本例结果为 <code>[0,2,2]</code>，可以用来生成“每项属于哪个组”的索引。它与把 counts 自身的数值作为输入重复的调用不同。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.repeat_interleave.html">repeat_interleave 接口与重载</a></p>
+<h3 id="output_size-已知输出轴长度时直接提供">output_size：已知输出轴长度时直接提供</h3>
+<p>当计数放在 GPU 上时，确定输出长度可能需要流同步。如果调用方已经知道该长度，可以传入 <code>output_size</code>，省去为确定输出 shape 而需要的同步：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">output_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>                       <span class="c1"># 预期：[[1,2,2],[3,4,4]]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>                   <span class="c1"># 预期：(2,3)</span>
+</pre></div>
+
+
+<p><code>output_size=3</code> 是重复后 <strong>dim=1 这个轴的长度</strong>，不是输出总元素数 6。它必须与计数之和一致，不负责截断、补零或改变重复次数。若先用 <code>counts.sum().item()</code> 从 GPU 取出这个长度，仍可能引入等待。调用方已知输出长度时，可以直接传入，省去这一步查询。</p>
+<h3 id="gqa-示例-按连续分组匹配-kv-heads">GQA 示例：按连续分组匹配 KV heads</h3>
+<p>假设有 8 个 query heads、2 个 KV heads，每 4 个连续的 query heads 共用一个 KV head。教学实现可以沿 head 轴重复 K/V：</p>
+<div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">B</span><span class="p">,</span> <span class="n">Hq</span><span class="p">,</span> <span class="n">Hkv</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">Dv</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">8</span>
+<span class="n">k</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">Hkv</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">Hkv</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">Dv</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">Hq</span> <span class="o">%</span> <span class="n">Hkv</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="n">groups</span> <span class="o">=</span> <span class="n">Hq</span> <span class="o">//</span> <span class="n">Hkv</span>
+<span class="n">k_for_q</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [2,8,5,16]</span>
+<span class="n">v_for_q</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [2,8,5,8]</span>
+<span class="c1"># 输出 head 的来源编号：[0,0,0,0,1,1,1,1]</span>
+</pre></div>
+
+
+<p>如果改用 <code>k.repeat(1, groups, 1, 1)</code>，来源顺序会变成 <code>[0,1,0,1,0,1,0,1]</code>。即使 shape 一样，也改变了 query head 与 KV head 的对应关系。可对照官方 <a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.scaled_dot_product_attention.html">SDPA 的 GQA 等价表达</a>。</p>
+<p><code>repeat</code> 与 <code>repeat_interleave</code> 都复制数值。上面的 K/V 输出元素数各变为原来的 4 倍；KV cache 仍应按原来的 Hkv 保存。这段代码用于展开分组关系，融合的 GQA kernel 可以直接使用共享的 KV heads，无需生成这份展开数据。</p>
+<p><code>expand</code> 可以先增加长度为 1 的分组轴，再扩成共享存储的 view。将这个分组轴合并回 head 轴时，<code>reshape</code> 可能复制。判断显存开销时，需要结合后续操作，不能只看中间用了 <code>expand</code>。布局兼容条件见 <a href="pytorch-tensors.html#reshape-兼容时共享-不兼容时允许复制">reshape 与存储关系</a>。</p>
+<p>对参与 autograd 的浮点输入，复制数值仍会保留梯度关系；重复位置的梯度会累加回对应的源元素。存储与梯度的区别见 <a href="pytorch-tensors.html#存储独立与梯度关系是两件事">存储独立与梯度关系</a>。</p>
 <h2 id="13-cat-stack-与拆分">13. cat、stack 与拆分</h2>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -1601,7 +1718,7 @@ stride       (2,1)
 <li><a href="https://docs.pytorch.org/docs/2.14/notes/cuda.html">CUDA semantics</a>：设备、异步、stream 与显存管理。</li>
 <li><a href="https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html">Autograd 教程</a>：梯度记录与 backward。</li>
 </ul>
-<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片-高级索引-index_select-与-gather">4. 索引：切片、高级索引、index_select 与 gather</a><a class="level-2" href="#5-tensor-加减乘除与逐元素乘法">5. Tensor 加减乘除与逐元素乘法</a><a class="level-2" href="#常用逐元素数学运算">常用逐元素数学运算</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</a><a class="level-2" href="#10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</a><a class="level-2" href="#11-赋值-修改与数据复制">11. 赋值、修改与数据复制</a><a class="level-2" href="#12-expand-与-repeat-复用存储还是复制元素">12. expand 与 repeat：复用存储还是复制元素</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#神经网络与组件的后续阅读">神经网络与组件的后续阅读</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
+<p>本文核对了官方 API 说明，示例做静态 Python 语法检查，网站做构建与链接检查。<strong>未执行 CUDA 示例，也没有提供实测性能结论。</strong></p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-创建-tensor">1. 创建 Tensor</a><a class="level-2" href="#2-shape-维度与元素数量">2. shape、维度与元素数量</a><a class="level-2" href="#3-dtype-类型会影响运算和存储">3. dtype：类型会影响运算和存储</a><a class="level-2" href="#4-索引-切片-高级索引-index_select-与-gather">4. 索引：切片、高级索引、index_select 与 gather</a><a class="level-2" href="#5-tensor-加减乘除与逐元素乘法">5. Tensor 加减乘除与逐元素乘法</a><a class="level-2" href="#常用逐元素数学运算">常用逐元素数学运算</a><a class="level-2" href="#6-reduction-沿一个轴把多个数归约成一个数">6. reduction：沿一个轴把多个数归约成一个数</a><a class="level-2" href="#7-broadcasting-对齐轴-复用较小的数据">7. broadcasting：对齐轴，复用较小的数据</a><a class="level-2" href="#8-矩阵乘法-收缩内轴-保留外轴">8. 矩阵乘法：收缩内轴，保留外轴</a><a class="level-2" href="#9-逻辑形状-reshape-permute-与增加-删除轴">9. 逻辑形状：reshape、permute 与增加/删除轴</a><a class="level-2" href="#10-存储布局-stride-view-与-contiguous">10. 存储布局：stride、view 与 contiguous</a><a class="level-2" href="#11-赋值-修改与数据复制">11. 赋值、修改与数据复制</a><a class="level-2" href="#12-expand-repeat-与-repeat_interleave-扩展与重复">12. expand、repeat 与 repeat_interleave：扩展与重复</a><a class="level-2" href="#13-cat-stack-与拆分">13. cat、stack 与拆分</a><a class="level-2" href="#14-排序与-top-k">14. 排序与 top-k</a><a class="level-2" href="#15-cpu-gpu-传输与异步执行">15. CPU / GPU 传输与异步执行</a><a class="level-2" href="#16-autograd-tensor-的梯度信息">16. autograd：Tensor 的梯度信息</a><a class="level-2" href="#17-常见错误速查">17. 常见错误速查</a><a class="level-2" href="#神经网络与组件的后续阅读">神经网络与组件的后续阅读</a><a class="level-2" href="#官方参考与验证范围">官方参考与验证范围</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
