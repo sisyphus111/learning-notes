@@ -127,6 +127,32 @@ $$
 
 ## 5. TP4 怎样切完整 Transformer block
 
+### column 与 row 的定义：先区分输出块和部分和
+
+固定 $Y=XW$，其中 $X[M,K]$、$W[K,N]$。parallel 名称以数学权重 W 的方向命名，不能直接套用 PyTorch `[N,K]` 的物理存储轴。
+
+column parallel 沿 W 的输出列切分，各 rank 拿相同 X：
+
+$$
+W=[W_0\ \cdots\ W_{p-1}],\qquad Y_r=XW_r,\qquad Y=[Y_0\ \cdots\ Y_{p-1}].
+$$
+
+每卡 W 为 `[K,N/p]`，Y 为 `[M,N/p]`。结果是不同输出特征，可直接传给支持该分片的下一步；需要每卡完整 Y 时，才做 AllGather。
+
+row parallel 沿 W 的归约行切分，X 必须配合沿列切分：
+
+$$
+X=[X_0\ \cdots\ X_{p-1}],\quad W=\begin{bmatrix}W_0\\\vdots\\W_{p-1}\end{bmatrix},\quad Y=\sum_rX_rW_r.
+$$
+
+每卡 X 为 `[M,K/p]`，W 为 `[K/p,N]`，局部结果为 `[M,N]` 的部分和。需要复制的完整 Y 时用 AllReduce；需要按 token 等方式保留输出分片时可考虑 ReduceScatter。
+
+“X 不变、W 沿行切”只有在“完整 X 仍保存着，计算时取对应列切片”的意义下成立。直接用完整 `[M,K]` 乘 `[K/p,N]` 不合法。取 view 不一定复制数据，但布局可能影响 kernel 访问与打包成本。
+
+若 X 沿行、W 沿列同时切分，则要计算所有 $X_iW_j$ 组合。仅在 rank 0 算 $X_0W_0$、rank 1 算 $X_1W_1$，会缺失另外两个输出块。只切 X 的行、各卡复制 W，则将工作分给不同 token，不能减少每卡权重存储。对 attention 的跨 token 依赖还需另行处理。
+
+### Transformer 中采用哪些分片
+
 采用常见的 replicated hidden state、column-parallel → row-parallel 组织。四张卡在每层开始持有相同的 `[M,5120]` 输入。
 
 | 线性层 | TP1 的逻辑权重 | TP4 每卡权重 | 分工 |
@@ -172,6 +198,94 @@ I_p=\frac{2MK(N/p)}{2(MK+K(N/p)+M(N/p))}.
 $$
 
 M=128 时，TP1 为 124.27 FLOP/byte，TP4 为 122.49 FLOP/byte，反而略低：每卡仍读取完整 X，但只算四分之一输出列。理想每卡时间缩短，主要来自工作量减少与资源并行。
+
+### 同一矩阵：FLOPs 相同，流量与 kernel 形状不同
+
+对同一个 `[M,K] @ [K,N]`，两种切法的每卡权重参数都是 $KN/p$，乘加量都是 $2MKN/p$。不能单凭分片名称断言一种计算量更小。
+
+假设输入、权重和局部输出均按 s bytes/元素计流量，各自读取或写出一次，暂不计通信、cache 和额外打包：
+
+$$
+D_C=s\left(MK+\frac{KN}{p}+\frac{MN}{p}\right),\qquad D_R=s\left(\frac{MK}{p}+\frac{KN}{p}+MN\right).
+$$
+
+这里 row 的局部输入已经是所需切片。若其输出部分和保留为 FP32，实际写出字节需相应增加，不能直接沿用 BF16 的 s=2。
+
+$$
+D_C-D_R=sM\left(1-\frac1p\right)(K-N).
+$$
+
+因此在这个局部理想模型中，扩维层 N>K 偏向 column，少写输出比多读输入更划算。降维层 K>N 偏向 row，少读输入比多写输出更划算。小 M 下权重流量占主要部分，两者差距可能很小，通信和利用率更能决定结果。
+
+Qwen3，M=128、p=4、s=2：
+
+| 同一个投影采用不同切法 | 每卡形状 M×K×N | 每卡流量，MB | I，FLOP/byte | HBM 项，μs |
+| --- | --- | ---: | ---: | ---: |
+| up，column | 128×5120×6400 | 68.48512 | 122.49 | 20.44 |
+| up，row | 128×1280×25600 | 72.41728 | 115.84 | 21.62 |
+| down，column | 128×25600×1280 | 72.41728 | 115.84 | 21.62 |
+| down，row | 128×6400×5120 | 68.48512 | 122.49 | 20.44 |
+
+这是峰值带宽下的局部项，不代表四个 kernel 实测有这个排序。按第 8 节相同 tile，up 的 column/row 分别是 50/200 个 CTA、每 CTA 80/20 轮；down 的 column/row 分别是 10/40 个 CTA、400/100 轮。column 更窄、CTA 更少，可能抵消它在局部字节数上的优势。两种切法若保留同一 CTA tile，每 thread 的 accumulator 数也相同。
+
+### 先固定输入和输出布局，再比较通信
+
+单独比较“column 没通信、row 有 AllReduce”不公平：前者可能交付分片输出，后者却被要求交付完整输出。用同样的起点和终点比较：每卡已有完整 X，最终每卡都需完整 Y。row 可以本地选择 X 的列，不需网络分发输入。
+
+令 $S_Y=sMN$，以理想 Ring 的每卡发送字节计：
+
+| 路线 | 输出恢复 | 每卡发送量 |
+| --- | --- | --- |
+| column | AllGather 拼接特征 | $(p-1)S_Y/p$ |
+| row | AllReduce 相加部分和 | $2(p-1)S_Y/p$ |
+
+AllGather 不做对应元素归约，Ring 的数据阶段也少于 Ring AllReduce。固定完整输入/输出边界时，column 的这项发送量更少。但其本地 GEMM 可能更窄，不能从字节数直接推出延迟更短。
+
+若起点是 feature-sharded X，column 通常先 AllGather 输入，额外交换约 $sMK$ 大小的逻辑 Tensor。row 可直接消费匹配的输入分片。若终点允许 feature-sharded Y，column 又可省去输出 AllGather。该比较说明，通信成本属于“分片转换与算子组合”，不能只按单层的名字记忆。
+
+以上发送量不包含接收量，也不是交换网络的总流量。固定开销、网络拓扑、归约计算、实际 collective 算法与重叠会改变延迟。NCCL 可使用 Ring 以外的路径，不能把两倍 Ring 字节当作两倍实测时间。[collective 语义][nccl]
+
+### SwiGLU FFN：为什么 column→row 节省通信
+
+现在比较完整 FFN，固定复制的 `[M,H]` 输入、复制的 `[M,H]` 输出、TP 度数 p 与通信 dtype。F 是 intermediate size，Qwen3 中 F=5H。
+
+column gate/up 各产生 `[M,F/p]` 的正确输出特征。SiLU 与乘法只依赖同一位置，所以本地完成 SwiGLU；row down 直接消费 `[M,F/p]`，最后仅归约 `[M,H]`。
+
+若 gate/up 都改成 row，各 rank 得到的是 gate/up 的部分和。必须先分别合并，再做 SwiGLU，因为 $\operatorname{SiLU}(a+b)\ne\operatorname{SiLU}(a)+\operatorname{SiLU}(b)$。两个归约可以打包，但总 payload 仍是 `[M,2F]`，不能只归约一个 `[M,F]`。
+
+若 down 改成 column，它需要完整的 F 维输入；必须先 AllGather SwiGLU 后的 Z，然后计算 `[M,H/p]`。若出口需完整 hidden，还要再 AllGather 该输出。
+
+```text
+column → row：本地 SwiGLU → 本地 down → AllReduce(H)
+column → column：本地 SwiGLU → AllGather(F) → down → AllGather(H)
+row → row：AllReduce(2F) → SwiGLU → 取本地 Z 分片 → down → AllReduce(H)
+```
+
+令 $a=(p-1)/p$，AG 的每卡发送量为 $a\,sMD$，AR 为 $2a\,sMD$，D 为对应特征宽度。推得：
+
+| FFN 路线 | 每卡 Ring 发送量 | F=5H 时相对 column→row | M=128、TP4、BF16，MB |
+| --- | --- | ---: | ---: |
+| column→row | $2asMH$ | 1× | 1.96608 |
+| column→column | $asM(F+H)$ | 3× | 5.89824 |
+| row→row | $2asM(2F+H)$ | 11× | 21.62688 |
+
+这里差别来自明确的依赖和字节数：column→row 不传完整 expanded activation，只归约较窄的 hidden。它还只需一次 collective，另外两条示例路线各需两次。实际可能融合通信、改变归约精度、使用 sequence parallel 或采用其他布局。表格不是所有分布式 FFN 的通信下界，也不是延迟倍数。[Megatron 的算子组合设计][megatron]
+
+### backward：通信不能只看 forward
+
+对 column 的 $Y_r=XW_r$，本地权重梯度为 $dW_r=X^TdY_r$，输入梯度要相加：$dX=\sum_r dY_rW_r^T$。在上述布局下，forward 保留特征分片不通信，但 backward 通常需归约 dX。
+
+对 row 的 $Y=\sum_rX_rW_r$，forward 要归约 Y。给定复制的逻辑 dY，backward 可本地计算 $dX_r=dYW_r^T$ 和 $dW_r=X_r^TdY$，直接将分片梯度交回上游 column。这里采用 Megatron 的逻辑复制语义，不把相同 dY 再求和 p 次。
+
+因此 column→row 的优点还包括：forward 避免 expanded activation 的收集，backward 避免 expanded activation gradient 的额外收集。固定条件下，FFN 的通信落在宽度 H 的边界，而不是 5H 的中间层。
+
+### attention 为什么按 head 配对
+
+Q/K/V 的 column 分片若保持完整 head 与匹配的 GQA 分组，每卡已拥有本地 head 所需的 Q/K/V，可独立执行 QK、softmax、PV。输出投影用 row 消费这些 head 分片，再归约 hidden。
+
+若先沿 Q/K 投影的输入归约维切分，各卡只有 Q/K 特征的部分和，通常必须先合并投影结果。若直接切 head_dim 来计算 attention 点积，score 也会成为部分和，softmax 前必须合并；这已经是另一种通信方案。标准 head TP 的价值是把通信留在 hidden 投影边界，避免对每个 head 的 softmax 引入跨卡依赖。
+
+选择切法时，应依次确认输入分布、所需输出分布、非线性前的归约需求、每卡 GEMM 形状和暴露通信。没有一种单层切法在所有这些条件下都更快。
 
 ## 7. AllReduce 怎样抵消延迟收益
 

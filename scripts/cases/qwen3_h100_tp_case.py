@@ -25,10 +25,32 @@ for m in (1, 32, 128, 512, 1024):
                         tp4_matmuls_us=3 * local * 1e6,
                         ring_bandwidth_only_us=ring_bytes / NVLINK_ONEWAY_BYTES_S * 1e6))
 
+parallel_comparison = []
+for k, n, projection in ((K, N, "up"), (N, K, "down")):
+    m = 128
+    ops = 2 * m * k * n / TP
+    column_bytes = 2 * (m * k + k * n / TP + m * n / TP)
+    row_bytes = 2 * (m * k / TP + k * n / TP + m * n)
+    parallel_comparison.append(dict(
+        projection=projection, M=m, column_bytes=column_bytes,
+        row_bytes=row_bytes, column_intensity=ops / column_bytes,
+        row_intensity=ops / row_bytes,
+        column_hbm_us=column_bytes / HBM_BYTES_S * 1e6,
+        row_hbm_us=row_bytes / HBM_BYTES_S * 1e6))
+m, h, f, s = 128, K, N, 2
+a = (TP - 1) / TP
+ffn_layout_send_bytes = {
+    "column_row": 2 * a * s * m * h,
+    "column_column": a * s * m * (f + h),
+    "row_row": 2 * a * s * m * (2 * f + h),
+}
+
 print(json.dumps(dict(
     evidence="Calculated ideal model, not measured latency or throughput",
     ridge_flop_per_byte=DENSE_FLOPS_S / HBM_BYTES_S,
     weight_bytes=2 * K * N, projection=rows, ffn=ffn,
+    row_column_comparison=parallel_comparison,
+    ffn_layout_ring_send_bytes=ffn_layout_send_bytes,
     tile=dict(BM=128, BN=128, BK=64, stage_input_bytes=32768,
               double_buffer_bytes=65536, accumulator_registers_per_consumer=128,
               example_registers_per_cta=128 * 32 + 128 * 160),
