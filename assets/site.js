@@ -246,13 +246,17 @@ if (tocItems.length) {
             currentItem = nextItem;
             revealCurrent = true;
         }
-        // Reveal on section changes, leaving manual directory scrolling alone otherwise.
+        // Center the current item in long directories; short ones keep their natural layout.
+        // Only follow section changes or resizing, leaving manual directory scrolling alone.
         // Scroll only the directory; scrollIntoView would also move the article.
         if (revealCurrent && chapterNav.clientHeight) {
-            const bounds = chapterNav.getBoundingClientRect();
-            const linkBounds = currentItem.link.getBoundingClientRect();
-            if (linkBounds.top < bounds.top) chapterNav.scrollTop += linkBounds.top - bounds.top - 8;
-            else if (linkBounds.bottom > bounds.bottom) chapterNav.scrollTop += linkBounds.bottom - bounds.bottom + 8;
+            if (chapterNav.scrollHeight > chapterNav.clientHeight) {
+                const bounds = chapterNav.getBoundingClientRect();
+                const linkBounds = currentItem.link.getBoundingClientRect();
+                // scrollTop naturally clamps to the start/end when centering is impossible.
+                chapterNav.scrollTop += linkBounds.top - bounds.top +
+                    (linkBounds.height - chapterNav.clientHeight) / 2;
+            }
             revealCurrent = false;
         }
     }
