@@ -818,6 +818,7 @@ summary {
 .toc nav {
   display: grid;
   gap: 8px;
+  scroll-behavior: smooth;
   min-height: 0;
   margin-left: -10px;
   padding: 0 6px 0 10px;
