@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>案例：Qwen3 / H100 的 TP 性能 · 求知录</title><meta name="description" content="GEMV / GEMM · 延迟与吞吐 · roofline · CTA / warp / register · 通信成本">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=cd516edc15"><link rel="stylesheet" href="assets/code.css">
+<script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
+<script defer src="assets/site.js?v=791aca5848"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="cuda-flash-attention.html">FlashAttention 1–4</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-qwen3-h100-tp-case.html" aria-current="page">案例：Qwen3 / H100 的 TP 性能</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 Ring / Tree AllReduce</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Attention 与 Transformer</p><h1>案例：Qwen3 / H100 的 TP 性能</h1><p class="subtitle">GEMV / GEMM · 延迟与吞吐 · roofline · CTA / warp / register · 通信成本</p></div>
+<article><h2 id="1-分析对象-结论与证据范围">1. 分析对象、结论与证据范围</h2>
+<p>以 Qwen3-32B dense Transformer、H100 SXM 80 GB 为例，分析 BF16 输入与权重、FP32 累加的推理路径。先讨论一个 FFN 投影，再扩展到完整 FFN、attention 和 decode step。</p>
+<p><strong>TP 通过多卡同时提供计算能力与显存带宽，降低同一批工作的完成时间。GEMM 通过多行输入复用权重，降低每行的摊销成本。</strong> TP 分片不自动改善单卡 kernel 效率，新增通信与较小的工作规模可能抵消收益。</p>
+<p>模型和硬件尺寸来自官方资料。流量、FLOPs 与时间来自公式推导。CTA/warp/register 配置是可核算的教学设计。未执行 H100 benchmark，也没有确认 cuBLAS、SGLang 或其他后端为这些 shape 实际选择的 kernel。</p>
+<p>基础材料：<a href="attention-transformer-runtime.html">Transformer 运行全过程</a>、<a href="cuda-gemm.html">GEMM 分块与流水线</a>、<a href="gpu-communication-and-allreduce.html">通信与 AllReduce</a>。</p>
+<h2 id="2-固定模型尺寸与矩阵方向">2. 固定模型尺寸与矩阵方向</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>Qwen3-32B 参数</th>
+<th style="text-align: right;">数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总参数量</td>
+<td style="text-align: right;">约 32.8B</td>
+</tr>
+<tr>
+<td>Transformer 层数</td>
+<td style="text-align: right;">64</td>
+</tr>
+<tr>
+<td>hidden size H</td>
+<td style="text-align: right;">5120</td>
+</tr>
+<tr>
+<td>FFN intermediate size F</td>
+<td style="text-align: right;">25600</td>
+</tr>
+<tr>
+<td>Q heads / KV heads</td>
+<td style="text-align: right;">64 / 8</td>
+</tr>
+<tr>
+<td>head dimension</td>
+<td style="text-align: right;">128</td>
+</tr>
+</tbody>
+</table></div>
+<p>Q 的投影宽度是 <span class="math">\(64\times128=8192\)</span>，K/V 各为 <span class="math">\(8\times128=1024\)</span>。不能由 hidden size 5120 推断 Q 的输出一定也是 5120。<a href="https://huggingface.co/Qwen/Qwen3-32B">模型卡</a>、<a href="https://huggingface.co/Qwen/Qwen3-32B/blob/main/config.json">官方配置</a></p>
+<p>以下权重按数学上的右乘方向书写。PyTorch Linear 实际常保存 <code>[out_features, in_features]</code>，计算时使用转置；逻辑方向不要求每次物理转置权重。</p>
+<div class="math display-math">\[
+G=XW_g,\quad U=XW_u,\quad Z=\operatorname{SiLU}(G)\odot U,\quad Y=ZW_d.
+\]</div>
+
+<div class="codehilite text-diagram"><pre><span></span>X：       [M, 5120]
+Wg / Wu： [5120, 25600]
+G/U/Z：   [M, 25600]
+Wd：      [25600, 5120]
+Y：       [M, 5120]
+</pre></div>
+
+
+<p>M 是本次 Linear 一起处理的 token 行数。单请求单 token decode 通常 <code>M=1</code>；32 个请求各生成一个 token 可形成 <code>M=32</code>；prefill 的 1024 个已知 token 可形成 <code>M=1024</code>。</p>
+<p>同一请求未来尚未生成的 token 依赖当前输出，不能直接合进当前 GEMM。batch、prefill、部分 speculative verification 才能提供已知的多行输入。</p>
+<p>一个 up 权重含 <span class="math">\(5120\times25600=131072000\)</span> 个参数。BF16 每元素 2 bytes：</p>
+<div class="math display-math">\[
+|W_u|=262144000\text{ bytes}=262.144\text{ MB}=250\text{ MiB}.
+\]</div>
+
+<p>即使只算一行输入，仍要使用这整份权重。本文 MB/GB/TB 采用十进制，MiB/GiB/KiB 采用二进制。</p>
+<h2 id="3-h100-资源与理想-roofline">3. H100 资源与理想 roofline</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>H100 SXM 资源</th>
+<th style="text-align: right;">本页采用的数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BF16 dense Tensor Core 峰值</td>
+<td style="text-align: right;">约 989 TFLOP/s</td>
+</tr>
+<tr>
+<td>HBM 带宽</td>
+<td style="text-align: right;">3.35 TB/s</td>
+</tr>
+<tr>
+<td>SM 数量</td>
+<td style="text-align: right;">132</td>
+</tr>
+<tr>
+<td>L2 cache</td>
+<td style="text-align: right;">50 MB</td>
+</tr>
+<tr>
+<td>register file / SM</td>
+<td style="text-align: right;">65536 个 32-bit registers，即 256 KiB</td>
+</tr>
+<tr>
+<td>shared memory / SM 上限</td>
+<td style="text-align: right;">228 KiB</td>
+</tr>
+<tr>
+<td>最大驻留 warps / SM</td>
+<td style="text-align: right;">64</td>
+</tr>
+</tbody>
+</table></div>
+<p>官网 BF16 的约 1979 TFLOP/s 标有 sparsity，dense 分析不能直接使用该数值。本页使用约一半的 dense 峰值。每 block 可用 shared memory、寄存器分配粒度和其他资源还有额外约束。<a href="https://www.nvidia.com/en-us/data-center/h100/">H100 规格</a>、<a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/">架构与 SM 数</a>、<a href="https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html">资源限制</a></p>
+<p>对于 <span class="math">\(C[M,N]=A[M,K]B[K,N]\)</span>，主要计算量为 <span class="math">\(F_{ops}=2MNK\)</span>，FMA 的乘法与加法各计一次 FLOP。若 A/B 各从 HBM 读取一次、BF16 C 写出一次，且不读旧 C：</p>
+<div class="math display-math">\[
+D_{min}=2(MK+KN+MN)\text{ bytes},\qquad I=\frac{F_{ops}}{D_{min}}=\frac{MNK}{MK+KN+MN}.
+\]</div>
+
+<p>I 的单位为 FLOP/byte。该流量是假设充分复用的理想边界；实际 HBM 流量可能受重复加载、cache 和额外工作影响。</p>
+<div class="math display-math">\[
+P_{roof}(I)=\min(P_{peak},B_{HBM}I),\qquad T\ge\max\left(\frac{F_{ops}}{P_{peak}},\frac{D_{HBM}}{B_{HBM}}\right).
+\]</div>
+
+<p>本页 H100 的理论转折点为：</p>
+<div class="math display-math">\[
+I_{ridge}=\frac{989\times10^{12}}{3.35\times10^{12}}\approx295\text{ FLOP/byte}.
+\]</div>
+
+<div class="codehilite text-diagram"><pre><span></span>吞吐上限
+    ↑                  ┌────────── 计算峰值
+    |                ／
+    |              ／   左侧：HBM 供给约束
+    |            ／     右侧：计算峰值约束
+    └────────────────────────────→ 算术强度
+                    约 295 FLOP/byte
+</pre></div>
+
+
+<p>图只说明分段关系，坐标和斜率不按比例绘制。真实 roofline 还受形状、指令与片上资源限制，不是只把 FLOPs 除以峰值。<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html">NVIDIA GEMM 性能分析</a></p>
+<h2 id="4-从-gemv-到-gemm-复用同一份权重">4. 从 GEMV 到 GEMM：复用同一份权重</h2>
+<p>固定 up projection 的 <code>K=5120, N=25600</code>。M 相对 K/N 较小时，权重占主要流量：</p>
+<div class="math display-math">\[
+D\approx2KN,\qquad F_{ops}=2MKN,\qquad I\approx M\text{ FLOP/byte}.
+\]</div>
+
+<p>因此增加 M，能让权重读取服务更多 token。这里是“输入行数提高复用”。每个权重不必在同一个 CTA 内服务全部 M 行。CTA 内复用与 L2 跨 CTA 复用共同影响实际流量。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th style="text-align: right;">M</th>
+<th style="text-align: right;">I，FLOP/byte</th>
+<th style="text-align: right;">计算下界，μs</th>
+<th style="text-align: right;">HBM 下界，μs</th>
+<th style="text-align: right;">两者最大值，μs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.27</td>
+<td style="text-align: right;">78.27</td>
+<td style="text-align: right;">78.27</td>
+</tr>
+<tr>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">31.76</td>
+<td style="text-align: right;">8.48</td>
+<td style="text-align: right;">78.84</td>
+<td style="text-align: right;">78.84</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">124.27</td>
+<td style="text-align: right;">33.93</td>
+<td style="text-align: right;">80.60</td>
+<td style="text-align: right;">80.60</td>
+</tr>
+<tr>
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">457.14</td>
+<td style="text-align: right;">135.71</td>
+<td style="text-align: right;">87.64</td>
+<td style="text-align: right;">135.71</td>
+</tr>
+<tr>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">825.81</td>
+<td style="text-align: right;">271.42</td>
+<td style="text-align: right;">97.03</td>
+<td style="text-align: right;">271.42</td>
+</tr>
+</tbody>
+</table></div>
+<p>这些数字统一使用 989 TFLOP/s 与理想 BF16 流量，不含 launch、padding、实际利用率和 epilogue。M=1 对应 GEMV，不能假设它达到 Tensor Core 峰值。若采用 FP32 CUDA Core FMA，按约 67 TFLOP/s 计算，算术下界约 3.9 μs。这个数仍小于约 78.3 μs 的权重读取项。</p>
+<p>M=128 时，FLOPs 是 M=1 的 128 倍，理想总流量却只从约 262 MB 增到 270 MB。它在这个模型下仍偏 HBM 受限；M=512 才转向计算受限。不能把所有 GEMM 都称为 compute-bound。</p>
+<p>若连续执行 128 次 GEMV，且每次都重新从 HBM 读权重，读取项合计约 10 ms。合成一个 M=128 GEMM，理想模型约 80.6 μs。这是不同复用假设下的推导，不是实测加速比。</p>
+<h3 id="延迟和每行摊销成本">延迟和每行摊销成本</h3>
+<div class="math display-math">\[
+\text{行吞吐}=M/T_{kernel},\qquad\text{每行摊销成本}=T_{kernel}/M.
+\]</div>
+
+<p><code>80.6 μs / 128 ≈ 0.63 μs</code> 是每行的摊销成本。batch 内每个请求仍需等待整个约 80.6 μs 的工作，不能说单请求延迟只有 0.63 μs。收集 batch 的等待也可能增加端到端延迟。</p>
+<h2 id="5-tp4-怎样切完整-transformer-block">5. TP4 怎样切完整 Transformer block</h2>
+<p>采用常见的 replicated hidden state、column-parallel → row-parallel 组织。四张卡在每层开始持有相同的 <code>[M,5120]</code> 输入。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>线性层</th>
+<th>TP1 的逻辑权重</th>
+<th>TP4 每卡权重</th>
+<th>分工</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q</td>
+<td><code>[5120,8192]</code></td>
+<td><code>[5120,2048]</code></td>
+<td>16 个 Q heads / rank</td>
+</tr>
+<tr>
+<td>K、V，各一个</td>
+<td><code>[5120,1024]</code></td>
+<td><code>[5120,256]</code></td>
+<td>2 个 KV heads / rank</td>
+</tr>
+<tr>
+<td>attention 输出投影</td>
+<td><code>[8192,5120]</code></td>
+<td><code>[2048,5120]</code></td>
+<td>输出完整形状的部分和</td>
+</tr>
+<tr>
+<td>gate、up，各一个</td>
+<td><code>[5120,25600]</code></td>
+<td><code>[5120,6400]</code></td>
+<td>FFN 特征分片</td>
+</tr>
+<tr>
+<td>down</td>
+<td><code>[25600,5120]</code></td>
+<td><code>[6400,5120]</code></td>
+<td>输出完整形状的部分和</td>
+</tr>
+</tbody>
+</table></div>
+<p>Q/K/V 按匹配的 GQA 分组切分，各卡本地完成自己 heads 的 attention。输出投影后的部分和通过 AllReduce 得到完整 hidden state，再做残差与后续 norm。FFN 中则是：</p>
+<div class="codehilite text-diagram"><pre><span></span>相同 X [M,5120]
+    ├→ rank 0：gate/up → SwiGLU → down 部分和 ─┐
+    ├→ rank 1：gate/up → SwiGLU → down 部分和 ─┤
+    ├→ rank 2：gate/up → SwiGLU → down 部分和 ─┼→ AllReduce → Y [M,5120]
+    └→ rank 3：gate/up → SwiGLU → down 部分和 ─┘
+</pre></div>
+
+
+<p>每卡 Z 为 <code>[M,6400]</code>。SwiGLU 是逐元素计算，所以 gate/up 后不必先 AllGather 出 <code>[M,25600]</code>。down 的各分片直接消费本地 Z，得到 <code>[M,5120]</code> 部分和：</p>
+<div class="math display-math">\[
+Y=\sum_{p=0}^{3}Z_pW_{d,p}.
+\]</div>
+
+<p><strong>M 不除以 TP 数。</strong> 每张卡处理同一批 token，只负责其中一部分特征或归约贡献。标准布局每层 forward 在 attention 输出、FFN 输出各做一次 AllReduce。sequence parallel、融合归约或其他布局可以改变通信形式，需按实际执行路径分析。<a href="https://research.nvidia.com/labs/adlr/MegatronLM/">Megatron TP 的列切分与行切分</a></p>
+<h2 id="6-tp-的本地计算收益与算术强度">6. TP 的本地计算收益与算术强度</h2>
+<p>up 在 TP4 每卡计算 <code>[M,5120] @ [5120,6400]</code>。每卡权重为 65.536 MB，FLOPs 也变成原来的四分之一。四张卡同时执行，墙钟时间由最慢 rank 决定，不将四卡时间相加。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th style="text-align: right;">M</th>
+<th style="text-align: right;">TP1 投影理想模型，μs</th>
+<th style="text-align: right;">TP4 每卡投影理想模型，μs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">78.27</td>
+<td style="text-align: right;">19.57</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">80.60</td>
+<td style="text-align: right;">20.44</td>
+</tr>
+<tr>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">271.42</td>
+<td style="text-align: right;">67.86</td>
+</tr>
+</tbody>
+</table></div>
+<p>小 M 下主要减少每卡权重读取；大 M 下可同时利用多卡计算能力。但 TP 不自动提高每卡 I。column parallel 的强度为：</p>
+<div class="math display-math">\[
+I_p=\frac{2MK(N/p)}{2(MK+K(N/p)+M(N/p))}.
+\]</div>
+
+<p>M=128 时，TP1 为 124.27 FLOP/byte，TP4 为 122.49 FLOP/byte，反而略低：每卡仍读取完整 X，但只算四分之一输出列。理想每卡时间缩短，主要来自工作量减少与资源并行。</p>
+<h2 id="7-allreduce-怎样抵消延迟收益">7. AllReduce 怎样抵消延迟收益</h2>
+<p>FFN 的归约输出是 <code>[M,5120]</code>。假设使用 BF16 作为通信 dtype，payload 为：</p>
+<div class="math display-math">\[
+S=2M\times5120\text{ bytes}.
+\]</div>
+
+<p>以 Ring 为示例，p 个 rank 的每卡发送量为 <span class="math">\(2(p-1)S/p\)</span>；TP4 为 <code>1.5S</code>。H100 的 NVLink 900 GB/s 是双向总量，用单向发送量估计时采用 450 GB/s 的理论单向值，不能直接代入 900。</p>
+<div class="math display-math">\[
+T_{AR}\approx\alpha_{AR}+\frac{1.5S}{B_{net}}.
+\]</div>
+
+<p><span class="math">\(\alpha_{AR}\)</span> 表示启动、协议和同步的固定项，需要测量。实际 NCCL 可能选择不同算法，其有效带宽也低于硬件峰值。通信若采用 FP32，payload 和这里也不同。</p>
+<p>先把三个投影作为独立 GEMM 相加，暂不计 SwiGLU：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th style="text-align: right;">M</th>
+<th style="text-align: right;">TP1 三个投影，μs</th>
+<th style="text-align: right;">TP4 本地三个投影，μs</th>
+<th style="text-align: right;">Ring 纯带宽项，μs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">234.81</td>
+<td style="text-align: right;">58.71</td>
+<td style="text-align: right;">0.034</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">241.80</td>
+<td style="text-align: right;">61.33</td>
+<td style="text-align: right;">4.37</td>
+</tr>
+<tr>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">814.26</td>
+<td style="text-align: right;">203.57</td>
+<td style="text-align: right;">34.95</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>0.034 μs</code> 不是实际 AllReduce 延迟，小消息通常由固定开销主导。上述 down 投影与 up 的 K/N 对调，故在该简化流量模型下具有相同的时间项。真实 gate/up 常融合为一次 GEMM，不能把表当成完整 FFN 的测量。</p>
+<div class="math display-math">\[
+T_{FFN,TP4}\approx T_{local\ matmuls}+T_{SwiGLU}+\alpha_{AR}+T_{AR,data}+T_{other}.
+\]</div>
+
+<p>down 与消费它的归约有数据依赖，不能无条件将两者完全重叠。完整 64 层还有 attention、残差、norm、KV 访问、LM head 和调度。理想下界的比值也不是实际 speedup 上限或保证。</p>
+<p>TP 的条件收益是：本地计算/搬运省下的时间，大于通信、同步及形状效率损失。单卡矩阵很小、TP 度数过高或互联较慢时，这个条件可能不成立。</p>
+<h2 id="8-kernel-与-cta-一个具体的分块设计">8. kernel 与 CTA：一个具体的分块设计</h2>
+<p>对 <code>M=1024</code> 的 up projection，设计教学 tile：<code>BM=128, BN=128, BK=64</code>。这是普通非 persistent 调度示例，不代表库的实际算法。</p>
+<div class="codehilite text-diagram"><pre><span></span>整个 GEMM：[1024,5120] @ [5120,25600]
+一个 CTA：负责 C 的 [128,128] 输出 tile
+一次 K 迭代：A[128,64] @ B[64,128]，累加到同一个 C tile
+</pre></div>
+
+
+<p>每轮 A/B 各 16 KiB，共 32 KiB。FP32 C 累加状态为 <span class="math">\(128\times128\times4=64\)</span> KiB，但它分布在线程寄存器中，不要加到 shared memory 分配里。</p>
+<p>完整 K 循环有 <span class="math">\(5120/64=80\)</span> 轮。每轮：</p>
+<div class="math display-math">\[
+F_{tile}=2\times128\times128\times64=2097152\text{ FLOP}.
+\]</div>
+
+<p>相对将这对输入 tile 装入 shared memory 的 32768 bytes，强度为 64 FLOP/byte。A 元素可服务 128 个输出列，B 元素可服务 128 个输入行。</p>
+<p>这是 tile 装载边界的强度，不是整个 GEMM 的 HBM 强度，也不是 WGMMA 在 shared memory 上实际读取字节的完整统计。不同 MMA 子块可能重读操作数；跨 CTA 的 L2 复用又可能减少 HBM 流量。分析时必须固定所讨论的存储层级。<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html">CUTLASS 的分层 GEMM</a></p>
+<h3 id="shared-memory-与-warp-之间的数据交接">shared memory 与 warp 之间的数据交接</h3>
+<p>普通 shared memory 物理上来自 SM，逻辑上按 CTA 分配，同一 CTA 的多个 warp 可以共同访问。它不是“每个 warp 的独立缓存”。跨 CTA 共享则需要 cluster/DSMEM 等额外机制，不是本例的默认路径。</p>
+<p>使用两个缓冲槽时，A/B 数据共占约 64 KiB：</p>
+<div class="codehilite text-diagram"><pre><span></span>producer：将下一对 A/B tile 搬入空闲槽
+                  ↓ 数据到达通知
+consumer：读取就绪槽，完成本轮 MMA
+                  ↓ 消费完成通知
+producer：允许覆盖旧槽
+</pre></div>
+
+
+<p>TMA 可以由选出的线程发起，搬运绕开普通数据寄存器中转。buffer 复用必须等待 consumer 使用完；只确认 TMA 完成还不够。bank conflict、swizzle 和多级缓冲的基础见 <a href="cuda-gemm.html">GEMM 笔记</a>。</p>
+<h2 id="9-warpgroup-与每个-thread-的-accumulator">9. warpgroup 与每个 thread 的 accumulator</h2>
+<p>示意 CTA 使用 4 个 producer warps 和 4 个 consumer warps，共 256 threads。consumer 的四个 warp 构成一个 128-thread warpgroup；这不是说 TMA 必须由 128 threads 一起搬运。</p>
+<p>BF16 WGMMA 的一个形状是 <code>m64n128k16</code>：</p>
+<div class="codehilite text-diagram"><pre><span></span>[64,16] @ [16,128] → [64,128] 的 FP32 累加结果
+</pre></div>
+
+
+<p>warpgroup 的 128 threads 集体参与。为了覆盖本例 <code>[128,128]</code> 输出，一个 warpgroup 可以先后更新两个 64 行子块；BK=64 又分四个 K=16 片段。每轮有 <span class="math">\(2\times4=8\)</span> 次 warpgroup MMA，80 轮共 640 次。这是集体指令次数，不是每个线程独立计算一整块矩阵。<a href="https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/wgmma_programming.html">WGMMA 数据流与线程协作</a></p>
+<p>只计算 C accumulator，整个 tile 有 16384 个 FP32 值，分给 128 个 consumer threads：</p>
+<div class="math display-math">\[
+16384/128=128\text{ 个 FP32 accumulator/thread}.
+\]</div>
+
+<p>也就是每线程仅输出累加器就需要 128 个 32-bit registers。这些状态跨 80 轮持续保留，最后才写出 BF16 输出，避免每轮把部分和写回全局内存。</p>
+<p>线程还需要地址、descriptor、循环状态和 epilogue 临时值，实际寄存器需求高于 accumulator 数。Hopper 的 WGMMA 累加结果位于寄存器，不是 Blackwell SM100 的 TMEM。</p>
+<h2 id="10-register-file-怎样限制驻留与吞吐">10. register file 怎样限制驻留与吞吐</h2>
+<p>假设实现支持按角色分配寄存器，预算为 producer 每线程 32、consumer 每线程 160，则每 CTA 需要：</p>
+<div class="math display-math">\[
+128\times32+128\times160=24576\text{ 个 32-bit registers}=96\text{ KiB}.
+\]</div>
+
+<p>单看寄存器总量，每 SM 的 CTA 数上界为：</p>
+<div class="math display-math">\[
+\lfloor65536/24576\rfloor=2.
+\]</div>
+
+<p>shared memory 单看 64 KiB 数据槽可给出 <span class="math">\(\lfloor228/64\rfloor=3\)</span> 的粗略上界。在这组预算中，register file 更早限制到最多两个 CTA。两个 CTA 共 16 warps，相对 64 个最大驻留 warps，为 25% 的理论 warp occupancy。</p>
+<p>实际还受分配粒度、SM 子分区、barrier、epilogue scratch 和编译配置限制。不同角色预算需要正确的 launch/寄存器配置，可能涉及 <code>setmaxnreg</code>。不能拿源代码里实际使用的变量数量直接计算 occupancy。</p>
+<p>register file 物理上属于 SM，但每个 thread 的寄存器是私有逻辑状态。另一个 warp 不能随意读取你的局部变量。warp 内可用 shuffle；跨 warp 交换通常使用 shared memory 和相应同步。</p>
+<p>更大 tile 增加复用，也增加 accumulator 和临时寄存器，可能减少驻留或引起 spill。spill 的 local memory 访问会经过缓存/全局内存层级。反过来，25% occupancy 也不等于 25% Tensor Core 利用率：足够的独立工作与流水线可能已能持续供给计算。</p>
+<h2 id="11-gemv-的-thread-warp-分工为何不同">11. GEMV 的 thread/warp 分工为何不同</h2>
+<p>M=1 时，<span class="math">\(y[n]=\sum_k x[k]W[k,n]\)</span>。假设权重物理保存为 <code>[N,K]</code>、K 连续，可让一个 warp 负责 4 个输出。lane t 处理 <code>t, t+32, t+64, ...</code> 的 K 位置，每线程约处理 160 个 K 位置，为 4 个输出保留 4 个 FP32 部分和。最后做 warp 内归约。</p>
+<p>相邻 lanes 访问同一权重行的相邻 K 元素，便于合并访存。实际实现可进一步打包 BF16、向量化加载。这个设计不需要不同 warp 合并同一个输出；若沿 K 在多个 warp/CTA 间分工，就需额外归约。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>GEMV 教学设计</th>
+<th>GEMM 教学设计</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>权重服务的输入行</td>
+<td>1</td>
+<td>CTA 内 128</td>
+</tr>
+<tr>
+<td>每线程 accumulator</td>
+<td>示例为 4 个</td>
+<td>consumer 示例为 128 个</td>
+</tr>
+<tr>
+<td>主要工作</td>
+<td>并行点积与归约</td>
+<td>WGMMA tile 累加</td>
+</tr>
+<tr>
+<td>shared memory 用途</td>
+<td>可复用 x 或交换部分和</td>
+<td>A/B tile 复用与 MMA 操作数准备</td>
+</tr>
+<tr>
+<td>关键限制</td>
+<td>权重流量、访存并发、启动</td>
+<td>复用、Tensor Core 供给、寄存器与流水线</td>
+</tr>
+</tbody>
+</table></div>
+<p>GEMV 可以有很多 CTA，不是因为只有一个向量就只能用一个线程。它缺少的是“同一权重服务多行输入”的复用。库也可能采用窄矩阵 Tensor Core 路径，需将 padding 与有效计算利用率纳入分析。</p>
+<h2 id="12-tp-怎样改变-cta-数与-k-循环">12. TP 怎样改变 CTA 数与 K 循环</h2>
+<p>继续使用 <code>BM=BN=128, BK=64</code>，固定 M=128：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>投影</th>
+<th>配置</th>
+<th style="text-align: right;">每卡 CTA 数</th>
+<th style="text-align: right;">每 CTA 的 K 轮数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>up</td>
+<td>TP1：K=5120，N=25600</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">80</td>
+</tr>
+<tr>
+<td>up</td>
+<td>TP4：K=5120，N=6400</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">80</td>
+</tr>
+<tr>
+<td>down</td>
+<td>TP1：K=25600，N=5120</td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>down</td>
+<td>TP4：K=6400，N=5120</td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">100</td>
+</tr>
+</tbody>
+</table></div>
+<p>column parallel 缩短 N，CTA 变少而 K 循环不变；row parallel 缩短 K，CTA 数可以不变，但每个 CTA 更早完成。若 CTA tile 不变，每线程 accumulator 也不会自动变成四分之一。</p>
+<p>H100 有 132 个 SM，50 个 CTA 无法让所有 SM 同时各驻留一个 CTA。不过不能直接将 HBM 带宽乘 <code>50/132</code>。部分 SM 仍可能发出足够多的访存请求，计算覆盖率与带宽利用率需要分别检查。</p>
+<p>缩小 tile 可增加 CTA，但损失复用。例如把 BN 从 128 降到 32，CTA 数增加 4 倍，同一 tile 装载边界的强度变成：</p>
+<div class="math display-math">\[
+I_{stage}=\frac{2B_MB_NB_K}{2(B_MB_K+B_KB_N)}:\quad64\to25.6\text{ FLOP/byte}.
+\]</div>
+
+<p>库还可选择 split-K、persistent 或交换矩阵方向。fused gate/up 的 N 又是两个输出拼接后的宽度，CTA 数与单个投影不同。表格用于解释机制，不能作为 cuBLAS 的实际 launch geometry。</p>
+<h2 id="13-系统吞吐-单请求延迟与显存容量">13. 系统吞吐、单请求延迟与显存容量</h2>
+<p>同一个 decode step 的系统输出吞吐近似为“本步生成 token 数 / step 时间”。用户的 inter-token latency 接近 step 时间，而不是 step 时间除以 batch size。prefill 的 TTFT、decode ITL 与单 kernel 耗时也需分开。</p>
+<p>若有四张 H100，应比较四卡 TP 与四个单卡副本，而不能只比较 TP4 和一张卡。低并发下 TP 让单请求使用多卡；总 batch 有限时，TP 保留 M，可避免把 batch 分给副本后降低复用。高并发、单卡已能形成高效大 GEMM 时，多副本避免 TP 通信，可能提供更高系统吞吐。</p>
+<p>TP 也改变容量。BF16 权重约 65.6 GB，还需 KV、激活与 workspace。该模型每个历史 token 的全部 64 层 KV 为：</p>
+<div class="math display-math">\[
+2_{K/V}\times64\times8\times128\times2=262144\text{ bytes}=256\text{ KiB}.
+\]</div>
+
+<p>128 个请求、每个 4096-token 上下文，仅 KV 就约 128 GiB。因此本页 M=128 可用于单层算子或 prefill 分析，不能默认这种长上下文 decode batch 能装进一张 H100。TP4 按 KV heads 分片后，每 rank 对应约 64 KiB/历史 token，还会影响可服务的 batch。</p>
+<p>模型级结果还包括 KV 读取、attention 计算、norm、采样与调度。单个 FFN 投影的 4 倍理想缩短，不等于完整 Transformer 的 4 倍端到端加速。</p>
+<h2 id="14-怎样复核这个案例">14. 怎样复核这个案例</h2>
+<p>数值复算脚本：<a href="https://github.com/sisyphus111/learning-notes/blob/main/scripts/cases/qwen3_h100_tp_case.py">qwen3_h100_tp_case.py</a>。仅使用 Python 标准库计算数学模型，不导入 Torch、不访问 GPU。</p>
+<div class="codehilite"><pre><span></span>.venv/bin/python scripts/cases/qwen3_h100_tp_case.py
+</pre></div>
+
+
+<p>实际验证应固定模型、batch、上下文、dtype、TP、GPU 时钟与互联拓扑。先用 Nsight Systems 确认 GEMM、通信和 host gap 的关键路径，再对相关 kernels 用 Nsight Compute 检查：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>所需证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>请求 / step</td>
+<td>TTFT、ITL、输出 tokens/s、相同资源下副本对照</td>
+</tr>
+<tr>
+<td>kernel</td>
+<td>实际 shape、算法、耗时、有效 FLOP/s</td>
+</tr>
+<tr>
+<td>通信</td>
+<td>payload、算法、固定开销、有效带宽、暴露的等待</td>
+</tr>
+<tr>
+<td>HBM / L2</td>
+<td>实际字节数、命中、读写带宽</td>
+</tr>
+<tr>
+<td>CTA / SM</td>
+<td>tile、grid、驻留、SM 覆盖和尾部</td>
+</tr>
+<tr>
+<td>warp / shared</td>
+<td>MMA 供给、访存与 barrier 等待、shared 流量、bank conflict</td>
+</tr>
+<tr>
+<td>thread / register</td>
+<td>registers/thread、角色分配、spill 与临时值</td>
+</tr>
+</tbody>
+</table></div>
+<p>TP8 的 up 权重分片约 32.8 MB，小于 H100 的 50 MB L2。反复测同一分片可能变成热缓存测试；完整模型轮流访问各层时未必如此。比较 TP1/TP4/TP8 要说明缓存状态，不能将 cache 命中差异误算成纯 HBM 带宽扩展。</p>
+<h2 id="15-来源与适用范围">15. 来源与适用范围</h2>
+<p>模型配置、硬件规格与机制的资料基准日期为 2026-10-28。表格是理想模型，寄存器预算是教学配置，均不代表实测。可先用它形成假设，再对实际后端与机器验证。</p>
+<ul>
+<li><a href="https://huggingface.co/Qwen/Qwen3-32B">Qwen3-32B 模型卡</a>与<a href="https://huggingface.co/Qwen/Qwen3-32B/blob/main/config.json">配置</a>：模型和矩阵尺寸。</li>
+<li><a href="https://www.nvidia.com/en-us/data-center/h100/">H100 产品规格</a>：最终产品算力、带宽与互联，注意 dense / sparse 区别。</li>
+<li><a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/">Hopper 架构</a>与<a href="https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html">Tuning Guide</a>：SM、register file、shared memory 与异步机制。</li>
+<li><a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html">NVIDIA GEMM 性能背景</a>：FLOPs、算术强度、tiling 与性能边界。</li>
+<li><a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html">CUTLASS Efficient GEMM</a>与<a href="https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/wgmma_programming.html">WGMMA 指南</a>：CTA/warpgroup 分层、存储路径。</li>
+<li><a href="https://research.nvidia.com/labs/adlr/MegatronLM/">Megatron TP</a>与<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">NCCL collective 语义</a>：列/行切分组合和输出归约。Ring 流量推导见本仓库的<a href="gpu-communication-and-allreduce.html">通信笔记</a>。</li>
+</ul></article><footer>Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-分析对象-结论与证据范围">1. 分析对象、结论与证据范围</a><a class="level-2" href="#2-固定模型尺寸与矩阵方向">2. 固定模型尺寸与矩阵方向</a><a class="level-2" href="#3-h100-资源与理想-roofline">3. H100 资源与理想 roofline</a><a class="level-2" href="#4-从-gemv-到-gemm-复用同一份权重">4. 从 GEMV 到 GEMM：复用同一份权重</a><a class="level-2" href="#5-tp4-怎样切完整-transformer-block">5. TP4 怎样切完整 Transformer block</a><a class="level-2" href="#6-tp-的本地计算收益与算术强度">6. TP 的本地计算收益与算术强度</a><a class="level-2" href="#7-allreduce-怎样抵消延迟收益">7. AllReduce 怎样抵消延迟收益</a><a class="level-2" href="#8-kernel-与-cta-一个具体的分块设计">8. kernel 与 CTA：一个具体的分块设计</a><a class="level-2" href="#9-warpgroup-与每个-thread-的-accumulator">9. warpgroup 与每个 thread 的 accumulator</a><a class="level-2" href="#10-register-file-怎样限制驻留与吞吐">10. register file 怎样限制驻留与吞吐</a><a class="level-2" href="#11-gemv-的-thread-warp-分工为何不同">11. GEMV 的 thread/warp 分工为何不同</a><a class="level-2" href="#12-tp-怎样改变-cta-数与-k-循环">12. TP 怎样改变 CTA 数与 K 循环</a><a class="level-2" href="#13-系统吞吐-单请求延迟与显存容量">13. 系统吞吐、单请求延迟与显存容量</a><a class="level-2" href="#14-怎样复核这个案例">14. 怎样复核这个案例</a><a class="level-2" href="#15-来源与适用范围">15. 来源与适用范围</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>
