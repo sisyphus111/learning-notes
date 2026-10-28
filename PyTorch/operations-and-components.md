@@ -2,6 +2,121 @@
 
 本页用 Tensor 运算展开常见组件的计算过程。函数、层对象、模型与参数管理先看 [神经网络基础](neural-networks.md)；shape、广播和存储布局查 [Tensor 与 GPU 内存](tensors.md)。
 
+## nn.Embedding：按整数 ID 查表
+
+`nn.Embedding(num_embeddings=V, embedding_dim=D)` 持有一张 `[V,D]` 的可学习表。输入里的 ID 指定行号，每个位置读取该行的 D 个浮点值。用于 token embedding 时，V 是词表大小，D 通常是模型的 hidden width。
+
+| 对象 | shape / dtype | 含义 |
+| --- | --- | --- |
+| `embedding.weight` | `[V,D]`，浮点类型 | V 行向量，每行 D 个特征 |
+| `token_ids` | `[B,S]`，整数类型 | B 条序列，每条 S 个 ID |
+| `embedding(token_ids)` | `[B,S,D]`，与 weight 同 dtype | 为每个 ID 查出一条向量 |
+
+索引可用 int32 或 int64，下面统一用 `torch.long`（int64）。ID 必须在 `[0,V)`，负数也不是合法 ID。这里让索引和权重位于同一 GPU；输出跟随权重的 dtype。把权重转成 BF16 时，索引仍保持整数类型。
+
+对任意输入 shape，输出都在末尾增加 D：单个标量 ID 得到 `[D]`，`[S]` 得到 `[S,D]`，`[B,S]` 得到 `[B,S,D]`。固定权重时，同一个 ID 在不同位置读取同一行；后续位置处理和 attention 再让表示带上位置与上下文。[Embedding 接口](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Embedding.html)
+
+### 查表原理与可手算的例子
+
+令输入 ID 为 I、权重表为 W，则：
+
+$$
+Y_{b,s,d}=W_{I_{b,s},d}.
+$$
+
+数学上可以把它写成 `one_hot(I, V) @ W`。实际使用 Embedding 时按索引读取权重行，无需创建 `[B,S,V]` 的稠密 one-hot 张量。
+
+默认参数下，新建模块会随机初始化权重，训练再用梯度调整。下面用固定数值替换初值，以便手算查表结果。
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+def embedding_lookup(token_ids, weight):
+    """基础查表：ID 为合法非负整数；不扩展 padding 等参数的反向语义。"""
+    return weight[token_ids]
+
+weight = torch.tensor([
+    [0.0, 0.0, 0.0],       # ID 0
+    [1.0, 2.0, 3.0],       # ID 1
+    [10.0, 20.0, 30.0],    # ID 2
+    [-1.0, -2.0, -3.0],    # ID 3
+    [4.0, 5.0, 6.0],       # ID 4
+], device='cuda')
+token_ids = torch.tensor(
+    [[2, 1, 2], [4, 0, 3]], dtype=torch.long, device='cuda'
+)
+embedding = nn.Embedding(5, 3).to(device='cuda')
+with torch.no_grad():
+    embedding.weight.copy_(weight)   # 用固定数值演示查表
+
+y = embedding(token_ids)
+manual = embedding_lookup(token_ids, embedding.weight)
+reference = F.embedding(token_ids, embedding.weight)
+print(tuple(y.shape))                # 预期：(2,3,3)
+# 第一条序列：[[10,20,30], [1,2,3], [10,20,30]]
+# 第二条序列：[[4,5,6], [0,0,0], [-1,-2,-3]]
+```
+
+上面的三种写法在这组默认参数下表达同一次查表。`nn.Embedding` 注册并持有 `weight` 参数，没有 bias；`F.embedding` 使用调用方传入的权重。手写函数只展示基础索引，不实现 `padding_idx`、`max_norm` 或梯度频次缩放的全部行为。本例未设置 `padding_idx`，第 0 行虽然手动填了零向量，仍可学习。
+
+查表结果有自己的数值存储，修改输出不会直接修改权重表。训练通过梯度更新参数，存储与梯度的区别见 [存储独立与梯度关系](tensors.md#存储独立与梯度关系是两件事)。[functional.embedding 接口](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.embedding.html)
+
+### 梯度回到权重表，重复 ID 的贡献相加
+
+整数 ID 不参与求导，梯度流向选中的权重行。若同一个 ID 出现两次，两处输出对这一行的梯度会累加。以下使用默认的 `scale_grad_by_freq=False`、`sparse=False`：
+
+```python
+import torch
+import torch.nn as nn
+
+embedding = nn.Embedding(5, 3).to(device='cuda')
+token_ids = torch.tensor([2, 1, 2], dtype=torch.long, device='cuda')
+loss = embedding(token_ids).sum()
+loss.backward()
+# 预期：embedding.weight.grad 的 shape 为 [5,3]。
+# ID 1 出现一次：第 1 行梯度 [1,1,1]。
+# ID 2 出现两次：第 2 行梯度 [2,2,2]。
+# 其余行未被本次查表使用，梯度为 [0,0,0]。
+```
+
+这里的 loss 对每个输出元素的导数为 1，所以梯度数值只取决于 ID 出现次数。`backward()` 写入 `.grad`，优化器的 `step()` 才更新参数；训练流程见 [一次训练更新](neural-networks.md#7-一次训练更新-谁计算-谁改参数)。
+
+### padding、范数限制与稀疏梯度
+
+| 参数 | 默认值 | 作用 |
+| --- | --- | --- |
+| `num_embeddings` | 必填 | 表的行数 V；不是序列长度 |
+| `embedding_dim` | 必填 | 每行的特征数 D |
+| `padding_idx` | `None` | 该 ID 的查表结果不向对应权重行贡献梯度 |
+| `max_norm` | `None` | 前向时，对本次用到且范数超限的权重行重归一化 |
+| `norm_type` | `2.0` | `max_norm` 使用的 p 范数；默认是 L2 |
+| `scale_grad_by_freq` | `False` | 为 True 时，把对应行的梯度除以该 ID 在本次输入中的出现次数 |
+| `sparse` | `False` | 为 True 时生成稀疏的权重梯度；权重表本身仍是稠密 Tensor |
+
+新建 `nn.Embedding(V,D,padding_idx=0)` 时，第 0 行初始化为全零。前向仍然读取这一行；如果手动加载了非零 padding 向量，查表会返回该向量。`F.embedding` 接收现成权重，不负责把 padding 行初始化或清零。
+
+```python
+import torch
+import torch.nn as nn
+
+embedding = nn.Embedding(5, 3, padding_idx=0).to(device='cuda')
+token_ids = torch.tensor([[0, 2, 0]], dtype=torch.long, device='cuda')
+y = embedding(token_ids)             # [1,3,3]
+# 新建模块的第 0 行为零，因此第 0、2 个位置输出 [0,0,0]。
+```
+
+`padding_idx` 限制的是本次查表的梯度。它不会自动建立 attention mask 或排除 padding 位置的 loss；这两处仍需由模型和损失函数处理。其他使用共享权重的计算也可能影响这一行。
+
+设置 `max_norm` 后，forward 会原地修改相应权重行。若同一计算图还直接使用 `embedding.weight`，需要按官方说明处理克隆与调用顺序。`sparse=True` 则要求优化器支持稀疏梯度，例如 `torch.optim.SparseAdam`。[Embedding 参数与限制](https://docs.pytorch.org/docs/2.14/generated/torch.nn.Embedding.html)
+
+### 加载已有向量表，以及与 LM head 的关系
+
+已有 `vectors: [V,D]` 时，可以使用 `nn.Embedding.from_pretrained(vectors, freeze=False)`。它从表的 shape 推断 V 和 D；默认 `freeze=True` 会关闭权重求导，继续训练时显式指定 `freeze=False`。输入表应是已准备好的浮点向量表。
+
+部分语言模型把 embedding 与 LM head 绑定为同一份参数。输入端用 ID 查行，输出端用 `hidden @ embedding.weight.T` 计算整个词表的 logits，得到 `[B,S,V]`。两者共享权重时，来自输入与输出两条路径的梯度都会汇总到这份参数。运行位置可对照 [Transformer 运行全过程](../Attention/transformer-runtime.md)。
+
 ## 1. Linear：线性层
 
 `x: [..., in_features]`、`weight: [out_features, in_features]`、`bias: [out_features]`，返回 `[..., out_features]`。权重按 PyTorch Linear 的方向存放：`y = x @ weight.T + bias`。

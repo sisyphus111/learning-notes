@@ -394,6 +394,11 @@
 </thead>
 <tbody>
 <tr>
+<td><code>nn.Embedding(V,D)</code></td>
+<td><code>F.embedding(token_ids, weight)</code></td>
+<td>整数 ID 查表，<code>[B,S] → [B,S,D]</code>；详见 <a href="pytorch-components.html#nn-embedding-按整数-id-查表">Embedding 组件</a></td>
+</tr>
+<tr>
 <td><code>nn.ReLU()</code></td>
 <td><code>F.relu(x)</code></td>
 <td>负数置零，shape 不变</td>

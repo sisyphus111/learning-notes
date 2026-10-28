@@ -242,6 +242,7 @@ device 表示数值放在哪里，例如 CPU、`cuda:0`；dtype 表示数值用�
 
 | 层对象 | 计算函数 | 作用 |
 | --- | --- | --- |
+| `nn.Embedding(V,D)` | `F.embedding(token_ids, weight)` | 整数 ID 查表，`[B,S] → [B,S,D]`；详见 [Embedding 组件](operations-and-components.md#nn-embedding-按整数-id-查表) |
 | `nn.ReLU()` | `F.relu(x)` | 负数置零，shape 不变 |
 | `nn.SiLU()` | `F.silu(x)` | `x * sigmoid(x)`，shape 不变 |
 | `nn.GELU()` | `F.gelu(x)` | 平滑的逐元素激活，shape 不变 |
