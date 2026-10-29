@@ -80,6 +80,8 @@ ATTENTION_REFERENCES = [
      'MLA / GQA · DSA / CSA / QSA · KDA / GDN · MoE · 残差与缓存'),
     ('Attention/qwen3-h100-tp-case.md', 'attention-qwen3-h100-tp-case.html', '案例：Qwen3 / H100 的 TP 性能',
      'GEMV / GEMM · 延迟与吞吐 · roofline · CTA / warp / register · 通信成本'),
+    ('Attention/moe-ep-tp.md', 'attention-moe-ep-tp.html', 'MoE FFN：EP 与 TP',
+     'expert GEMM · A2A / AllReduce · token 布局 · 负载均衡 · 显存与混合并行'),
 ]
 DEEPSEEK_REFERENCES = [
     ('DeepSeek/evolution.md', 'deepseek-evolution.html', 'V2–V4 架构演进',

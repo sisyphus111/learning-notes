@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MoE FFN：EP 与 TP · 求知录</title><meta name="description" content="expert GEMM · A2A / AllReduce · token 布局 · 负载均衡 · 显存与混合并行">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=cd516edc15"><link rel="stylesheet" href="assets/code.css">
+<script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
+<script defer src="assets/site.js?v=791aca5848"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="cuda-flash-attention.html">FlashAttention 1–4</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-qwen3-h100-tp-case.html">案例：Qwen3 / H100 的 TP 性能</a><a href="attention-moe-ep-tp.html" aria-current="page">MoE FFN：EP 与 TP</a></nav><p class="nav-label">DeepSeek</p><nav aria-label="DeepSeek"><a href="deepseek-evolution.html">V2–V4 架构演进</a><a href="deepseek-forward-shapes.html">一次前向与张量形状</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 Ring / Tree AllReduce</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Attention 与 Transformer</p><h1>MoE FFN：EP 与 TP</h1><p class="subtitle">expert GEMM · A2A / AllReduce · token 布局 · 负载均衡 · 显存与混合并行</p></div>
+<article><h2 id="1-固定工作量-区分专家分布与-token-分布">1. 固定工作量，区分专家分布与 token 分布</h2>
+<p><strong>EP 将不同 experts 分给不同 GPU；TP 将同一个 expert 的矩阵分给多张 GPU。</strong> 前者保留完整 expert 的矩阵形状，但通常要交换 token。后者共同计算每个激活专家，矩阵更窄，最后归约部分和。</p>
+<p>本页采用 DeepSeek-V3 routed experts 的代表尺寸，暂不计 shared expert、router 的算术和其他 Transformer 层。GPU 数和 batch 是教学设定，不是模型报告的部署配置。所有数字为推导，没有执行 CUDA benchmark。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>符号</th>
+<th style="text-align: right;">数值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P</td>
+<td style="text-align: right;">8</td>
+<td>比较使用相同的 8 张 GPU</td>
+</tr>
+<tr>
+<td>E</td>
+<td style="text-align: right;">256</td>
+<td>routed expert 总数</td>
+</tr>
+<tr>
+<td>k</td>
+<td style="text-align: right;">8</td>
+<td>每 token 选择的不同 experts 数</td>
+</tr>
+<tr>
+<td>H</td>
+<td style="text-align: right;">7168</td>
+<td>hidden size</td>
+</tr>
+<tr>
+<td>F</td>
+<td style="text-align: right;">2048</td>
+<td>单 expert 的 intermediate size</td>
+</tr>
+<tr>
+<td>T</td>
+<td style="text-align: right;">1024</td>
+<td>整个并行组中的唯一 token 数，不计 TP 副本</td>
+</tr>
+</tbody>
+</table></div>
+<p>均衡路由时，单个 expert 平均收到 <span class="math">\(M_e=Tk/E=32\)</span> 条输入。<a href="https://arxiv.org/html/2412.19437v2">DeepSeek-V3 配置依据</a></p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th></th>
+<th>纯 EP8</th>
+<th>纯 TP8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>每卡持有权重</td>
+<td>32 个完整 experts</td>
+<td>全部 256 个 experts 各自的 1/8</td>
+</tr>
+<tr>
+<td>单 expert 的本地 F</td>
+<td>2048</td>
+<td>256</td>
+</tr>
+<tr>
+<td>典型输入布局</td>
+<td>每卡 T/P 个不同 token</td>
+<td>各卡复制相同的 T 个 token</td>
+</tr>
+<tr>
+<td>本地 token-expert 关系数，均衡时</td>
+<td>Tk/P=1024</td>
+<td>Tk=8192，但每条只算 1/P 的 FFN</td>
+</tr>
+<tr>
+<td>典型通信</td>
+<td>dispatch + combine</td>
+<td>输出 AllReduce</td>
+</tr>
+</tbody>
+</table></div>
+<p>这张表同时描述了权重布局与典型 token 布局，两者并非永远绑定。第 7 节会统一输入输出边界，再比较通信。<a href="https://nvidia.github.io/TensorRT-LLM/latest/developer-guide/moe-perf-guide.html">TensorRT-LLM MoE 并行定义</a></p>
+<p>基础材料：<a href="attention-qwen3-h100-tp-case.html">dense FFN 的 row/column TP</a>、<a href="cuda-gemm.html">GEMM 分块</a>、<a href="gpu-communication-and-allreduce.html">Ring / Tree AllReduce</a>。</p>
+<h2 id="2-moe-ffn-的计算与权重存储">2. MoE FFN 的计算与权重存储</h2>
+<p>一个 SwiGLU expert 的计算为：</p>
+<div class="math display-math">\[
+E_e(x)=\left[\operatorname{SiLU}(xW_{g,e})\odot(xW_{u,e})\right]W_{d,e}.
+\]</div>
+
+<p>token t 的 routed 输出为：</p>
+<div class="math display-math">\[
+y_t=\sum_{e\in\operatorname{TopK}(t)}g_{t,e}E_e(x_t).
+\]</div>
+
+<p>稀疏选择发生在 expert 维度。被选中的 expert 内部通常仍执行 dense GEMM，且路由权重不能任意移到非线性之前。</p>
+<p>单 expert 参数量约为 3HF。BF16 下，两种策略的每卡 routed 权重存储都是：</p>
+<div class="math display-math">\[
+\frac EP\,3HF\times2=E\,\frac{3HF}{P}\times2=2.625\text{ GiB}.
+\]</div>
+
+<p>负载均衡时，两种策略的每卡主要计算量同为：</p>
+<div class="math display-math">\[
+\frac{6TkHF}{P}\approx90.19\text{ GFLOP}.
+\]</div>
+
+<p>这个相等关系不代表性能相同。EP 的每卡工作量还取决于实际路由；TP/EP 的 GEMM 形状、访存和同步不同。存储全部专家权重，也不表示每一步都读取所有权重：小 batch 可能只激活部分 experts。</p>
+<h2 id="3-expert-grouped-gemm-的形状">3. expert grouped GEMM 的形状</h2>
+<p>按 expert 聚集输入后，第一组 GEMM 可以合并 gate/up，第二组 GEMM 做 down。权重按数学上的右乘方向写，物理存储可采用转置布局。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>EP8 中一个本地 expert</th>
+<th>TP8 中一个 expert 的分片</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gate/up</td>
+<td><code>[32,7168] @ [7168,4096]</code></td>
+<td><code>[32,7168] @ [7168,512]</code></td>
+</tr>
+<tr>
+<td>SwiGLU 后</td>
+<td><code>[32,2048]</code></td>
+<td><code>[32,256]</code></td>
+</tr>
+<tr>
+<td>down</td>
+<td><code>[32,2048] @ [2048,7168]</code></td>
+<td><code>[32,256] @ [256,7168]</code></td>
+</tr>
+<tr>
+<td>每卡 expert 分组数</td>
+<td>32</td>
+<td>256</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>固定同一批全局 token 后，EP 与 TP 的单 expert M 都是 32。</strong> EP 保留完整 F，不会自动把 M 变成 256。Grouped GEMM 统一组织不同专家的任务，但每个专家仍使用自己的权重。不能合成一个所有 token 共用权重的普通 GEMM。</p>
+<p>若局部输入、权重、输出都用 BF16，按各自读写一次的理想流量，<span class="math">\(I=MNK/(MK+KN+MN)\)</span>：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>GEMM</th>
+<th style="text-align: right;">EP，FLOP/byte</th>
+<th style="text-align: right;">TP，FLOP/byte</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gate/up</td>
+<td style="text-align: right;">31.61</td>
+<td style="text-align: right;">29.99</td>
+</tr>
+<tr>
+<td>down</td>
+<td style="text-align: right;">31.37</td>
+<td style="text-align: right;">28.33</td>
+</tr>
+</tbody>
+</table></div>
+<p>TP 的输入或输出中有一侧没有随矩阵计算量同比缩小，因此局部强度略降。两者 M 都小，不能因为 EP 矩阵更宽就认定它必然 compute-bound。实际缓存、量化、融合会改变字节数。<a href="https://github.com/deepseek-ai/DeepGEMM#interfaces">Grouped GEMM 与布局</a></p>
+<h2 id="4-cta-warp-与寄存器会怎样变化">4. CTA、warp 与寄存器会怎样变化</h2>
+<p>设所有 experts 恰好各有 32 行，每 expert 需要一个 M tile，输出 N tile 为 128，K tile 为 64。该设定只演示工作量分解，不代表实际 kernel 的最优配置。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th style="text-align: right;">EP 每卡 CTA 数</th>
+<th style="text-align: right;">TP 每卡 CTA 数</th>
+<th style="text-align: right;">EP / TP 的每 CTA K 轮数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gate/up</td>
+<td style="text-align: right;">32×32=1024</td>
+<td style="text-align: right;">256×4=1024</td>
+<td style="text-align: right;">112 / 112</td>
+</tr>
+<tr>
+<td>down</td>
+<td style="text-align: right;">32×56=1792</td>
+<td style="text-align: right;">256×56=14336</td>
+<td style="text-align: right;">32 / 4</td>
+</tr>
+</tbody>
+</table></div>
+<p>gate/up 的 CTA 数可以相同：TP 每个 expert 更窄，但本卡需要处理更多 expert 分组。down 则变成更多、更短的任务，总乘加量没有改变，但 pipeline 填充/排空、调度和 epilogue 的占比可能增加。</p>
+<p>相同 CTA 输出 tile 对应相同的 accumulator 容量，TP 不会自动把每线程寄存器减少到 1/P。若库改小 tile，寄存器和 shared memory 可能下降，但复用也随之变化。小 M 还会出现行方向 padding；例如实际采用 BM=64 时，32 条有效行只占半个 tile，EP/TP 都可能承担这类代价。</p>
+<p>实际 grouped kernel 可以使用 persistent 调度、不同 tile 或融合。更多 CTA 不自动意味着更慢，更少 CTA 也不自动意味着更快。需要结合有效吞吐、驻留、访存与关键路径判断。</p>
+<h2 id="5-tp-的通信-先合并本地专家贡献-再归约一次">5. TP 的通信：先合并本地专家贡献，再归约一次</h2>
+<p>纯 TP 中，各卡拥有一致的 token 和路由结果。对 token t、expert e，down 产生部分和 <span class="math">\(E_{e,r}(x_t)\)</span>：</p>
+<div class="math display-math">\[
+y_t=\sum_e g_{t,e}\sum_rE_{e,r}(x_t)=\sum_r\left(\sum_e g_{t,e}E_{e,r}(x_t)\right).
+\]</div>
+
+<p>因此可以先在本地完成路由加权和按 token 汇总，再对 <code>[T,H]</code> 做一次 AllReduce：</p>
+<div class="codehilite text-diagram"><pre><span></span>各 expert 的本地 down 部分和
+        ↓ 本地乘路由权重、按原 token 相加
+partial_y [T,H]
+        ↓ AllReduce
+完整 y [T,H]
+</pre></div>
+
+
+<p>不需要为 top-8 的 8 个 experts 分别做 8 次 AllReduce。求和可以交换顺序，依赖的是 down 后这些操作的线性性质；不能把同样的交换应用到 SwiGLU 之前。</p>
+<p>TP 仍需 router、按 expert 整理输入和恢复结果。没有跨卡 token dispatch，不表示没有本地重排成本。</p>
+<h2 id="6-ep-的-a2a-不等长的-dispatch-与-combine">6. EP 的 A2A：不等长的 dispatch 与 combine</h2>
+<p>典型 token-owned EP 的流程为：</p>
+<div class="codehilite text-diagram"><pre><span></span>每卡 T/P 个不同 token
+        ↓ dispatch：去目标 expert 所在卡
+本地完整 expert 的 grouped GEMM
+        ↓ combine：结果返回原 token 所在卡
+每卡恢复自己的 T/P 个输出
+</pre></div>
+
+
+<p>这是两次逻辑交换，不一定对应两次 NCCL AllToAll API 调用。DeepEP 或融合 kernel 可以使用不同的传输实现。各 rank 间数据长度随路由变化，计数、地址、有效范围和返回映射也有成本。</p>
+<h3 id="一个明确的发送量模型">一个明确的发送量模型</h3>
+<p>假设路由均匀，token 的来源均衡，输入输出通信精度相同，每元素 s bytes。暂不去重同 token 的多个 expert 目标，每条远程 token-expert 关系发送一次 H 维输入、返回一次 H 维输出。远程比例为 <span class="math">\(1-1/P\)</span>，每卡平均发送量为：</p>
+<div class="math display-math">\[
+V_{EP}\approx2\frac TP k\left(1-\frac1P\right)Hs.
+\]</div>
+
+<p>复制输入/输出的 TP 使用 Ring AllReduce 时，每卡发送量为：</p>
+<div class="math display-math">\[
+V_{TP}\approx2\frac{P-1}{P}THs,\qquad \frac{V_{EP}}{V_{TP}}\approx\frac{k}{P}.
+\]</div>
+
+<p>本例 k=P=8、s=2，两者均为 25.690112 MB/卡。统计的是每卡发送字节，不包含接收，也不是整个网络的汇总流量。</p>
+<p>这个结果不能推广成固定延迟比例。A2A 与 AllReduce 的协议、固定开销、拥塞、归约计算和拓扑不同；NCCL 也未必选择 Ring。更不能无条件声称 A2A 的流量总比 AllReduce 小或大。</p>
+<h3 id="去重与目标侧合并怎样改变结果">去重与目标侧合并怎样改变结果</h3>
+<p>同一 token 的多个 experts 在同一目标 rank 时，输入可以只发送一次，再在目标侧展开。计算结束后，也可以先将该 token 的本地 expert 贡献加权相加，再返回一个 H 维结果。</p>
+<p>两端都采用这些优化时，数据量更接近“每 token 涉及多少个不同的远程 rank”，不再直接正比于 k。仅 dispatch 去重、combine 仍逐 expert 返回时，则需分别计量两个方向。部分 FlashInfer EP 路径明确在目标侧先合并本地贡献。<a href="https://github.com/flashinfer-ai/flashinfer/blob/main/docs/design_docs/moe_ep_architecture.md">FlashInfer EP 数据流</a></p>
+<p>路由偏斜、不同输入输出精度、节点级转发和本地目标都会进一步改变流量。只看 top-k，不能推断实际网络带宽需求。</p>
+<h2 id="7-统一边界-ep-不必永远绑定-a2a">7. 统一边界：EP 不必永远绑定 A2A</h2>
+<p>上面的自然布局不同：EP 为 token 分散输入/输出，TP 为 token 复制输入/输出。公平比较需计入前后层给出的布局。</p>
+<p>若让 TP 从分散输入开始，并最终回到分散输出，可以使用：</p>
+<div class="codehilite text-diagram"><pre><span></span>AllGather 输入 → TP expert 计算 → ReduceScatter 输出部分和
+</pre></div>
+
+
+<p>在输入与输出同为 <code>[T,H]</code>、同通信 dtype 的理想 Ring 模型下，AG+RS 发送量等于一次 AR 的发送量。但它们位于计算两侧，启动和重叠条件不同。</p>
+<p>反过来，若 attention 已提供复制的全部 token，EP 可以采用：</p>
+<div class="codehilite text-diagram"><pre><span></span>每卡从完整输入中选择本地 experts 的 token
+    → 计算完整 experts
+    → 本地按 token 汇总
+    → AllReduce
+</pre></div>
+
+
+<p>这条 EP 路线不必再跨卡 dispatch 输入。如果输入原来分散，则获得这份完整输入仍有成本。Megatron 支持不同 dispatcher，例如 AllGather 和 AllToAll；专家权重布局与 token 搬运方案是两个选择。<a href="https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/core/transformer/moe/README.md">Megatron MoE dispatcher</a></p>
+<h2 id="8-负载不均衡与小-batch">8. 负载不均衡与小 batch</h2>
+<p>若 E7 很热，EP 中拥有 E7 的 rank 可能形成长尾。其他 rank 即使提前算完，整层也可能等待它。TP 则将 E7 的矩阵分片分给所有 ranks，共同承担该专家的工作。</p>
+<p>TP 内不同 experts 的 M 依然不均匀，但在复制输入和相同切分下，各 rank 看到同一组路由任务。它通常不会产生“热点专家只归某一张卡”的同类负载偏斜。</p>
+<p>EP 层延迟应关注最慢 rank，而非平均 FLOPs：</p>
+<div class="math display-math">\[
+T_{layer}\sim\max_r T_r.
+\]</div>
+
+<p>若全局只有一个 token、top-8，EP8 不保证八个目标 experts 恰好每卡一个，可能有卡空闲、有卡承担多个。TP8 则让所有卡参与被激活 experts 的分片计算。但分片过小也会增加相对固定开销，不能据此断言 TP 必然更快。</p>
+<p>动态专家复制与 EPLB 可以帮助 EP 分担热点，同时付出权重复制、显存和路由重映射成本。训练时还需维护副本权重与梯度一致性。这类复制不等于完全取消 token dispatch/combine。</p>
+<h2 id="9-显存-融合与混合并行">9. 显存、融合与混合并行</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>需要比较的实际成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>权重</td>
+<td>同 P、均匀划分时，纯 EP 与纯 TP 的 routed 参数存储可以相同</td>
+</tr>
+<tr>
+<td>激活</td>
+<td>TP 将 F 分片，但多个 rank 处理相同 token；EP 接收本地专家输入，热点 rank 的峰值可能更高</td>
+</tr>
+<tr>
+<td>部分输出</td>
+<td>若逐 expert 物化 down 输出，TP 在多个 rank 写同形状部分和；融合加权汇总可减少中间写出</td>
+</tr>
+<tr>
+<td>通信缓冲</td>
+<td>EP 的容量、计数、padding、路由 metadata；TP 的 AR 或 AG/RS 存储</td>
+</tr>
+<tr>
+<td>量化与布局</td>
+<td>scale、转换、专家行对齐、打包与反向重排</td>
+</tr>
+<tr>
+<td>融合与重叠</td>
+<td>通信和计算争用 SM/HBM；函数调用减少不等于通信消失</td>
+</tr>
+<tr>
+<td>KV cache</td>
+<td>由 attention 并行和缓存布局决定，不能由 FFN 的 EP/TP 名称推断</td>
+</tr>
+</tbody>
+</table></div>
+<p>固定同一批 token，假设每条 token-expert 关系的 H 维 down 输出都完整物化。TP 全组会产生 P 份部分结果，EP 全组只产生一份专家结果。这解释了 TP 可能增加的中间流量；真实 kernel 可通过融合避免全部物化。</p>
+<p>EP×TP 混合时，先将 experts 分给 EP 组，再在组内将每个 expert 切给 TP ranks。设 <span class="math">\(P=P_{EP}P_{TP}\)</span>，每卡负责 <span class="math">\(E/P_{EP}\)</span> 个专家的权重分片，单 expert 本地 intermediate 为 <span class="math">\(F/P_{TP}\)</span>。它在矩阵形状、负载分担和通信范围之间折中，仍需根据 attention 端点布局与实际拓扑评估。</p>
+<h2 id="10-什么场景优先考察哪种方案">10. 什么场景优先考察哪种方案</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>EP 的主要机会与风险</th>
+<th>TP 的主要机会与风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>极小 batch decode</td>
+<td>有效专家少，卡可能空闲；dispatch/combine 固定开销明显</td>
+<td>可让全部卡合作，仍受小 kernel 和归约固定成本限制</td>
+</tr>
+<tr>
+<td>大 batch / prefill</td>
+<td>M 增大、完整 F 有利于 GEMM，通信可有重叠空间</td>
+<td>F 变小，更多短任务与部分输出，大 payload 归约也有成本</td>
+</tr>
+<tr>
+<td>路由偏斜</td>
+<td>专家所在 rank 形成尾部，可研究 EPLB</td>
+<td>热点专家计算由 TP ranks 分担</td>
+</tr>
+<tr>
+<td>细粒度、小 F experts</td>
+<td>保留完整 expert 形状</td>
+<td>继续切 F 会使 N/K 很小，可能增加对齐浪费</td>
+</tr>
+<tr>
+<td>跨节点</td>
+<td>A2A 目标分散，需分析拥塞和慢 rank</td>
+<td>频繁归约也可能昂贵，需研究分层和混合布局</td>
+</tr>
+</tbody>
+</table></div>
+<p>这些是搜索方向，不是固定部署规则。至少记录唯一 token 数 T、每专家 <span class="math">\(M_e\)</span> 分布与最慢 rank。还需记录 kernel 形状及耗时、实际通信字节、重排成本和暴露的通信时间。</p>
+<p>大 batch 或更宽矩阵不自动保证高吞吐，fused kernel 也不自动消除等待。应在相同 GPU 数、精度、请求负载和缓存条件下比较端到端延迟与吞吐。<a href="https://nvidia.github.io/TensorRT-LLM/latest/developer-guide/moe-perf-guide.html">NVIDIA MoE 性能指南</a></p>
+<h2 id="11-证据范围与来源">11. 证据范围与来源</h2>
+<p>本页采用 2026-10-29 查阅的官方文档，模型尺寸、算法语义和数学成本分开陈述。算术强度与通信字节是教学模型，不是测量结果，也没有据此承诺 EP/TP 的固定加速比。</p>
+<ul>
+<li><a href="https://arxiv.org/html/2412.19437v2">DeepSeek-V3 技术报告</a>：routed expert 的 H/F/E/k 尺寸依据。</li>
+<li><a href="https://nvidia.github.io/TensorRT-LLM/latest/developer-guide/moe-perf-guide.html">TensorRT-LLM MoE Performance Guide</a>：EP、TP、混合并行的工作分配及部署条件。</li>
+<li><a href="https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/core/transformer/moe/README.md">Megatron MoE</a>：专家分布、dispatcher、grouped GEMM 与通信重叠。</li>
+<li><a href="https://github.com/flashinfer-ai/flashinfer/blob/main/docs/design_docs/moe_ep_architecture.md">FlashInfer MoE EP 设计</a>：dispatch、目标侧专家汇总、combine 与融合执行。</li>
+<li><a href="https://github.com/deepseek-ai/DeepGEMM#interfaces">DeepGEMM 接口</a>：不同 M、固定 N/K 的 expert grouped GEMM 与布局。</li>
+</ul></article><footer>Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-固定工作量-区分专家分布与-token-分布">1. 固定工作量，区分专家分布与 token 分布</a><a class="level-2" href="#2-moe-ffn-的计算与权重存储">2. MoE FFN 的计算与权重存储</a><a class="level-2" href="#3-expert-grouped-gemm-的形状">3. expert grouped GEMM 的形状</a><a class="level-2" href="#4-cta-warp-与寄存器会怎样变化">4. CTA、warp 与寄存器会怎样变化</a><a class="level-2" href="#5-tp-的通信-先合并本地专家贡献-再归约一次">5. TP 的通信：先合并本地专家贡献，再归约一次</a><a class="level-2" href="#6-ep-的-a2a-不等长的-dispatch-与-combine">6. EP 的 A2A：不等长的 dispatch 与 combine</a><a class="level-2" href="#7-统一边界-ep-不必永远绑定-a2a">7. 统一边界：EP 不必永远绑定 A2A</a><a class="level-2" href="#8-负载不均衡与小-batch">8. 负载不均衡与小 batch</a><a class="level-2" href="#9-显存-融合与混合并行">9. 显存、融合与混合并行</a><a class="level-2" href="#10-什么场景优先考察哪种方案">10. 什么场景优先考察哪种方案</a><a class="level-2" href="#11-证据范围与来源">11. 证据范围与来源</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>

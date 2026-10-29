@@ -16,6 +16,7 @@
 - [浮点格式、混合精度与量化](GPU/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
 - [GEMM 计算与优化](CUDA/gemm.md) 从点积和 K 分段讲起，连接 CTA/register tiling、内存布局、Tensor Core、异步流水线、Split-K、persistent/grouped GEMM、融合与 scale 转置。
 - [Qwen3-32B / H100 TP 案例](Attention/qwen3-h100-tp-case.md) 用实际模型尺寸推导 GEMV/GEMM、roofline、通信、CTA/warp/shared memory/register 预算，区分单请求延迟、系统吞吐和多副本比较，并附数值复算脚本。
+- [MoE FFN：EP 与 TP](Attention/moe-ep-tp.md) 固定全局 token 数与 GPU 数，比较专家 GEMM 形状、A2A/AllReduce 发送量、输入输出布局、负载不均衡、显存和混合并行。
 - Attention 独立成板块：[Transformer 运行全过程](Attention/transformer-runtime.md) 从文本、Q/K/V、每层计算走到 prefill、KV cache、decode 与训练；[FlashAttention 1–4](CUDA/flash-attention.md) 从 online softmax 推导讲到四代前后向、Ampere/Hopper/Blackwell、TMA/TMEM、条件缩放与 2-CTA，并附教学实现和源码入口。
 - [Flash Linear Attention](Attention/flash-linear-attention.md) 讲清线性注意力的矩阵状态、causal 递推、chunkwise 公式、GLA 遗忘门、DeltaNet/Gated DeltaNet、GPU 执行与 FLA 库接口，并提供 Torch 参考实现。
 - [DeepSeek、Kimi 与 Qwen 架构](Attention/model-architectures.md) 对照代表版本的主干配置，讲解 MLA/GQA、DSA/CSA/CSA2/QSA、KDA/GDN、MoE/LatentMoE、mHC/AttnRes/GR、多模态、MTP 与缓存，并保存官方配置的版本化摘录。

@@ -10,6 +10,8 @@
 
 基础材料：[Transformer 运行全过程](transformer-runtime.md)、[GEMM 分块与流水线](../CUDA/gemm.md)、[通信与 AllReduce](../GPU/communication-and-allreduce.md)。
 
+将 FFN 扩展为多个 routed experts 后，比较专家分布、A2A 与矩阵分片，见 [MoE FFN：EP 与 TP](moe-ep-tp.md)。
+
 ## 2. 固定模型尺寸与矩阵方向
 
 | Qwen3-32B 参数 | 数值 |
