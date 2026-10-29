@@ -415,6 +415,8 @@ QSA 的 lightweight indexer 将相邻 4 个 token 的索引 key 汇成 micro-blo
 
 ## 8. MoE、共享专家与 LatentMoE 的完整计算流程
 
+GR 的逐元素读门、Block AttnRes 的深度候选、Stable LatentMoE 的张量形状，以及 Engram/n-gram 查表的逐步解释，见[特殊结构详解](residual-experts-memory.md)。
+
 ### 每个 token 选择一部分 FFN
 
 一种抽象表达是：

@@ -23,6 +23,8 @@
 - DeepSeek 独立成板块：[V2–V4 架构演进](DeepSeek/evolution.md) 讲 MLA、DSA、CSA/HCA、MoE、mHC 与 Muon；[一次前向与张量形状](DeepSeek/forward-shapes.md) 对照 V3、V3.2、V4-Pro 的权重、cache、decode/prefill 和输出，并附固定版本的官方配置。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、冰蓝浅色与中性深灰主题及手机阅读。深色模式提高正文与代码的可读性；首次访问跟随系统主题，手动选择后记住偏好。
 
+- [残差、LatentMoE 与条件记忆](Attention/residual-experts-memory.md) 用形状、公式和手算说明 Qwen 的 GR、Kimi 的 Block AttnRes/Stable LatentMoE，以及 Engram 与 n-gram embedding 的查表、训练和推理状态。
+
 ## 内容来源
 
 刷题主体基于 Cong Li 的 **Fuck-Leetcode** 笔记，本仓库引入的原始快照为

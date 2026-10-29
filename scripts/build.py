@@ -78,6 +78,8 @@ ATTENTION_REFERENCES = [
      '状态递推 · chunkwise · GLA · DeltaNet / Gated DeltaNet · FLA 接口'),
     ('Attention/model-architectures.md', 'attention-model-architectures.html', 'DeepSeek、Kimi 与 Qwen 架构',
      'MLA / GQA · DSA / CSA / QSA · KDA / GDN · MoE · 残差与缓存'),
+    ('Attention/residual-experts-memory.md', 'attention-residual-experts-memory.html', '残差、LatentMoE 与条件记忆',
+     'Gated Residual · Block AttnRes · Stable LatentMoE · Engram · n-gram embedding'),
     ('Attention/qwen3-h100-tp-case.md', 'attention-qwen3-h100-tp-case.html', '案例：Qwen3 / H100 的 TP 性能',
      'GEMV / GEMM · 延迟与吞吐 · roofline · CTA / warp / register · 通信成本'),
     ('Attention/moe-ep-tp.md', 'attention-moe-ep-tp.html', 'MoE FFN：EP 与 TP',
