@@ -125,6 +125,142 @@ $$
 
 MLA 仍为历史中的每个 token 保存一个条目，长度随 T 增长。它也不是在任意已有 MHA 权重外做一次无损压缩：模型本身就是按这种表示训练的。
 
+### 用小尺寸看清联合压缩与缓存对象
+
+先忽略位置编码与 norm，取 hidden dimension D=8、两个 heads、每 head 的 K/V dimension 为 4、latent dimension r=2。沿用本节的行向量约定：
+
+| 对象 | 形状 | 含义 |
+| --- | --- | --- |
+| 当前层的 token hidden $x_j$ | `[1,8]` | 这个 token 进入当前 attention 的特征 |
+| $W^{DKV}$ | `[8,2]` | 所有 heads 共用的下投影权重 |
+| $c_j=x_jW^{DKV}$ | `[1,2]` | 每层、每 token 各一份的 latent |
+| $W^{UK}_h$、$W^{UV}_h$ | 各 `[2,4]` | head h 的内容 K/V 上投影权重 |
+| $k_{j,h}$、$v_{j,h}$ | 各 `[1,4]` | 这个 token 在该 head 下的逻辑 K/V |
+
+```text
+                         ┌→ UK,0 → head 0 的 K
+                         ├→ UV,0 → head 0 的 V
+token hidden → latent c ─┤
+                         ├→ UK,1 → head 1 的 K
+                         └→ UV,1 → head 1 的 V
+```
+
+展开后的两个 heads 共含 16 个 K/V 元素，但这个教学结构只需缓存 2 个 latent 元素。上投影矩阵是共享模型权重，不随每个 token 复制存储。“联合”表示多个 heads 的 K 和 V 都从同一份 latent 生成，并非所有 heads 得到相同 K/V。
+
+这同时限制了表示空间：16 个展开值由 2 个 latent 值决定。它是一种训练时采用的参数化结构，不是对任意现成 MHA 的 16 个数提供无损压缩。实际 MLA 还会处理 norm 和位置分支，不能用这个小例子直接估算真实模型压缩比。
+
+### K 侧：变换当前 query，不逐条展开历史 key
+
+固定一个 head，令 $\bar q_h=q_h(W_h^{UK})^T$。则 $\bar q_h$ 的形状为 `[1,r]`，内容分数就是 $\bar q_hc_j^T$。每个 head 使用自己的上投影矩阵变换自己的 q，批量实现时也要保持这一对应关系。
+
+用数值检查这条恒等式：
+
+$$
+c=[2,1],\qquad W^{UK}=\begin{bmatrix}1&0&1&2\\0&1&1&-1\end{bmatrix},\qquad q=[1,2,0,1].
+$$
+
+先展开时，$k=cW^{UK}=[2,1,3,3]$，$qk^T=7$。先变换 query 时，$\bar q=q(W^{UK})^T=[3,1]$，$\bar qc^T=7$。两个路径得到相同内容分数，而后者不用生成 k。
+
+多头 query 的功能仍然存在。简化地写 $q_h=xW^Q_h$，可将两个线性映射合并为 $\bar W^Q_h=W^Q_h(W_h^{UK})^T$，直接生成 latent-space query。DeepSeek-V2 的 Q 路径还使用单独的 query 降维、归一化和上投影。query latent 与缓存用的 KV latent 是不同对象，query 通常不需长期缓存。权重吸收只能合并相邻线性映射，不能随意跨过 norm 等非线性步骤。[MLA 的 Q/KV 压缩][mla-report]
+
+### V 侧：先加权 latent，再做输出映射
+
+对 head h，先计算 $z_h=\sum_jp_{h,j}c_j$，它是 `[1,r]` 的加权 latent。然后 $o_h=z_hW_h^{UV}$，恢复为该 head 的 value 输出维度。
+
+将最终输出投影按 head 拆成 $W^O_h[d_v,D]$，有：
+
+$$
+y=\sum_h o_hW^O_h=\sum_hz_hW_h^{UV}W^O_h=\sum_hz_h\bar W^O_h,\qquad \bar W^O_h=W_h^{UV}W^O_h.
+$$
+
+V 侧的吸收是将上投影与输出投影合并。它不是先将 softmax 权重乘 V 投影，再与 latent 点乘。概率的轴是历史位置 T，上投影的轴是 latent/value 特征，两者不能直接按同一维度相乘。
+
+```text
+所有当前 query 按 head 排成 Qbar：[H,r]
+所有历史 latent 按 token 排成 C：[T,r]
+
+Scores = Qbar @ C.T → [H,T]
+P = softmax(Scores, 沿 T) → [H,T]
+Z = P @ C → [H,r]
+各 head 的 Z 经输出映射并合并 → 当前 token 的 attention 输出 [1,D]
+```
+
+各 head 的 query 不同，所以概率分布和 Z 通常不同。加权后的 Z 是当前 query 的临时结果，不会替换历史 C。下一个 token 仍可用新的权重重新查阅每条历史 latent。
+
+上述流程省略缩放、mask 和 RoPE，表示内容分支的代数关系。合并后的输出权重可能很大，实际 kernel 可以保留分解形式，或在部分阶段临时展开 K/V，以匹配高效 GEMM。数学上可吸收，不等于每个后端都物化同一张合并权重。将结果映射回 hidden 也不应一概称为“降维”，应以实际输入输出尺寸判断。
+
+### RoPE 为什么需要单独缓存位置 key
+
+若对展开 K 的全部内容做位置相关旋转，旋转矩阵会随历史位置 j 改变。它进入上投影与点积之间，妨碍用一次统一的 query 变换处理所有历史。
+
+decoupled RoPE 将内容和位置分数分开。当前 token t、head h 对历史位置 j 的分数可写为：
+
+$$
+s_{t,j,h}=\frac{\bar q^C_{t,h}c_j^T+q^R_{t,h}(k^R_j)^T}{\sqrt{d_C+d_R}}.
+$$
+
+其中位置 query/key 已经过相应 RoPE，$\bar q^C$ 是吸收 K 上投影后的内容 query。随后应用 mask、沿历史位置做 softmax。真正缓存的是 $c_j$ 与 $k_j^R$；value 路径仍可使用前面的线性重排。[Decoupled RoPE][mla-report]
+
+### 一个新 token 到来时，各层分别做什么
+
+假设已经处理 token 1～3，现在计算 token 4。在第 ℓ 层，历史 cache 已有该层的 $c_1^{(\ell)},c_2^{(\ell)},c_3^{(\ell)}$ 和对应位置 keys。
+
+1. 从当前 token 的该层输入生成 query、新 latent 与位置 key。实际投影路径含所需 norm。
+2. 将 $c_4^{(\ell)}$ 与位置 key 追加到该层 cache。causal attention 允许访问当前位置自己。
+3. 各 head 的当前 query 与四条历史/当前缓存计算内容和位置分数。
+4. softmax 后，对四条 latent 加权求和，各 head 得到自己的 z。
+5. 经 value/output 映射得到当前 token 的 attention 输出，再处理残差、norm 与 FFN。
+6. 将当前 token 的新 hidden 交给第 ℓ+1 层，使用那一层自己的权重和 cache 重复。
+
+历史 latent 不需要重新从旧 hidden 计算。所有层完成后，当前 token 的最后一层 hidden 经 LM head 产生 logits，再选出下一 token。每层的 latent 是独立缓存，不是全模型共用一份压缩状态。
+
+### FFN 为什么不需要重新读取完整序列 hidden
+
+FFN 需要一个 token 的完整特征向量，却不依赖其他 token 的 hidden 行。矩阵化执行只是在批量计算这些独立行：
+
+$$
+XW=\begin{bmatrix}x_1W\\x_2W\\x_3W\end{bmatrix},\qquad U[t,j]=\sum_dX[t,d]W[d,j].
+$$
+
+求和轴是 hidden 特征 d，token 位置 t 固定。SwiGLU 的 SiLU、逐元素乘法和 down projection 同样不跨 token 行。因此：
+
+$$
+\operatorname{FFN}\left(\begin{bmatrix}x_1\\x_2\\x_3\end{bmatrix}\right)=\begin{bmatrix}\operatorname{FFN}(x_1)\\\operatorname{FFN}(x_2)\\\operatorname{FFN}(x_3)\end{bmatrix}.
+$$
+
+prefill 批量处理全序列，是因为这些位置都还需计算，而且 GEMM 能复用权重。普通单 token decode 只处理新位置的 `[1,D]`；旧位置的 FFN 已在之前完成。
+
+历史信息通过 attention 进入当前 token 的表示。以常见 pre-norm block 为例，令当前 attention 分支输出为 a：
+
+$$
+u_t^{(\ell)}=x_t^{(\ell)}+a_t^{(\ell)},\qquad x_t^{(\ell+1)}=u_t^{(\ell)}+\operatorname{FFN}_{\ell}(\operatorname{Norm}(u_t^{(\ell)})).
+$$
+
+当前 hidden 还用于 query、latent/位置投影和残差，并非只在 FFN 中有用。旧 token 的 FFN 输出已经形成下一层 hidden，并进一步形成下一层的 cache。causal 推理中新 token 不改变过去位置的表示，所以不用重跑旧 token 的 FFN。这与双向 attention 或训练 backward 的状态需求不同。
+
+### SGLang / vLLM 实际怎样保留 hidden
+
+常规文本生成路径不会把“所有历史 token × 所有层”的完整 hidden 持续积累为 cache。hidden/residual 是当前 forward 的工作数据，最终 hidden 还用于 logits。长期供未来 attention 读取的是 KV，或 MLA 的 latent 与位置 key。
+
+2026-10-29 对公开源码的静态核对：
+
+| 实现 | 可核对的行为 |
+| --- | --- |
+| SGLang DeepSeek 模型 | 逐层更新 `hidden_states`；默认 `capture_aux_hidden_states=False`，捕获层列表为空 |
+| SGLang MLA pool | 常规 `kv_cache_dim = kv_lora_rank + qk_rope_head_dim`，写入 latent/位置分支 |
+| vLLM DeepSeek 模型 | 逐层更新 `hidden_states, residual`；默认辅助 hidden 层列表为空 |
+| vLLM MLA wrapper | 从当前 hidden 生成 `kv_c_normed` 与 `k_pe`，交给 attention |
+
+源码入口：[SGLang 模型][sg-model]、[SGLang MLA cache][sg-cache]、[vLLM 模型][vl-model]、[vLLM MLA wrapper][vl-mla]。这是指定版本的代码路径核对，不是对某个已启动服务的参数或显存作了运行时测量。
+
+allocator 或 CUDA Graph 可能继续保留一块 buffer，之后复用或覆盖。旧数值尚未从物理显存消失，不表示程序把它们当作有效历史 hidden 保存。若启用 EAGLE/EAGLE3 辅助特征等功能，则可能显式保留指定层、指定 token 的 hidden。具体有效期按相应功能确定，不能将这类状态概括成默认全量历史缓存。
+
+[mla-report]: https://arxiv.org/html/2405.04434v5#S2.SS1
+[sg-model]: https://github.com/sgl-project/sglang/blob/a99f1052946150614000cf8727c4e1a325a00591/python/sglang/srt/models/deepseek_v2.py
+[sg-cache]: https://github.com/sgl-project/sglang/blob/a99f1052946150614000cf8727c4e1a325a00591/python/sglang/srt/mem_cache/memory_pool.py
+[vl-model]: https://github.com/vllm-project/vllm/blob/d6fbd947824959eabc6165751f8b9cd4aa83f546/vllm/model_executor/models/deepseek_v2.py
+[vl-mla]: https://github.com/vllm-project/vllm/blob/d6fbd947824959eabc6165751f8b9cd4aa83f546/vllm/model_executor/layers/mla.py
+
 ## 5. DeepSeek：从 MLA 到 DSA、CSA/HCA，再到 CSA2
 
 ### V3 / R1：attention 与 MoE 的基础组合
