@@ -73,7 +73,7 @@ ATTENTION_REFERENCES = [
     ('Attention/transformer-runtime.md', 'attention-transformer-runtime.html', 'Transformer 运行全过程',
      '文本到 token · Q/K/V · 多头与 GQA · FFN · prefill / decode · KV cache · 训练'),
     ('CUDA/flash-attention.md', 'cuda-flash-attention.html', 'FlashAttention 1–4',
-     'online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM'),
+     '分块省显存 · warp 分工 · 异步流水线 · A100 / H100 / B200'),
     ('Attention/flash-linear-attention.md', 'attention-flash-linear-attention.html', 'Flash Linear Attention',
      '状态递推 · chunkwise · GLA · DeltaNet / Gated DeltaNet · FLA 接口'),
     ('Attention/model-architectures.md', 'attention-model-architectures.html', 'DeepSeek、Kimi 与 Qwen 架构',
@@ -267,6 +267,12 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
     page_assets = ''
     if current == 'cuda-gemm.html':
         for name in ('gemm.css', 'gemm.js'):
+            version = sha256((ROOT / 'assets' / name).read_bytes()).hexdigest()[:10]
+            url = f'assets/{name}?v={version}'
+            page_assets += (f'<link rel="stylesheet" href="{url}">\n' if name.endswith('.css')
+                            else f'<script defer src="{url}"></script>\n')
+    if current == 'cuda-flash-attention.html':
+        for name in ('flash-attention.css', 'flash-attention.js'):
             version = sha256((ROOT / 'assets' / name).read_bytes()).hexdigest()[:10]
             url = f'assets/{name}?v={version}'
             page_assets += (f'<link rel="stylesheet" href="{url}">\n' if name.endswith('.css')

@@ -1,9 +1,11 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FlashAttention 1–4 · 求知录</title><meta name="description" content="online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM">
+<title>FlashAttention 1–4 · 求知录</title><meta name="description" content="分块省显存 · warp 分工 · 异步流水线 · A100 / H100 / B200">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v=cd516edc15"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/flash-attention.css?v=5b6875517b">
+<script defer src="assets/flash-attention.js?v=7e9a787add"></script>
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
 <script defer src="assets/site.js?v=791aca5848"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
@@ -13,107 +15,203 @@
 <aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="cuda-flash-attention.html" aria-current="page">FlashAttention 1–4</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-residual-experts-memory.html">残差、LatentMoE 与条件记忆</a><a href="attention-qwen3-h100-tp-case.html">案例：Qwen3 / H100 的 TP 性能</a><a href="attention-moe-ep-tp.html">MoE FFN：EP 与 TP</a></nav><p class="nav-label">DeepSeek</p><nav aria-label="DeepSeek"><a href="deepseek-evolution.html">V2–V4 架构演进</a><a href="deepseek-forward-shapes.html">一次前向与张量形状</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 Ring / Tree AllReduce</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
 <a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
-<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Attention 与 Transformer</p><h1>FlashAttention 1–4</h1><p class="subtitle">online softmax · 工作划分 · Ampere / Hopper / Blackwell · TMA / TMEM</p></div>
-<article><p>可递推的 linear attention、GLA、DeltaNet 及 FLA 库，见 <a href="attention-flash-linear-attention.html">Flash Linear Attention</a>。本页讨论 softmax attention 的高效实现，两个名称对应不同的数学与软件层次。</p>
-<h2 id="1-固定-attention-的计算与维度">1. 固定 attention 的计算与维度</h2>
-<p>FlashAttention 计算 scaled dot-product attention。它接收已经投影好的 Q、K、V，输出 attention 结果。生成 Q/K/V 的 Linear、RoPE 和最终输出投影是相邻步骤，不全部包含在下面的公式中。</p>
-<p>先看一个 batch、一个 head，并省略 dropout：</p>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">Attention 与 Transformer</p><h1>FlashAttention 1–4</h1><p class="subtitle">分块省显存 · warp 分工 · 异步流水线 · A100 / H100 / B200</p></div>
+<article><p>这里用 A100（Ampere）、H100（Hopper）和 B200（Blackwell SM100）串起四代设计。先沿着一条线读：<strong>FA1 少搬数据 → FA2 分好工作 → FA3 重叠执行 → FA4 解决新的瓶颈。</strong></p>
+<p>页面中的图可以切换或分步查看。第一次先读前六节；第七节按需展开公式、反向计算和源码。</p>
+<h2 id="1-始终是这三步-打分-归一化-加权求和">1. 始终是这三步：打分、归一化、加权求和</h2>
 <div class="math display-math">\[
-S=\tau QK^T+M,\qquad P=\operatorname{softmax}_{\text{每行}}(S),\qquad O=PV,\qquad \tau=1/\sqrt d.
+S=QK^T/\sqrt d,\qquad P=\operatorname{softmax}(S),\qquad O=PV.
 \]</div>
 
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
-<th>符号</th>
-<th>形状</th>
-<th>维度含义</th>
+<th>步骤</th>
+<th>在做什么</th>
+<th>主要使用什么计算</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Q</td>
-<td><span class="math">\([N_q,d]\)</span></td>
-<td><span class="math">\(N_q\)</span> 个 query，每个 query 有 d 个特征</td>
+<td>QK</td>
+<td>每个 query 与各个 key 比较，得到分数</td>
+<td>矩阵乘法</td>
 </tr>
 <tr>
-<td>K</td>
-<td><span class="math">\([N_k,d]\)</span></td>
-<td><span class="math">\(N_k\)</span> 个 key，点积维度为 d</td>
+<td>softmax</td>
+<td>每一行的分数转换成权重</td>
+<td>max、指数、求和与缩放</td>
 </tr>
 <tr>
-<td>V</td>
-<td><span class="math">\([N_k,d_v]\)</span></td>
-<td>每个 key 对应一个长度为 <span class="math">\(d_v\)</span> 的 value</td>
-</tr>
-<tr>
-<td>S、P</td>
-<td><span class="math">\([N_q,N_k]\)</span></td>
-<td>每个 query 对所有 key 的分数、概率</td>
-</tr>
-<tr>
-<td>O</td>
-<td><span class="math">\([N_q,d_v]\)</span></td>
-<td>每个 query 对 V 做加权求和后的输出</td>
-</tr>
-<tr>
-<td>M</td>
-<td>可广播到 <span class="math">\([N_q,N_k]\)</span></td>
-<td>允许位置为 0，屏蔽位置为 <span class="math">\(-\infty\)</span></td>
+<td>PV</td>
+<td>用权重对 value 加权求和</td>
+<td>矩阵乘法</td>
 </tr>
 </tbody>
 </table></div>
-<p>后面讨论普通 self-attention 时，令 <span class="math">\(N_q=N_k=N\)</span>、<span class="math">\(d_v=d\)</span>。加入 batch 和 head 后，逻辑形状可写成 <code>[B, Hq, Nq, d]</code> 与 <code>[B, Hkv, Nk, d]</code>。MHA 中 <code>Hq = Hkv</code>；GQA 中多个 Q heads 共享一个 KV head。</p>
-<p>两次矩阵乘法的归约维度不同：</p>
-<div class="codehilite text-diagram"><pre><span></span>Q @ K.T：[Nq, d]  @ [d, Nk]  → [Nq, Nk]   沿特征 d 求和
-P @ V：  [Nq, Nk] @ [Nk, dv] → [Nq, dv]   沿 key/token 位置 Nk 求和
-</pre></div>
+<p>单个 head 中，<code>Q/K/V</code> 可以是 <code>[N,d]</code>，中间的 <code>S/P</code> 却是 <code>[N,N]</code>。例如 N=8192，<strong>一张 FP32 分数矩阵就占 256 MiB</strong>。把整张 S、P 反复写入显存，再读回来，会产生很高的搬运成本。</p>
+<p>FlashAttention 的核心目标仍是 dense softmax attention。它调整计算和数据流；<a href="attention-flash-linear-attention.html">Flash Linear Attention</a> 则涉及另一类状态递推结构。稠密 FlashAttention 的主要计算量仍为 <span class="math">\(O(N^2d)\)</span>，并没有变成线性计算量。</p>
+<h2 id="2-fa1-小块算完就用掉-少往返-hbm">2. FA1：小块算完就用掉，少往返 HBM</h2>
+<p>最直观的实现会走这条路径：<strong>算完整 S → 写 HBM → 读 S 做 softmax → 写 P → 再读 P 做 PV。</strong></p>
+<p>FA1 改为：读取 Q/K/V 小块，算出当前分数小块，随即处理 softmax 并累加输出，然后读取下一块。完整 S、P 不再需要作为全局中间矩阵保存。</p>
+<div id="fa-io" class="fa-demo">
+<p><strong>看数据放在哪里：</strong>朴素路线保存完整 N×N 的 S/P；分块路线只保留当前 score tile 和输出状态。</p>
+<img src="assets/flash-attention-dataflow.svg" loading="lazy" alt="完整中间矩阵写入 HBM 与片上分块递推的对比">
+</div>
 
+<p>这里的片上空间包括 shared memory 和寄存器。图中的小块只说明计算组织，不能将 score 大小之比当成总显存节省或实际加速比。</p>
+<h3 id="分母依赖整行-为什么能分块计算">分母依赖整行，为什么能分块计算</h3>
+<p>对一个 query 行，只需记住三个状态：</p>
+<ul>
+<li><strong>m：参考最大值</strong>，控制指数的数值范围。</li>
+<li><strong>l：分母</strong>，累积指数权重的和。</li>
+<li><strong>u：分子</strong>，累积指数权重对 V 的加权和。</li>
+</ul>
+<p>当新的块带来更大的最大值，旧的分子和分母需要一起缩放。两者换到同一个参考尺度，再加新贡献，最终用 <code>u / l</code> 得到输出。</p>
+<div id="fa-online" class="fa-demo">
+<p><strong>两块手算：</strong>分数为 ln(1)、ln(2)、ln(3)、ln(4)，V 为 10、20、30、40。第一块的 m=ln(2)、l=1.5、u=25；第二块把旧状态乘 0.5 后得到 l=2.5、u=75，最终输出为 30。</p>
+</div>
 
-<p><strong>一个输出行依赖许多 KV 行，但不同输出行之间没有 softmax 归一化依赖。</strong> 这个性质会决定 query 分块与 warp 分工。矩阵乘法的基础可先读 <a href="cuda-gemm.html">GEMM 计算与优化</a>。</p>
-<h2 id="2-朴素-attention-的显存访问成本">2. 朴素 attention 的显存访问成本</h2>
-<p>直观实现依次计算 QK、softmax 和 PV。若把 S、P 保存为完整全局 Tensor，就要反复访问 <span class="math">\(N_qN_k\)</span> 个中间元素：</p>
-<div class="codehilite text-diagram"><pre><span></span>读 Q/K → 写 S → 读 S → 写 P → 读 P/V → 写 O
-</pre></div>
+<p>图用“保存未归一化分子”的写法解释 online softmax。这是便于理解、FA2 常用的表达；FA1 原论文逐块维护归一化输出，两者的数学目标相同。<strong>不能把每个块独立 softmax 的输出直接相加，因为各块分母不同。</strong></p>
+<p>A100 的 Tensor Core 擅长矩阵乘法，但片上容量有限。FA1 的重点就是让当前 tile 在片上尽量用完。训练 backward 再按需重算概率小块，避免为反向保存整张 P。<a href="https://arxiv.org/html/2205.14135v2">FA1 原论文</a></p>
+<h2 id="3-fa2-少搬数据之后-还要把工作分好">3. FA2：少搬数据之后，还要把工作分好</h2>
+<p>FA1 已经减少 HBM 往返，但 CTA 数量不够、warp 之间反复交换部分结果，仍会限制速度。FA2 主要改三件事。</p>
+<p><strong>第一，沿 Q 行增加 CTA 并行度。</strong> 不同 query 行有自己的 softmax 分母和输出，所以可以把不同 Q tiles 交给不同 CTA。小 batch、长序列也能提供足够的独立工作。</p>
+<p><strong>第二，让不同 warp 负责不同输出行。</strong> 如果各 warp 处理同一批 Q 的不同 KV 段，它们算的是同一输出的部分贡献，需要合并。改成各自处理不同 Q 行，就能减少这类合并。</p>
+<div id="fa-work" class="fa-demo">
+<p><strong>sliced-K：</strong>按 KV 片段分工，同一个输出有多个部分结果。</p>
+<p><strong>sliced-Q：</strong>按 Q 行分工，各 warp 拥有不同输出行。</p>
+<p>例如 B=1、H=8、N=8192、Q tile=128，沿 query 额外分块可产生 512 个 CTA 工作单位。</p>
+</div>
 
+<p>上面的 CTA 划分与 CTA 内的 warp 分工是两个层次。sliced-Q 减少的是输出部分和的交换；共同准备 K/V、复用缓冲区，仍然需要同步。</p>
+<p><strong>第三，减少非 matmul 运算。</strong> FA2 保存未归一化分子，最后才除以分母，省去部分逐块归一化开销。最大值改变时的 rescaling 仍然需要。</p>
+<p>因此 FA2 的主要贡献是<strong>更多独立工作、更少内部交换、更少逐元素处理</strong>。它在 A100 上就能获益，也可以在 H100 上运行。<a href="https://crfm.stanford.edu/2023/07/17/flash2.html">FA2 作者讲解</a></p>
+<h2 id="4-fa3-h100-上-让三类工作重叠">4. FA3：H100 上，让三类工作重叠</h2>
+<p>Hopper 增加了更强的异步机制：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>硬件能力</th>
+<th>对 kernel 的帮助</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TMA</td>
+<td>线程提交一个 tensor tile 搬运请求，硬件处理后续复制</td>
+</tr>
+<tr>
+<td>WGMMA</td>
+<td>4 个 warp、128 个线程组成 warpgroup，协作发起异步矩阵乘加</td>
+</tr>
+</tbody>
+</table></div>
+<p>FA3 将线程分成角色：producer 准备数据，consumer 使用就绪数据计算。除了搬运与计算重叠，还让<strong>不同工作块的 GEMM 与 softmax</strong>交错推进。</p>
+<div id="fa-pipeline" class="fa-demo">
+<p><strong>依赖不变：</strong>同一工作块始终是加载 → QK → softmax → PV。不同工作块可以在不同执行资源上重叠。</p>
+<img src="assets/flash-attention-pipeline.svg" loading="lazy" alt="Hopper 和 Blackwell 的矩阵计算、softmax 及存储路径">
+</div>
 
-<p>以 <code>B=1, H=32, N=8192</code> 为例，一个 <code>[B,H,N,N]</code> 矩阵有 <span class="math">\(2^{31}\)</span> 个元素。按 BF16 存储，仅这一张矩阵就占 4 GiB；按 FP32 存储则占 8 GiB。这是尺寸推导，不表示所有实现都同时分配两张这样的矩阵。</p>
-<p>QK 的 Tensor Core 计算可以很快，但随后仍需写出、读入庞大的中间结果。FlashAttention 让一个 score tile 产生后就完成 softmax 更新和 PV 累加，避免把完整 S、P 写入 HBM。</p>
-<p><img alt="朴素 attention 与 FlashAttention 的数据流" src="assets/flash-attention-dataflow.svg" loading="lazy" /></p>
-<p>图中“片上”包含按实现安排的寄存器、shared memory，以及 SM100 上的 TMEM。论文中的 SRAM 是片上存储分析模型，不能直接等同于 CUDA 的 <code>__shared__</code>。</p>
-<p>这项改变不减少稠密 attention 必须处理的 query-key 对数，主要计算量仍为 <span class="math">\(O(N^2d)\)</span>。减少的是中间矩阵的全局存储和访问。“exact attention”指不靠稀疏化或低秩近似改变目标公式。浮点舍入顺序可以不同，不保证与另一实现逐位相同。<a href="https://arxiv.org/html/2205.14135v2">FA1 原论文</a></p>
-<h2 id="3-online-softmax-分块后怎样保持归一化正确">3. online softmax：分块后怎样保持归一化正确</h2>
-<h3 id="分子和分母必须使用同一个参考值">分子和分母必须使用同一个参考值</h3>
+<p>只看同一个 tile，必须先算出分数，才能得到 P，再用 P 做 PV。图里能重叠的，是不同 tile 已经就绪的阶段。时间轴只表示依赖和一种可能的排布，不是 H100 的实测时间，也不对应所有实际指令调度。</p>
+<p><strong>矩阵乘法很快，不代表指数也同样快。</strong> Tensor Core 工作时，让其他执行单元处理独立的 softmax，才能减少彼此等待。</p>
+<p>A100 已有 <code>cp.async</code>，不是到 H100 才能异步复制。Hopper 的 TMA 和 WGMMA 让这种分工更有效。FA3 另外提供 FP8 路线，用分块缩放和 Q/K 的变换控制量化误差；普通 FA3 调用不必强制用 FP8。<a href="https://pytorch.org/blog/flashattention-3/">FA3 作者讲解</a></p>
+<h2 id="5-fa4-b200-算得更快-其他步骤更容易成为瓶颈">5. FA4：B200 算得更快，其他步骤更容易成为瓶颈</h2>
+<p>B200/SM100 的 Tensor Core 吞吐增长很快，指数单元和片上数据通路却没有全部按相同比例增长。FA4 继续调整流水线，同时优化 softmax 与中间量的存放方式。</p>
+<p><strong>先看 TMEM 改变了什么。</strong> Hopper 的 WGMMA 把累加结果放在线程寄存器中；SM100 的 <code>tcgen05.mma</code> 把结果放在 TMEM。相应模式下，下一次 MMA 还可以直接从 TMEM 取 operand A。</p>
+<div id="fa-tmem" class="fa-demo">
+<p><strong>SM100 的代表路径：</strong>QK → score 存 TMEM → 读到寄存器做 softmax → 当前指数权重块写回 TMEM → PV 从 TMEM 读取它，累加结果仍在 TMEM。</p>
+</div>
+
+<p><strong>TMEM 是存储，不会自己计算指数。</strong> softmax 仍需要把数据交给线程的计算单元，因此 TMEM 与寄存器间的数据移动也有成本。</p>
+<p>FA4 重点处理这些地方：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>改动</th>
+<th>要解决的开销</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>两组 Q tiles 交错，细分 MMA、softmax、correction 角色</td>
+<td>避免独立工作互相等候，把输出修正安排到合适阶段</td>
+</tr>
+<tr>
+<td>部分指数用 FMA 多项式近似</td>
+<td>将指数工作分流，减轻专用指数单元的压力</td>
+</tr>
+<tr>
+<td>conditional rescaling</td>
+<td>减少旧输出状态反复缩放、读写的次数</td>
+</tr>
+<tr>
+<td>backward 中使用 TMEM 与 2-CTA MMA</td>
+<td>减少部分 shared memory 流量和全局梯度归约</td>
+</tr>
+</tbody>
+</table></div>
+<p>在第 2 节的数值图中，可以切换“保留旧参考值”。新分数只略大时，可以暂时保留旧偏移，让新旧贡献使用同一尺度。分子、分母数值会变化，但实数算术下最终比值不变。<strong>不能更新参考值，却跳过对旧状态的修正。</strong> 图只演示这个数学思想，不复现 FA4 的真实阈值策略。</p>
+<p>2-CTA 表示同一 GPU 内的一对 CTA 协作，不是两张 GPU；也不是所有 FA4 配置都必须使用 2-CTA。不同阶段还可能争用相同资源，所以“所有 softmax 同时执行”也不一定更快。<a href="https://tridao.me/blog/2026/flash4/">FA4 作者讲解</a></p>
+<h2 id="6-把-a-卡-h-卡-b-卡与四代连起来">6. 把 A 卡、H 卡、B 卡与四代连起来</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>典型硬件</th>
+<th>需要记住的硬件能力</th>
+<th>对应的主要优化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A100 / Ampere</td>
+<td>warp MMA、寄存器、shared memory、异步复制</td>
+<td>FA1 减少 HBM 往返；FA2 改善并行与 warp 分工</td>
+</tr>
+<tr>
+<td>H100 / Hopper</td>
+<td>TMA、异步 WGMMA</td>
+<td>FA3 重叠搬运、GEMM 和 softmax</td>
+</tr>
+<tr>
+<td>B200 / Blackwell SM100</td>
+<td>TMEM、<code>tcgen05</code>、2-CTA 模式</td>
+<td>FA4 平衡矩阵计算、指数与片上流量</td>
+</tr>
+</tbody>
+</table></div>
+<p>这是设计重点，不是兼容性限制：FA2 可以在 H100 上运行，FA4 软件包也有不同架构的实现。RTX 5090 属于 SM120，不能直接套用 B200/SM100 的 TMEM 路径。</p>
+<p>FlashAttention 减少 S/P 中间存储，不等于去掉 autoregressive decode 的 KV cache。长序列 prefill 有很多 Q 行，而单 token decode 的并行与带宽条件不同，不能直接套用同一个加速比。</p>
+<h2 id="7-按需查阅-推导-反向与源码">7. 按需查阅：推导、反向与源码</h2>
+<p>下面保留进一步学习需要的细节。它们不影响前六节的主线，可以等读到对应论文或代码时再展开。</p>
+<details class="fa-details">
+<summary>online softmax 完整递推、手算与 mask 边界</summary>
+<h4 id="分子和分母必须使用同一个参考值">分子和分母必须使用同一个参考值</h4>
 <p>固定一个 query，设分数为 <span class="math">\(s_1,\ldots,s_N\)</span>，value 向量为 <span class="math">\(v_1,\ldots,v_N\)</span>：</p>
 <div class="math display-math">\[
 o=\frac{\sum_j e^{s_j}v_j}{\sum_j e^{s_j}}=\frac{\sum_j e^{s_j-m}v_j}{\sum_j e^{s_j-m}}.
 \]</div>
-
 <p>分子和分母乘了相同因子，比例不变。通常取 <span class="math">\(m=\max_j s_j\)</span>，使指数的输入不大于 0，避免溢出。</p>
 <p>若分别对两个 KV 块做 softmax，再把输出相加，结果会错：每块用了自己的分母。正确做法是保留可以合并的状态。</p>
-<h3 id="每个-query-保留三个状态">每个 query 保留三个状态</h3>
+<h4 id="每个-query-保留三个状态">每个 query 保留三个状态</h4>
 <p>对已处理的 key 集合，维护：</p>
 <div class="math display-math">\[
 m=\max_j s_j,\qquad \ell=\sum_j e^{s_j-m},\qquad u=\sum_j e^{s_j-m}v_j.
 \]</div>
-
 <p>m 和 <span class="math">\(\ell\)</span> 各是一个标量；u 是长度为 <span class="math">\(d_v\)</span> 的向量。u 是<strong>尚未除以分母的输出分子</strong>，最终输出才是 <span class="math">\(o=u/\ell\)</span>。</p>
 <p>设新块分数为 <span class="math">\(s^{\mathrm{new}}\)</span>，对应矩阵为 <span class="math">\(V^{\mathrm{new}}\)</span>：</p>
 <div class="math display-math">\[
 m&#x27;=\max(m,\max s^{\mathrm{new}}),\qquad \alpha=e^{m-m&#x27;}.
 \]</div>
-
 <div class="math display-math">\[
 p^{\mathrm{new}}=e^{s^{\mathrm{new}}-m&#x27;},\qquad \ell&#x27;=\alpha\ell+\sum_j p_j^{\mathrm{new}},\qquad u&#x27;=\alpha u+p^{\mathrm{new}}V^{\mathrm{new}}.
 \]</div>
-
 <p><strong>最大值改变后，旧分母和旧分子必须一起乘 <span class="math">\(\alpha\)</span>。</strong> 旧状态以 m 为参考，新数据以 <span class="math">\(m'\)</span> 为参考；不统一参考值，就不能相加。</p>
-<h3 id="两块数据的手算">两块数据的手算</h3>
+<h4 id="两块数据的手算">两块数据的手算</h4>
 <p>选择便于检查的 logits 和标量 values：</p>
 <div class="codehilite text-diagram"><pre><span></span>scores = [ln(1), ln(2), ln(3), ln(4)]
 values = [10,    20,    30,    40]
 </pre></div>
-
 
 <p>完整 softmax 的权重为 <code>[0.1, 0.2, 0.3, 0.4]</code>，输出为 30。按两个元素一块计算：</p>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
@@ -141,67 +239,14 @@ values = [10,    20,    30,    40]
 </tbody>
 </table></div>
 <p>第二块使参考值从 <span class="math">\(\ln2\)</span> 变成 <span class="math">\(\ln4\)</span>，所以旧状态乘 <span class="math">\(\alpha=1/2\)</span>。最终 <span class="math">\(75/2.5=30\)</span>，与整行计算一致。这是手算示例，不是 GPU 性能实验。</p>
-<h3 id="mask-和第一块的边界">mask 和第一块的边界</h3>
+<h4 id="mask-和第一块的边界">mask 和第一块的边界</h4>
 <p>等长 causal attention 允许 <code>key_index &lt;= query_index</code>。屏蔽位置设为 <span class="math">\(-\infty\)</span>，指数贡献为 0。位于对角线右上方的整块可以跳过；完全位于允许区域的块不必逐元素检查 mask。</p>
 <p>初始化常写成 <code>m=-inf, l=0, u=0</code>，但必须处理没有有效元素的块。如果旧 m 和新块最大值都是 <code>-inf</code>，直接计算差值会出现 NaN。实际 kernel 会跳过无效块或使用安全初始化；全 masked 行的输出语义也需由接口规定。本文教学代码限定每个 query 至少能看到一个有效 key。</p>
 <p>不等长 Q/K 的 causal 对齐规则需要单独确认。decode 的新 token 通常位于历史序列末端，不能直接使用没有位置偏移的左上角三角 mask。</p>
-<h2 id="4-从一行递推到一个-attention-tile">4. 从一行递推到一个 attention tile</h2>
-<p>设一个工作单位负责 <span class="math">\(B_r\)</span> 个 query 行，每次加载 <span class="math">\(B_c\)</span> 个 KV 行：</p>
-<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
-<thead>
-<tr>
-<th>对象</th>
-<th>逻辑形状</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><span class="math">\(Q_i\)</span></td>
-<td><span class="math">\([B_r,d]\)</span></td>
-<td>当前拥有的 query 行</td>
-</tr>
-<tr>
-<td><span class="math">\(K_j\)</span>、<span class="math">\(V_j\)</span></td>
-<td><span class="math">\([B_c,d]\)</span>、<span class="math">\([B_c,d_v]\)</span></td>
-<td>当前读取的 KV 块</td>
-</tr>
-<tr>
-<td><span class="math">\(S_{ij}\)</span></td>
-<td><span class="math">\([B_r,B_c]\)</span></td>
-<td>当前块的 query-key 分数</td>
-</tr>
-<tr>
-<td>m、<span class="math">\(\ell\)</span></td>
-<td><span class="math">\([B_r]\)</span></td>
-<td>每个 query 独立的 softmax 状态</td>
-</tr>
-<tr>
-<td>U</td>
-<td><span class="math">\([B_r,d_v]\)</span></td>
-<td>当前 query 块的输出分子累加器</td>
-</tr>
-</tbody>
-</table></div>
-<div class="codehilite text-diagram"><pre><span></span>持有 Qi 和状态 m / l / U
-    ↓
-加载 Kj、Vj
-    ↓
-Sij = scale × Qi @ Kj.T
-    ↓
-逐行更新 m / l，得到当前块的指数权重 Pij
-    ↓
-U = alpha[:, None] × U + Pij @ Vj
-    ↓
-继续下一个 KV 块，最后 Oi = U / l[:, None]
-</pre></div>
-
-
-<p>这里 Pij 是以当前参考值缩放的指数权重，不一定是整行归一化后的最终概率。处理完所有 KV 块后，最终分母才确定。</p>
-<p>例如 <code>Br=64, Bc=128, d=dv=128</code>：QK、PV 的输出形状都是 <code>[64,128]</code>。前者的 128 表示 key 位置，后者表示 value 特征。<strong>相同的尺寸不代表相同的维度含义。</strong></p>
-<p>这个循环描述现代常见的 query-owned forward。各代实现会改变循环顺序、状态位置和工作分配，不能把它直接标成 FA1 原论文的 Algorithm 1。</p>
-<h2 id="5-flashattention-1-消除完整-s-p-的-hbm-往返">5. FlashAttention-1：消除完整 S/P 的 HBM 往返</h2>
-<h3 id="原论文怎样组织分块">原论文怎样组织分块</h3>
+</details>
+<details class="fa-details">
+<summary>FA1 原论文的循环顺序与 IO 模型</summary>
+<h4 id="原论文怎样组织分块">原论文怎样组织分块</h4>
 <p>FA1 的关键组合是 tiling、online softmax 和 backward 重计算。原论文 Algorithm 1 采用外层 KV 块、内层 Q 块的表达：</p>
 <div class="codehilite text-diagram"><pre><span></span>for 每个 KV 块 j:
     加载 Kj、Vj
@@ -212,20 +257,17 @@ U = alpha[:, None] × U + Pij @ Vj
         写回 Oi、mi、li
 </pre></div>
 
-
 <p>这个算法仍会读写 Q、O 和行统计量。节省来自避免物化完整 S/P；不意味着“每个输入只读一次，所有输出一直驻留片上”。</p>
 <p>FA1 用已经归一化的 o 表示输出。若新块自身的状态为 <span class="math">\(\tilde m,\tilde\ell,\tilde u\)</span>，令：</p>
 <div class="math display-math">\[
 m&#x27;=\max(m,\tilde m),\quad \alpha=e^{m-m&#x27;},\quad \beta=e^{\tilde m-m&#x27;}.
 \]</div>
-
 <p>合并公式为：</p>
 <div class="math display-math">\[
 \ell&#x27;=\alpha\ell+\beta\tilde\ell,\qquad o&#x27;=\frac{\alpha\ell o+\beta\tilde u}{\ell&#x27;}.
 \]</div>
-
 <p>它与前面的 u 递推在实数算术下等价，但逐轮更新归一化输出，涉及额外非矩阵运算。这为 FA2 留下了优化空间。</p>
-<h3 id="内存复杂度与-io-复杂度">内存复杂度与 IO 复杂度</h3>
+<h4 id="内存复杂度与-io-复杂度">内存复杂度与 IO 复杂度</h4>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
@@ -258,22 +300,21 @@ m&#x27;=\max(m,\tilde m),\quad \alpha=e^{m-m&#x27;},\quad \beta=e^{\tilde m-m&#x
 </tbody>
 </table></div>
 <p>FA1 在片上容量 M 的模型中给出 <span class="math">\(\Theta(N^2d^2/M)\)</span> 的 HBM 元素访问量，适用条件为 <span class="math">\(d\le M\le Nd\)</span>。M 以可存储元素数计，不是 batch size，也不是 FLOPs。该模型说明 tile 复用如何降低 IO，不是所有 shape 与 GPU 的实测流量承诺。<a href="https://arxiv.org/html/2205.14135v2">FA1 §3 与 Algorithm 1</a></p>
-<h2 id="6-backward-不保存-p-梯度怎样计算">6. backward：不保存 P，梯度怎样计算</h2>
+</details>
+<details class="fa-details">
+<summary>backward 梯度公式与重计算</summary>
 <p>以下推导省略 dropout。设上游梯度 <span class="math">\(G=\partial\mathcal L/\partial O\)</span>，形状与 O 相同。由 <span class="math">\(O=PV\)</span> 得到：</p>
 <div class="math display-math">\[
 dV=P^TG,\qquad dP=GV^T.
 \]</div>
-
 <p>softmax 的行内导数为：</p>
 <div class="math display-math">\[
 D_i=\sum_a G_{ia}O_{ia},\qquad dS_{ij}=P_{ij}(dP_{ij}-D_i).
 \]</div>
-
 <p>D 每个 query 行一个标量，shape 为 <code>[Nq]</code>。它沿 value 特征 a 求和，不沿 query 行求和。最后：</p>
 <div class="math display-math">\[
 dQ=\tau\,dS K,\qquad dK=\tau\,dS^T Q.
 \]</div>
-
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
@@ -304,133 +345,23 @@ dQ=\tau\,dS K,\qquad dK=\tau\,dS^T Q.
 <div class="math display-math">\[
 L_i=m_i+\log\ell_i=\log\sum_j e^{S_{ij}}.
 \]</div>
-
 <p>backward 按块重新计算 <span class="math">\(S_{ij}=\tau Q_iK_j^T+M_{ij}\)</span>，再用 <span class="math">\(P_{ij}=e^{S_{ij}-L_i}\)</span> 恢复概率块。用额外算术换取不保存完整 P 的显存空间，也减少从 HBM 读回 P 的流量。</p>
 <p>因此 backward 常见五类矩阵计算：重算 QK、计算 dP、dV、dQ、dK。它只重算需要的 attention 中间量，不是重跑整个模型 forward。若启用 dropout，还要按一致 RNG 状态重建 mask，并处理相应导数，不能直接套用这里的无 dropout 公式。<a href="https://arxiv.org/html/2307.08691v1">FA2 backward 算法</a></p>
-<h2 id="7-flashattention-2-并行度-非-matmul-与-warp-分工">7. FlashAttention-2：并行度、非 matmul 与 warp 分工</h2>
-<h3 id="把归一化推迟到最后">把归一化推迟到最后</h3>
-<p>FA2 保存未归一化的 U，KV 循环中执行第 3 节的更新，最后才除以 <span class="math">\(\ell\)</span>。这样省去逐块更新完整归一化输出的部分乘除运算。</p>
-<p><strong>FA2 仍然需要 rescaling。</strong> 参考最大值改变时，旧 U 和旧 <span class="math">\(\ell\)</span> 仍要乘 <span class="math">\(e^{m_{old}-m_{new}}\)</span>。省去逐轮最终归一化，不等于取消缩放。</p>
-<p>Tensor Core 与普通逐元素、归约、指数运算的吞吐不同。非 matmul 操作的 FLOPs 数少，不表示耗时一定可以忽略。</p>
-<h3 id="沿-query-行增加-cta-并行度">沿 query 行增加 CTA 并行度</h3>
-<p>不同 query 行有独立的输出与 softmax 状态。FA2 forward 让一个 CTA 持有一个 Q tile，遍历相关 KV tiles，输出自己的 O tile。</p>
-<div class="codehilite text-diagram"><pre><span></span>CTA 0：Q 的第   0～127 行 → O 的第   0～127 行
-CTA 1：Q 的第 128～255 行 → O 的第 128～255 行
-CTA 2：Q 的第 256～383 行 → O 的第 256～383 行
-</pre></div>
-
-
-<p>例如 <code>B=1, H=8, Nq=8192, Br=128</code>，按 <code>(batch, head, query tile)</code> 划分可产生 <span class="math">\(1\times8\times64=512\)</span> 个工作单位。这是示意配置推导，不是同时驻留的 CTA 数；并发驻留还受 SM 数、寄存器和 shared memory 限制。</p>
-<p>仅按 batch/head 并行时，小 batch、长序列可能无法提供足够工作。query 分块增加了独立任务。切不同 Q 行不需合并输出；切同一 Q 行的不同 KV 段则需要合并 softmax 状态，两者不能混淆。</p>
-<h3 id="cta-内从-sliced-k-改为-sliced-q">CTA 内从 sliced-K 改为 sliced-Q</h3>
-<p>用一个 Q tile 和两个 warp 分组说明所有权：</p>
-<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
-<thead>
-<tr>
-<th>分工</th>
-<th>每组负责什么</th>
-<th>输出关系</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>sliced-K</td>
-<td>相同 Q 行、不同 KV 片段</td>
-<td>同一个 O 行有多个部分结果，需要合并</td>
-</tr>
-<tr>
-<td>sliced-Q</td>
-<td>不同 Q 行、共享可访问的 K/V</td>
-<td>每组拥有不同 O 行，减少跨 warp 输出合并</td>
-</tr>
-</tbody>
-</table></div>
-<div class="codehilite text-diagram"><pre><span></span>sliced-K：warp 组 0 → O[同一批行] 的部分和 ─┐
-          warp 组 1 → O[同一批行] 的部分和 ─┴→ 合并
-
-sliced-Q：warp 组 0 → O[前半批行]
-          warp 组 1 → O[后半批行]
-</pre></div>
-
-
-<p>减少的是特定的跨 warp 通信与 shared memory 往返。加载 K/V、Tensor Core 协作、行内归约和缓冲区复用仍需同步。</p>
-<p>FA2 backward 又有不同所有权：按 KV/column tiles 分工时，CTA 局部累加自己的 dK/dV；不同 KV tiles 对相同 dQ 的贡献仍需汇总。forward 的独立输出行结论不能套到所有梯度上。<a href="https://crfm.stanford.edu/2023/07/17/flash2.html">FA2 作者讲解</a>、<a href="https://princeton-nlp.github.io/flash-atttention-2/">sliced-Q 图示</a></p>
-<h2 id="8-ampere-hopper-blackwell-改变了什么">8. Ampere、Hopper、Blackwell 改变了什么</h2>
-<p>下表比较典型高性能路径，以 A100/SM80、H100/SM90、B200/SM100 为例。新架构仍可支持旧指令路径；FlashAttention 版本也不是硬件代号。</p>
-<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
-<thead>
-<tr>
-<th>资源或机制</th>
-<th>Ampere：A100</th>
-<th>Hopper：H100</th>
-<th>Blackwell：B200</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>global → shared</td>
-<td><code>cp.async</code> 小段异步复制</td>
-<td>TMA 多维 tile 搬运</td>
-<td>继续使用 TMA</td>
-</tr>
-<tr>
-<td>典型矩阵指令</td>
-<td><code>mma.sync</code></td>
-<td><code>wgmma.mma_async</code></td>
-<td><code>tcgen05.mma</code></td>
-</tr>
-<tr>
-<td>参与或发起单位</td>
-<td>warp，32 threads 协作</td>
-<td>warpgroup，128 threads 协作</td>
-<td>单线程发起，支持规定的 1-CTA / 2-CTA 模式</td>
-</tr>
-<tr>
-<td>MMA 累加结果</td>
-<td>寄存器</td>
-<td>寄存器</td>
-<td>TMEM</td>
-</tr>
-<tr>
-<td>重点资源</td>
-<td>寄存器、shared memory、warp 分工</td>
-<td>异步依赖、寄存器压力、角色分工</td>
-<td>TMEM 交换、softmax 与更快 MMA 的匹配</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="ampere-数据搬运已经可以异步">Ampere：数据搬运已经可以异步</h3>
-<p><code>cp.async</code> 让 global → shared 复制避免通过普通数据寄存器中转，也能配合缓冲区与计算重叠。FA3 的意义不能概括为“第一次让搬运异步”；Hopper 增加 TMA 和异步 warpgroup MMA，进一步改变工作组织。<a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html">Ampere Tuning Guide</a></p>
-<h3 id="hopper-tma-与-wgmma-支持新的角色分工">Hopper：TMA 与 WGMMA 支持新的角色分工</h3>
-<p>TMA 用 tensor 描述符搬运 tile，减少逐线程组织地址和复制的工作。一名线程可发起搬运，consumer 等完成通知后使用 shared memory 数据。WGMMA 让矩阵计算也以异步操作推进，为独立算术留下调度空间。</p>
-<p>producer 负责搬运，consumer 负责计算，双方通过 barrier 交接缓冲区。<code>setmaxnreg</code> 可按角色调整寄存器配额，使 producer 少占寄存器、consumer 保留更多状态。<a href="https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html">Hopper Tuning Guide</a>、<a href="https://pytorch.org/blog/flashattention-3/">FA3 作者文章</a></p>
-<h3 id="blackwell-sm100-tmem-改变中间量的存放方式">Blackwell SM100：TMEM 改变中间量的存放方式</h3>
-<p>TMEM（Tensor Memory）是服务 Tensor Core 路径的专用片上存储。<code>tcgen05</code> 累加器在 TMEM；相应模式下 operand A 来自 TMEM 或 shared memory，operand B 来自 shared memory。线程通过专门的 TMEM load/store，与寄存器中的逐元素计算交换数据。</p>
-<div class="codehilite text-diagram"><pre><span></span>QK 累加到 TMEM
-    → 读到寄存器，做 max / exp / sum
-    → 按下一次 MMA 要求组织 P
-    → PV 累加到 TMEM
-</pre></div>
-
-
-<p>TMA 是搬运机制，TMEM 是存储，职责不同。单线程发起 <code>tcgen05.mma</code> 不表示一个 CUDA Core 独自完成矩阵运算。<a href="https://docs.nvidia.com/cutlass/latest/media/docs/pythonDSL/guides/mma/tcgen05_programming.html">CUTLASS tcgen05 编程说明</a></p>
-<h3 id="b200-与-rtx-5090-需要区分">B200 与 RTX 5090 需要区分</h3>
-<p>本文 TMEM、<code>tcgen05</code>、2-CTA 协作说明面向 B200/SM100。RTX 5090 属于 SM120，不能仅凭同属 Blackwell 套用这套路径。CUTLASS 对 SM120 使用扩展的 warp-level <code>mma.sync</code> 路线。软件包支持 SM120，不等于它执行了 SM100 kernel。<a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_functionality.html">CUTLASS Blackwell 功能表</a></p>
-<h2 id="9-flashattention-3-在-hopper-上重叠搬运-gemm-与-softmax">9. FlashAttention-3：在 Hopper 上重叠搬运、GEMM 与 softmax</h2>
-<h3 id="producer-consumer-管理实际数据有效期">producer / consumer 管理实际数据有效期</h3>
+</details>
+<details class="fa-details">
+<summary>FA3：异步依赖、FP8 与实际调度边界</summary>
+<h4 id="producer-consumer-管理实际数据有效期">producer / consumer 管理实际数据有效期</h4>
 <p>设 consumer 正在使用 shared memory 的槽 0。producer 可把下一块 K/V 搬进槽 1。consumer 使用某个槽前，搬运必须完成。producer 覆盖某个槽前，上一轮 consumer 必须使用完。</p>
 <p>TMA 与 WGMMA 都是异步机制。“指令已经发出”不表示数据已经可读或计算已经完成。barrier、等待和阶段计数是实现的一部分。</p>
-<h3 id="softmax-与-gemm-的重叠来自不同工作状态">softmax 与 GEMM 的重叠来自不同工作状态</h3>
+<h4 id="softmax-与-gemm-的重叠来自不同工作状态">softmax 与 GEMM 的重叠来自不同工作状态</h4>
 <p>同一 tile 仍有严格依赖：</p>
 <div class="codehilite text-diagram"><pre><span></span>QK_j 完成 → 得到 S_j → softmax_j 产生 P_j → PV_j
 </pre></div>
 
-
 <p>不同 consumer warpgroups 可以交错工作：一组处理 softmax，另一组做 GEMM。也可以在同一 warpgroup 内保留跨迭代状态，让不同 KV tiles 的 GEMM 与 softmax 重叠。</p>
-<p><img alt="Hopper 与 Blackwell attention 的角色、依赖和存储" src="assets/flash-attention-pipeline.svg" loading="lazy" /></p>
-<p>图示是论文的代表性数据流，不是实测时间线，也不覆盖所有配置。例如当前 FA3 的部分模式会让 P 经由 shared memory。FA3 理想软件流水线与实际指令调度也有区别。Algorithm 2 描述的重叠意图，在 Appendix B.2 的 SASS 分析中没有完全按原样实现。学习时先看依赖，再看生成代码和测量，不能把伪代码排列当成硬件时间线。</p>
+<p>前面的图示是代表性数据流，不是实测时间线，也不覆盖所有配置。例如当前 FA3 的部分模式会让 P 经由 shared memory。FA3 理想软件流水线与实际指令调度也有区别。Algorithm 2 描述的重叠意图，在 Appendix B.2 的 SASS 分析中没有完全按原样实现。学习时先看依赖，再看生成代码和测量，不能把伪代码排列当成硬件时间线。</p>
 <p>更多 pipeline stages 需要保存更多 score、概率和累加状态，增加寄存器压力。FA3 的三阶段尝试没有自动胜过两阶段方案。这里的 GEMM/softmax 软件流水级数，也不等于 shared memory 缓冲槽数量。<a href="https://arxiv.org/html/2407.08608v2">FA3 §3 与 Appendix B</a></p>
-<h3 id="fp8-路线还需要数值与布局配合">FP8 路线还需要数值与布局配合</h3>
+<h4 id="fp8-路线还需要数值与布局配合">FP8 路线还需要数值与布局配合</h4>
 <p>FA3 的低精度路径利用 FP8 Tensor Core，同时处理量化误差与布局：</p>
 <ul>
 <li>对 Q/K/V 按块缩放，避免一个全局 scale 被局部 outlier 主导。</li>
@@ -441,17 +372,18 @@ sliced-Q：warp 组 0 → O[前半批行]
 <div class="math display-math">\[
 (QR)(KR)^T=QRR^TK^T=QK^T.
 \]</div>
-
 <p>这说明相同的正交混合在精确算术下保持点积，不需要借助特征值理解。FA3 使用带随机符号的 Hadamard 变换分散 outlier。随后 FP8 量化仍有误差，不能把低精度路径说成与 BF16 逐位相同。</p>
 <p>布局同样重要：FP32 accumulator 的元素分布，不一定满足下一次 FP8 MMA 的 operand layout。论文涉及 V 的片上转置、寄存器重排与 byte permutation。TMA 的寻址或 swizzle 并不自动替代任意布局转换。<a href="https://arxiv.org/html/2407.08608v2#S3.SS3">FA3 低精度方法</a></p>
-<h3 id="backward-有自己的分工">backward 有自己的分工</h3>
+<h4 id="backward-有自己的分工">backward 有自己的分工</h4>
 <p>多个 KV tiles 对同一 dQ 产生贡献。FA3 backward 讨论专门的 dQ writer，将梯度写回与矩阵计算分离，避免写回争用阻塞其他工作。forward 的最优分工不必等于 backward。</p>
 <p>官方 Hopper 实现按分页形式、dtype 和布局选择不同路径，例如部分 paged-KV 路径不采用 TMA。具体配置应从 <a href="https://github.com/Dao-AILab/flash-attention/blob/98c1cee0ed59307833841cdbf567fe336ceec13a/hopper/mainloop_fwd_sm90_tma_gmma_ws.hpp">Hopper mainloop</a> 的 dispatch 和模板条件继续追踪。</p>
-<h2 id="10-flashattention-4-forward-匹配更快-mma-与-softmax-吞吐">10. FlashAttention-4 forward：匹配更快 MMA 与 softmax 吞吐</h2>
-<h3 id="瓶颈随硬件变化移动">瓶颈随硬件变化移动</h3>
+</details>
+<details class="fa-details">
+<summary>FA4：条件缩放阈值、软件指数与数据流</summary>
+<h4 id="瓶颈随硬件变化移动">瓶颈随硬件变化移动</h4>
 <p>FA4 论文重点分析 B200/SM100：Tensor Core 吞吐增长快于部分非矩阵执行单元和片上数据通路。矩阵计算耗时缩短后，指数、重缩放与 shared memory 往返更容易限制 attention。</p>
 <p>因此“换上更快 Tensor Core”不足以让完整 attention 按相同比例加速。FA4 同时改变 softmax 安排和矩阵中间量的存储路径。下面以论文 BF16 主线为基线；FP8/FP4 扩展在后面单列。<a href="https://arxiv.org/html/2603.05451v1">FA4 论文</a></p>
-<h3 id="两个-query-tiles-交错推进">两个 query tiles 交错推进</h3>
+<h4 id="两个-query-tiles-交错推进">两个 query tiles 交错推进</h4>
 <p>作者介绍的典型 forward CTA 处理两个 Q tiles，每个 tile 有 128 个 query tokens。它们有独立的 softmax 状态和 O 累加器，可以交错安排 MMA、softmax 和 correction。</p>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
@@ -481,153 +413,66 @@ sliced-Q：warp 组 0 → O[前半批行]
 </table></div>
 <p>PV 可以直接从 TMEM 读取 P 作为 operand A，V 从 shared memory 提供。这减少了 P 再经过 shared memory 的中转，但 TMEM 与寄存器间仍有实际移动。</p>
 <p>两个 query tiles 为重叠提供了空间，但所有阶段同时运行也可能争用资源。它们的指数阶段可能竞争同一执行资源，作者因此还协调两组 softmax 的推进。tile、warp 数和阶段数是配置选择，不是所有 FA4 的统一定义。<a href="https://tridao.me/blog/2026/flash4/#forward-pass-new-softmax-pipelining-with-conditional-rescaling">FA4 作者 forward 讲解</a>、<a href="https://github.com/Dao-AILab/flash-attention/blob/98c1cee0ed59307833841cdbf567fe336ceec13a/flash_attn/cute/flash_fwd_sm100.py">SM100 forward 源码</a></p>
-<h3 id="conditional-rescaling-暂时保留旧参考值">conditional rescaling：暂时保留旧参考值</h3>
+<h4 id="conditional-rescaling-暂时保留旧参考值">conditional rescaling：暂时保留旧参考值</h4>
 <p>标准 online softmax 在最大值变化时重缩放旧 U。SM100 的 U 位于 TMEM，修正它涉及读出、逐元素乘法与写回，不能只按“一次乘法”估算成本。</p>
 <p>关键观察是：分子和分母中的指数都可对 score 使用同一个偏移，相当于分子、分母同乘 <span class="math">\(e^{-c}\)</span>。这个参考值不必每轮等于真正最大值。使用 c 表示当前参考值，避免把它始终称作 max。</p>
 <p>采用自然指数记号时，一种自洽的条件更新为：</p>
 <div class="math display-math">\[
 c&#x27;=\begin{cases}\max(c,\max s^{\mathrm{new}}),&amp;\max s^{\mathrm{new}}-c&gt;\theta,\\c,&amp;\text{其他情况}.\end{cases}
 \]</div>
-
 <div class="math display-math">\[
 \alpha=e^{c-c&#x27;},\quad p=e^{s^{\mathrm{new}}-c&#x27;},\quad \ell&#x27;=\alpha\ell+\sum p,\quad u&#x27;=\alpha u+pV.
 \]</div>
-
 <p>保留 c 时，<span class="math">\(\alpha=1\)</span>，旧分子与分母不用重缩放。新块仍以同一个 c 计算，所以比值保持正确。第一次有效 tile 需初始化 c，不能把 <code>-inf</code> 当成普通有限参考值处理。</p>
 <p><strong>错误写法是更新 c，却跳过旧 u 的缩放。</strong> 那会把两套指数参考值直接相加。</p>
 <p>官方实现通常使用 <code>exp2</code>，将分数乘 <span class="math">\(\log_2 e\)</span> 后，在以 2 为底的域中计算。典型 BF16 路径的 <code>rescale_threshold=8</code> 是该域的差值，对应因子 <span class="math">\(2^8=256\)</span>。改用自然指数时，同等阈值应为 <span class="math">\(8\ln2\)</span>。</p>
 <p>例如当前参考值为 3，新块最大值为 5，在阈值 8 的 exp2 域中可保持参考值 3，最大指数为 <span class="math">\(2^{5-3}=4\)</span>。之后新块最大值变成 13，增长超过阈值，就将参考值改成 13，并将旧状态乘 <span class="math">\(2^{3-13}\)</span>。</p>
 <p>保留较旧参考值会允许部分指数大于 1，必须考虑 dtype 动态范围、累计值范围与误差。BF16 的设置不能原样套到 FP8。源码 <code>SoftmaxSm100</code> 在跳过修正时确实保留旧参考值，不同精度路径使用不同条件。<a href="https://github.com/Dao-AILab/flash-attention/blob/98c1cee0ed59307833841cdbf567fe336ceec13a/flash_attn/cute/softmax.py">SoftmaxSm100 源码</a></p>
-<h3 id="软件指数-将部分工作分流到-fma">软件指数：将部分工作分流到 FMA</h3>
+<h4 id="软件指数-将部分工作分流到-fma">软件指数：将部分工作分流到 FMA</h4>
 <p>指数运算使用专门的指令路径，例如 <code>MUFU.EX2</code>。当指数吞吐限制 softmax 时，FA4 将部分指数计算交给普通算术单元。</p>
 <p>可把这类近似理解为将 <span class="math">\(x=n+f\)</span> 分成整数与小范围小数：</p>
 <div class="math display-math">\[
 2^x=2^n2^f,\qquad 2^f\approx a_0+f(a_1+f(a_2+\cdots)).
 \]</div>
-
 <p>整数部分通过指数相关操作重建，小数部分使用多项式与 FMA。真实取整范围、系数和特殊值处理应按源码确定，不能将这个概念式直接当成标准 <code>exp</code> 的替代实现。</p>
 <p>这仍在计算指数近似，并非省去 softmax，也不是用 Tensor Core 做所有逐元素指数。硬件指数与软件指数可混合，代价是额外指令、寄存器与近似误差。比例需要按架构和 tile 调节，不能推广成所有 Blackwell 都应使用软件 exp。<a href="https://tridao.me/blog/2026/flash4/">FA4 作者 softmax 说明</a></p>
-<h2 id="11-flashattention-4-backward-布局-tmem-与-2-cta">11. FlashAttention-4 backward：布局、TMEM 与 2-CTA</h2>
-<h3 id="五个-gemm-之间怎样复用中间量">五个 GEMM 之间怎样复用中间量</h3>
-<p>第 6 节梯度公式不变，FA4 改变 tile 朝向、存储和流水线。例如将前两项组织成：</p>
+</details>
+<details class="fa-details">
+<summary>FA4 backward：TMEM、2-CTA 与确定性</summary>
+<h4 id="五个-gemm-之间怎样复用中间量">五个 GEMM 之间怎样复用中间量</h4>
+<p>前面展开项中的 backward 梯度公式不变，FA4 改变 tile 朝向、存储和流水线。例如将前两项组织成：</p>
 <div class="math display-math">\[
 S^T=\tau KQ^T+M^T,\qquad dP^T=VG^T.
 \]</div>
-
 <p>softmax 恢复与逐元素导数随后生成适合后续计算的 <span class="math">\(P^T\)</span>、<span class="math">\(dS^T\)</span>：</p>
 <div class="math display-math">\[
 dV=P^TG,\qquad dK=\tau dS^TQ.
 \]</div>
-
 <p>相应实现让这些中间块以 operand-A 所需布局留在 TMEM，减少 shared memory 中转。转置后，每个元素仍要使用对应 query 行的 L 和 D；物理布局改变不代表 softmax 改为沿错误的轴归一化。</p>
 <p>TMEM 容量有限。score、概率和梯度块的有效期需要交错安排，释放后的区域才能复用。这里优化片上数据流，不是把所有中间 Tensor 永久留在 TMEM。</p>
-<h3 id="2-cta-是同一-gpu-内的协作">2-CTA 是同一 GPU 内的协作</h3>
+<h4 id="2-cta-是同一-gpu-内的协作">2-CTA 是同一 GPU 内的协作</h4>
 <p>SM100 支持规定的 CTA pair 协作 MMA。两 CTA 位于同一 cluster 的配对关系中，使用两个 SM 的资源，分担操作数准备和访问。它不是两张 GPU 的 Tensor Parallel，也不是所有 <code>tcgen05</code> 都必须用两个 CTA。</p>
 <p>FA4 backward 借此组织更多矩阵工作，缓解 shared memory 的数据供给压力。不能简化为“一个 CTA 只算 dK，另一个只算 dV”。</p>
 <p>对论文使用的 cooperative MMA tile，A 与累加结果沿 MMA 的 M 维在两个 CTA 中分布；operand B 沿 MMA 的 N 维分担准备。每个 CTA 在自己的 shared memory 准备一半 B，硬件联合消费，从而减少每个 SM 需要提供的操作数数据量。</p>
 <p>这里 M/N/K 是当前这一次矩阵乘法的轴，不始终对应 attention 的 query/key 轴。计算 <span class="math">\(KQ^T\)</span> 时，M 是 key 位置、N 是 query 位置；计算 <span class="math">\(dS K\)</span> 时，M 变为 query 位置、归约 K 才是 key 位置。</p>
-<h3 id="dq-的归约轴导致额外交换">dQ 的归约轴导致额外交换</h3>
+<h4 id="dq-的归约轴导致额外交换">dQ 的归约轴导致额外交换</h4>
 <p>对 dK/dV，不同 KV 行的输出可分别拥有；但 dQ 要对 KV 位置求和。同样的 tile 划分，到了 dQ 这一步会改变归约关系。</p>
 <p>作者的 2-CTA 路线通过 cluster 内 distributed shared memory 交换部分 dS。交换后，每个 CTA 拥有一部分 query 行所需的完整配对 KV 范围，再计算相应 dQ。先合并两个配对块的贡献，可以减少向全局 dQ 做原子累加的次数。其他 KV 分块的贡献仍需正确归约。</p>
 <p>用两个 KV 范围 <span class="math">\(J_0,J_1\)</span> 表达同一个 query 行的贡献：</p>
 <div class="math display-math">\[
 dQ_{\mathrm{pair}}=\tau\bigl(dS[:,J_0]K[J_0,:]+dS[:,J_1]K[J_1,:]\bigr).
 \]</div>
-
 <p>交换前，两边按 KV 范围分别持有贡献。交换后，一边拥有前半 query 行的两个 KV 范围；另一边拥有后半 query 行的两个 KV 范围。相较论文对应的 1-CTA 分解，配对内先求和使全局 dQ 原子归约次数减半。<a href="https://tridao.me/blog/2026/flash4/#2-cta-backward-pass-reducing-shared-memory-traffic-and-global-atomic-adds">作者的 2-CTA 说明</a></p>
 <p>不同迭代的 dP、dS 与 dQ 交错推进，可以隐藏交换延迟。确定性模式还要固定累加顺序，例如用 semaphore 协调写回；这不表示整个 backward 串行执行。<a href="https://arxiv.org/html/2603.05451v1#S3.SS2">FA4 backward 设计</a>、<a href="https://github.com/Dao-AILab/flash-attention/blob/98c1cee0ed59307833841cdbf567fe336ceec13a/flash_attn/cute/flash_bwd_sm100.py">SM100 backward 源码</a></p>
-<h3 id="变长与-causal-工作还需要调度">变长与 causal 工作还需要调度</h3>
+<h4 id="变长与-causal-工作还需要调度">变长与 causal 工作还需要调度</h4>
 <p>causal mask 和变长 batch 使不同 tile 的有效 KV 或 Q 循环长度不同。即使每个 tile 内部很快，最后剩下一两个长任务，也会让其他 SM 提前空闲。</p>
 <p>FA4 的相应调度策略使用 LPT（Longest Processing Time），优先推进估计耗时较长的工作，以减少尾部等待。确定性 causal backward 还涉及 SPT（Shortest Processing Time）与 CTA swizzling。它们重排任务索引，使执行顺序更适合规定的累加顺序，减少 semaphore 等待。</p>
 <p>调度取决于 causal/local、确定性和 kernel 配置。不能把“persistent、LPT、SPT”同时当作所有 FA4 调用固定启用的特征。应同时查看 kernel 的 <code>tile_scheduler</code> 选择与具体调度器实现。<a href="https://tridao.me/blog/2026/flash4/">FA4 作者调度说明</a></p>
-<h2 id="12-四代之间的关系与适用边界">12. 四代之间的关系与适用边界</h2>
-<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
-<thead>
-<tr>
-<th>版本</th>
-<th>主要问题</th>
-<th>代表性改变</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>FA1</td>
-<td>完整 S/P 的 HBM 存储和往返</td>
-<td>tiling、online softmax、backward 重计算</td>
-</tr>
-<tr>
-<td>FA2</td>
-<td>IO 改善后，并行度和工作划分仍不充分</td>
-<td>延迟归一化、query-tile 并行、sliced-Q</td>
-</tr>
-<tr>
-<td>FA3</td>
-<td>Hopper 异步硬件需要新的流水线</td>
-<td>TMA/WGMMA、warp specialization、跨工作重叠、FP8 数值与布局</td>
-</tr>
-<tr>
-<td>FA4</td>
-<td>SM100 MMA 吞吐增长快于部分配套路径</td>
-<td>TMEM 数据流、conditional rescaling、软件指数、backward 2-CTA</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="论文代际与软件包覆盖范围">论文代际与软件包覆盖范围</h3>
-<p>FA1/FA2 不仅能在 Ampere 上运行，FA3 主要面向 Hopper。FA4 论文重点讨论 SM100，但 CuTe DSL 软件包的覆盖范围随版本扩展，不等于一套 SM100 kernel 在所有 GPU 上运行。</p>
-<p>本文源码快照为官方仓库 <code>98c1cee0ed59307833841cdbf567fe336ceec13a</code>，核对日期为 2026-10-26。该快照 <a href="https://github.com/Dao-AILab/flash-attention/blob/98c1cee0ed59307833841cdbf567fe336ceec13a/flash_attn/cute/interface.py">interface.py</a> 包含不同架构的 dispatch。SM120 使用不同于 SM100 的 MMA 路径，不能用 B200 的 TMEM 流水线解释所有调用。</p>
-<p>CuTe DSL 是编写和编译 GPU kernel 的工具。Python 风格代码会生成 GPU 实现，并非 Python 解释器逐元素计算 attention。</p>
-<h3 id="fa4-与-fp8-fp4-后续工作">FA4 与 FP8 / FP4 后续工作</h3>
-<p>FA4 基础论文以 BF16 路线分析主要瓶颈。后续低精度扩展继续处理 MXFP8/FP4 的量化、scale 布局和精度问题。它们与 FA4 分块和流水线有关，但不是版本号必然包含的统一行为。</p>
-<p>例如 <a href="https://pytorch.org/blog/low-precision-flash-attention-4-end-to-end-block-scaled-attention-for-blackwell/">Low Precision FlashAttention-4</a> 讨论端到端 block-scaled attention。理解它之前，可先读 <a href="gpu-precision-and-quantization.html">浮点格式与量化</a>，再追踪 QK、PV 各自的输入、累加与输出精度。硬件支持一种格式，不代表上层调用自动采用它。</p>
-<h3 id="prefill-与-decode-的瓶颈不同">prefill 与 decode 的瓶颈不同</h3>
-<p>prefill 有许多 Q 行，Q tiles 可复用 KV 并提供并行工作。单 token decode 每个请求通常只有一个 Q 行，query 分块空间小，更容易受 KV cache 读取带宽和 batch/head 并行度限制。</p>
-<p>decode 可以沿 KV 方向切分，让多个 CTA 计算同一 Q 的不同 KV 段，再合并 softmax 状态。这常被称为 split-KV / Flash-Decoding 路线，需要部分输出合并，与 FA2 sliced-Q 的独立行分工不同。不能把长序列 prefill 的论文加速比当作任意 decode 的加速比。</p>
-<h3 id="gqa-分页-变长与稀疏是不同维度">GQA、分页、变长与稀疏是不同维度</h3>
-<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
-<thead>
-<tr>
-<th>概念</th>
-<th>改变了什么</th>
-<th>与 FlashAttention 的关系</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>GQA / MQA</td>
-<td>多个 Q heads 共享 KV head</td>
-<td>改变 head 映射与复用，仍可使用分块 attention</td>
-</tr>
-<tr>
-<td>Paged KV cache</td>
-<td>页表组织 KV 的存储地址</td>
-<td>kernel 按页寻址，可与分块 attention 组合</td>
-</tr>
-<tr>
-<td>变长 batch</td>
-<td>各请求 Q/KV 长度不同</td>
-<td>需要 offsets、有效长度、边界处理和调度</td>
-</tr>
-<tr>
-<td>sliding window / block sparse</td>
-<td>只访问部分 query-key 对</td>
-<td>改变 attention 图样，不等于稠密 FA 自己变成线性复杂度</td>
-</tr>
-<tr>
-<td>dropout</td>
-<td>对概率应用随机 mask 和缩放</td>
-<td>backward 需重建一致随机状态</td>
-</tr>
-<tr>
-<td>FlashInfer plan/run</td>
-<td>准备调度与元数据，再执行 kernel</td>
-<td>属于库和执行组织层，不是 FA1–4 的后续版本号</td>
-</tr>
-</tbody>
-</table></div>
-<p>实际 attention 常同时涉及这些维度。核对实现时，应查具体 dtype、head dimension、mask、forward/backward 和架构分支，仅确认“用了 FlashAttention”不足以说明完整行为。</p>
-<h2 id="13-教学参考实现-从数学对应到-kernel">13. 教学参考实现：从数学对应到 kernel</h2>
+</details>
+<details class="fa-details">
+<summary>Torch 教学实现与官方接口</summary>
 <p>下面以 CUDA Tensor 写法表达数学。代码没有复现 warp 分工、TMA、TMEM 或高性能流水线，Python 循环会产生多次 kernel 提交。两个教学函数用 <code>no_grad</code> 只演示 forward。训练的显存收益需要专门的重计算 backward；直接让 autograd 记录 Python 分块循环，会保留各轮中间量。它们用于阅读和小尺寸对照，不作为性能实现。</p>
-<h3 id="普通-attention-显式生成-s-p">普通 attention：显式生成 S/P</h3>
+<h4 id="普通-attention-显式生成-s-p">普通 attention：显式生成 S/P</h4>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
@@ -639,8 +484,7 @@ dQ_{\mathrm{pair}}=\tau\bigl(dS[:,J_0]K[J_0,:]+dS[:,J_1]K[J_1,:]\bigr).
     <span class="k">return</span> <span class="p">(</span><span class="n">probs</span> <span class="o">@</span> <span class="n">v</span><span class="o">.</span><span class="n">float</span><span class="p">())</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 </pre></div>
 
-
-<h3 id="按-kv-分块的-online-softmax">按 KV 分块的 online softmax</h3>
+<h4 id="按-kv-分块的-online-softmax">按 KV 分块的 online softmax</h4>
 <p>此函数使用 FP32 状态，省略 dropout 和自定义 mask。causal 分支仅支持等长 self-attention，并从左到右处理 KV 块。因此，每个 query 在第一块至少有一个有效 key。</p>
 <div class="codehilite"><pre><span></span><span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">tiled_attention</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">block_q</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">block_k</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">causal</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -680,10 +524,9 @@ dQ_{\mathrm{pair}}=\tau\bigl(dS[:,J_0]K[J_0,:]+dS[:,J_1]K[J_1,:]\bigr).
     <span class="k">return</span> <span class="n">out</span>
 </pre></div>
 
-
 <p><code>[:, None]</code> 给每个 query 行的标量增加一个轴，使它按行缩放 <code>[rows, dv]</code> 或 <code>[rows, Bc]</code>。每轮只保留一个 score tile，不保存完整 <code>[Nq,Nk]</code> 矩阵。</p>
 <p>即便递推一致，不同 matmul 精度模式、概率转换和累加顺序也会产生浮点差异。比较结果应使用与 dtype、shape 相适应的误差指标，不能要求所有实现逐位相等。</p>
-<h3 id="pytorch-sdpa-与官方-fa4-的布局区别">PyTorch SDPA 与官方 FA4 的布局区别</h3>
+<h4 id="pytorch-sdpa-与官方-fa4-的布局区别">PyTorch SDPA 与官方 FA4 的布局区别</h4>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">flash_attn.cute</span><span class="w"> </span><span class="kn">import</span> <span class="n">flash_attn_func</span>
 
@@ -701,9 +544,10 @@ dQ_{\mathrm{pair}}=\tau\bigl(dS[:,J_0]K[J_0,:]+dS[:,J_1]K[J_1,:]\bigr).
 <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
 </pre></div>
 
-
 <p>此接口对照限定等长 MHA。GQA、变长和 paged KV 需要各自参数。SDPA 按环境和输入选择 backend，调用它不代表运行了 FA3/FA4；<code>torch.compile</code> 也不是指定 FlashAttention 代际的开关。<a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html">PyTorch SDPA</a>、<a href="https://github.com/Dao-AILab/flash-attention/blob/98c1cee0ed59307833841cdbf567fe336ceec13a/README.md#flashattention-4-cutedsl">官方 FA4 接口</a></p>
-<h2 id="14-论文与源码阅读入口">14. 论文与源码阅读入口</h2>
+</details>
+<details class="fa-details">
+<summary>论文与固定版本源码入口</summary>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
 <tr>
@@ -748,7 +592,9 @@ dQ_{\mathrm{pair}}=\tau\bigl(dS[:,J_0]K[J_0,:]+dS[:,J_1]K[J_1,:]\bigr).
 </table></div>
 <p>阅读 kernel 时，按一块数据追踪：从哪里加载、由哪个角色拥有、何时完成、由谁消费、何时允许覆盖。再追踪一个输出元素的归约范围，确认各 KV 块怎样进入同一个结果。通过这些对应关系，理解指令和 buffer 怎样实现数学公式。</p>
 <p>辅助资料索引：<a href="https://github.com/mit-han-lab/KernelWiki/blob/52b8eb06f95ca9b6a1906200b1153e3e21d89c32/wiki/kernels/flash-attention-4.md">KernelWiki <code>wiki/kernels/flash-attention-4.md</code></a>，页面 ID 为 <code>kernel-flash-attention-4</code>，标注置信级别为 <code>source-reported</code>。该索引用于定位资料；算法细节和软件支持范围以本页链接的原论文与固定版本源码为准。</p>
-<p>本页解释性能机制，不提供本机跑分。文档、图示和数学检查不能代替 CUDA kernel 的正确性、吞吐或端到端验证。论文峰值只适用于其 GPU、dtype、shape、版本和计时方式，不能用一个 TFLOP/s 数字代表所有 attention 工作负载。</p></article><footer>Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-固定-attention-的计算与维度">1. 固定 attention 的计算与维度</a><a class="level-2" href="#2-朴素-attention-的显存访问成本">2. 朴素 attention 的显存访问成本</a><a class="level-2" href="#3-online-softmax-分块后怎样保持归一化正确">3. online softmax：分块后怎样保持归一化正确</a><a class="level-2" href="#4-从一行递推到一个-attention-tile">4. 从一行递推到一个 attention tile</a><a class="level-2" href="#5-flashattention-1-消除完整-s-p-的-hbm-往返">5. FlashAttention-1：消除完整 S/P 的 HBM 往返</a><a class="level-2" href="#6-backward-不保存-p-梯度怎样计算">6. backward：不保存 P，梯度怎样计算</a><a class="level-2" href="#7-flashattention-2-并行度-非-matmul-与-warp-分工">7. FlashAttention-2：并行度、非 matmul 与 warp 分工</a><a class="level-2" href="#8-ampere-hopper-blackwell-改变了什么">8. Ampere、Hopper、Blackwell 改变了什么</a><a class="level-2" href="#9-flashattention-3-在-hopper-上重叠搬运-gemm-与-softmax">9. FlashAttention-3：在 Hopper 上重叠搬运、GEMM 与 softmax</a><a class="level-2" href="#10-flashattention-4-forward-匹配更快-mma-与-softmax-吞吐">10. FlashAttention-4 forward：匹配更快 MMA 与 softmax 吞吐</a><a class="level-2" href="#11-flashattention-4-backward-布局-tmem-与-2-cta">11. FlashAttention-4 backward：布局、TMEM 与 2-CTA</a><a class="level-2" href="#12-四代之间的关系与适用边界">12. 四代之间的关系与适用边界</a><a class="level-2" href="#13-教学参考实现-从数学对应到-kernel">13. 教学参考实现：从数学对应到 kernel</a><a class="level-2" href="#14-论文与源码阅读入口">14. 论文与源码阅读入口</a></nav></aside></div>
+<p>本页解释性能机制，不提供本机跑分。文档、图示和数学检查不能代替 CUDA kernel 的正确性、吞吐或端到端验证。论文峰值只适用于其 GPU、dtype、shape、版本和计时方式，不能用一个 TFLOP/s 数字代表所有 attention 工作负载。</p>
+</details>
+<p>本页可视化用于核对形状、数值和依赖关系，没有执行 CUDA kernel，也不提供硬件跑分。</p></article><footer>Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-始终是这三步-打分-归一化-加权求和">1. 始终是这三步：打分、归一化、加权求和</a><a class="level-2" href="#2-fa1-小块算完就用掉-少往返-hbm">2. FA1：小块算完就用掉，少往返 HBM</a><a class="level-2" href="#3-fa2-少搬数据之后-还要把工作分好">3. FA2：少搬数据之后，还要把工作分好</a><a class="level-2" href="#4-fa3-h100-上-让三类工作重叠">4. FA3：H100 上，让三类工作重叠</a><a class="level-2" href="#5-fa4-b200-算得更快-其他步骤更容易成为瓶颈">5. FA4：B200 算得更快，其他步骤更容易成为瓶颈</a><a class="level-2" href="#6-把-a-卡-h-卡-b-卡与四代连起来">6. 把 A 卡、H 卡、B 卡与四代连起来</a><a class="level-2" href="#7-按需查阅-推导-反向与源码">7. 按需查阅：推导、反向与源码</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
