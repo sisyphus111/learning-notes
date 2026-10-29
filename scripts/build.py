@@ -81,6 +81,12 @@ ATTENTION_REFERENCES = [
     ('Attention/qwen3-h100-tp-case.md', 'attention-qwen3-h100-tp-case.html', '案例：Qwen3 / H100 的 TP 性能',
      'GEMV / GEMM · 延迟与吞吐 · roofline · CTA / warp / register · 通信成本'),
 ]
+DEEPSEEK_REFERENCES = [
+    ('DeepSeek/evolution.md', 'deepseek-evolution.html', 'V2–V4 架构演进',
+     'MLA · DSA · CSA / HCA · MoE · mHC · Muon · 缓存与训练'),
+    ('DeepSeek/forward-shapes.md', 'deepseek-forward-shapes.html', '一次前向与张量形状',
+     'V3 / V3.2 / V4-Pro · 权重 · decode / prefill · 压缩状态 · logits'),
+]
 GPU_REFERENCES = [
     ('GPU/driver-runtime-framework.md', 'gpu-driver-runtime-framework.html', '驱动、运行时与框架',
      'H100 · libcuda / libcudart · 内核模块 · PyTorch · 容器与版本'),
@@ -93,7 +99,7 @@ GPU_REFERENCES = [
     ('GPU/communication-and-allreduce.md', 'gpu-communication-and-allreduce.html', 'MPI 与 Ring / Tree AllReduce',
      '通信语义 · 逐轮部分和 · ReduceScatter / AllGather · 双树 · 流量与延迟'),
 ]
-PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + ATTENTION_REFERENCES + GPU_REFERENCES
+PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + ATTENTION_REFERENCES + DEEPSEEK_REFERENCES + GPU_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}
 
 
@@ -225,6 +231,12 @@ def links(html, source):
             if parsed.fragment:
                 url += '#' + resolve_anchor(dest_source, parsed.fragment)
             return f'{attribute}="{escape(url, quote=True)}"'
+        # Keep downloadable local evidence usable from root-level HTML pages.
+        if attribute == 'href' and parsed.path.endswith('.json'):
+            destination = ((ROOT / source).parent / parsed.path).resolve()
+            if not destination.is_file():
+                raise ValueError(f'Missing JSON reference in {source}: {target}')
+            return f'href="{quote(str(destination.relative_to(ROOT)), safe="/")}"'
         if attribute == 'src':
             destination = ((ROOT / source).parent / parsed.path).resolve()
             if not destination.is_file():
@@ -236,7 +248,7 @@ def links(html, source):
 
 def sidebar(current):
     result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a>'
-    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('Attention 与 Transformer', ATTENTION_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
+    for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('Attention 与 Transformer', ATTENTION_REFERENCES), ('DeepSeek', DEEPSEEK_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
             active = ' aria-current="page"' if current == output else ''
@@ -263,6 +275,8 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
         source_note = 'CUDA 执行、GEMM、attention 与 kernel 编译笔记，附论文、官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。'
     elif reference_kind == 'Attention 与 Transformer':
         source_note = 'Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。'
+    elif reference_kind == 'DeepSeek':
+        source_note = 'DeepSeek 架构与前向教学，附官方配置快照、技术报告和参考代码；形状与容量为静态推导，未运行模型或 GPU 性能验证。'
     elif reference_kind == 'GPU 软件栈':
         source_note = 'GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。'
     elif reference_kind == 'STL 参考':
@@ -295,7 +309,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 index = []
 problem_count = 0
 for source, output, title, subtitle in PAGES:
-    reference_kind = 'Attention 与 Transformer' if any(source == entry[0] for entry in ATTENTION_REFERENCES) else 'GPU 软件栈' if source.startswith('GPU/') else 'CUDA 教学' if source.startswith('CUDA/') else 'PyTorch 教学' if source.startswith('PyTorch/') else 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
+    reference_kind = 'DeepSeek' if source.startswith('DeepSeek/') else 'Attention 与 Transformer' if any(source == entry[0] for entry in ATTENTION_REFERENCES) else 'GPU 软件栈' if source.startswith('GPU/') else 'CUDA 教学' if source.startswith('CUDA/') else 'PyTorch 教学' if source.startswith('PyTorch/') else 'Python 参考' if source.startswith('Python/') else 'STL 参考' if source.startswith('STL/') else ''
     body, tokens = RENDERED[source]
     # Each chapter starts with a page title; original headings remain available.
     body = links(body, source)
@@ -338,6 +352,7 @@ home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。<
 <section class="home-section"><h2>PyTorch 教学</h2><p class="section-desc">先理解 Tensor 操作与 GPU 内存，再学习网络层、模型与参数，最后展开常见组件的计算实现。</p>{cards(PYTORCH_REFERENCES)}</section>
 <section class="home-section"><h2>CUDA 教学</h2><p class="section-desc">从线程与硬件映射开始，理解 GEMM 的分块与流水线，以及 kernel 怎样编译成 GPU 指令。</p>{cards(CUDA_REFERENCES)}</section>
 <section class="home-section"><h2>Attention 与 Transformer</h2><p class="section-desc">先走通 Transformer 从文本到生成的全过程，再理解 attention 的数学、变体与高性能实现。</p>{cards(ATTENTION_REFERENCES)}</section>
+<section class="home-section"><h2>DeepSeek</h2><p class="section-desc">从 MLA、DSA 到 CSA/HCA，理解残差与训练算法的变化，再按真实模型尺寸追踪一次完整前向。</p>{cards(DEEPSEEK_REFERENCES)}</section>
 <section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">从 H100 的驱动与运行时开始，区分计算库、kernel 开发工具和编译器，再连接算子图优化与 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按主题阅读，用搜索定位概念、写法或题目。先理解问题和原理，再对照推导与实现；需要时回到参考文档核实细节。算法部分保留原作者的思路与 TODO 标记。</p></section>'''
 (ROOT / 'index.html').write_text(shell('求知录', 'index.html', home, subtitle='记录学习中的问题、推导与实践。'))

@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V2–V4 架构演进 · 求知录</title><meta name="description" content="MLA · DSA · CSA / HCA · MoE · mHC · Muon · 缓存与训练">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=cd516edc15"><link rel="stylesheet" href="assets/code.css">
+<script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
+<script defer src="assets/site.js?v=791aca5848"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="cuda-flash-attention.html">FlashAttention 1–4</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-qwen3-h100-tp-case.html">案例：Qwen3 / H100 的 TP 性能</a></nav><p class="nav-label">DeepSeek</p><nav aria-label="DeepSeek"><a href="deepseek-evolution.html" aria-current="page">V2–V4 架构演进</a><a href="deepseek-forward-shapes.html">一次前向与张量形状</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 Ring / Tree AllReduce</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">DeepSeek</p><h1>V2–V4 架构演进</h1><p class="subtitle">MLA · DSA · CSA / HCA · MoE · mHC · Muon · 缓存与训练</p></div>
+<article><h2 id="1-几代模型分别改变了什么">1. 几代模型分别改变了什么</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>历史怎样表示和读取</th>
+<th>本代需要理解的其他技术</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>V2</td>
+<td>每个 token 的 K/V 联合压缩成 latent；仍访问全部历史</td>
+<td>细粒度 MoE、共享专家</td>
+</tr>
+<tr>
+<td>V3</td>
+<td>延续 MLA；扩大模型与专家池</td>
+<td>辅助损失自由的负载均衡、MTP、FP8 训练、DualPipe</td>
+</tr>
+<tr>
+<td>V3.2</td>
+<td>MLA 缓存保留每个 token；indexer 选择主 attention 读取的位置</td>
+<td>DSA、indexer 的训练与低精度计算</td>
+</tr>
+<tr>
+<td>V4-Flash / Pro</td>
+<td>多个 token 合成压缩条目；CSA 选择细条目，HCA 读取全部粗条目；保留局部窗口</td>
+<td>shared K=V MQA、分组输出投影、mHC、Muon</td>
+</tr>
+</tbody>
+</table></div>
+<p>这条路线涉及两个不同的压缩维度：MLA 减少<strong>每条记录的宽度</strong>，CSA/HCA 减少<strong>历史记录的数量</strong>。DSA 决定本次读取哪些记录，不负责永久删除未选中的记录。</p>
+<div class="codehilite text-diagram"><pre><span></span>V2 / V3：   T 个 token → T 条较窄 latent → 全部历史参与主 attention
+V3.2：      T 个 token → T 条较窄 latent → indexer 选 k 条 → 主 attention
+V4 CSA：    T 个 token → 约 T/4 条摘要   → indexer 选 k 条 → 主 attention
+V4 HCA：    T 个 token → 约 T/128 条摘要 → 全部摘要参与主 attention
+                                            ↑
+                               CSA/HCA 都另外读取近期原始条目
+</pre></div>
+
+
+<p>本文聚焦已讨论的 V2、V3、V3.2 和原版 V4。V4.1 的其他结构见<a href="attention-model-architectures.html">模型家族对照</a>，不把它的配置混入 V4。下一页<a href="deepseek-forward-shapes.html">一次前向与全部形状</a>把本页机制代入 V3、V3.2、V4-Pro 的真实尺寸。</p>
+<p>资料核对日期：2026-10-29。配置来自固定 revision 的官方文件，保存在<a href="assets/deepseek-configs.json">配置快照</a>。本文的形状、算术和复杂度属于静态推导；未运行模型或测量 GPU 性能。</p>
+<h2 id="2-配置与参数规模">2. 配置与参数规模</h2>
+<p>B 表示十亿参数，T 表示万亿参数。总参数量不是一次前向全部参与计算的参数量，也不是运行时显存需求。MoE 路由、cache、activation、量化 scales 和辅助模块要分别考虑。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>配置</th>
+<th style="text-align: right;">V2</th>
+<th style="text-align: right;">V3</th>
+<th style="text-align: right;">V3.2</th>
+<th style="text-align: right;">V4-Flash</th>
+<th style="text-align: right;">V4-Pro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>报告参数规模</td>
+<td style="text-align: right;">236B / 21B 激活</td>
+<td style="text-align: right;">671B / 37B 激活</td>
+<td style="text-align: right;">延续 V3 规模并增加 indexer</td>
+<td style="text-align: right;">284B / 13B 激活</td>
+<td style="text-align: right;">约 1.6T / 49B 激活</td>
+</tr>
+<tr>
+<td>主干层数</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">61</td>
+<td style="text-align: right;">61</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">61</td>
+</tr>
+<tr>
+<td>hidden size</td>
+<td style="text-align: right;">5120</td>
+<td style="text-align: right;">7168</td>
+<td style="text-align: right;">7168</td>
+<td style="text-align: right;">4096</td>
+<td style="text-align: right;">7168</td>
+</tr>
+<tr>
+<td>Q heads</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">64</td>
+<td style="text-align: right;">128</td>
+</tr>
+<tr>
+<td>Q latent 宽度</td>
+<td style="text-align: right;">1536</td>
+<td style="text-align: right;">1536</td>
+<td style="text-align: right;">1536</td>
+<td style="text-align: right;">1024</td>
+<td style="text-align: right;">1536</td>
+</tr>
+<tr>
+<td>主 QK 每头宽度</td>
+<td style="text-align: right;">128 + 64</td>
+<td style="text-align: right;">128 + 64</td>
+<td style="text-align: right;">128 + 64</td>
+<td style="text-align: right;">448 + 64</td>
+<td style="text-align: right;">448 + 64</td>
+</tr>
+<tr>
+<td>V 每头逻辑宽度</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">512，共享 K=V</td>
+<td style="text-align: right;">512，共享 K=V</td>
+</tr>
+<tr>
+<td>MLA KV latent 宽度</td>
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">不沿用该结构</td>
+<td style="text-align: right;">不沿用该结构</td>
+</tr>
+<tr>
+<td>routed experts</td>
+<td style="text-align: right;">160</td>
+<td style="text-align: right;">256</td>
+<td style="text-align: right;">256</td>
+<td style="text-align: right;">256</td>
+<td style="text-align: right;">384</td>
+</tr>
+<tr>
+<td>每 token 选中 routed experts</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr>
+<td>shared experts</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td>单 expert 中间宽度</td>
+<td style="text-align: right;">1536</td>
+<td style="text-align: right;">2048</td>
+<td style="text-align: right;">2048</td>
+<td style="text-align: right;">2048</td>
+<td style="text-align: right;">3072</td>
+</tr>
+<tr>
+<td>开头 dense FFN 层数</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>CSA indexer top-k</td>
+<td style="text-align: right;">无</td>
+<td style="text-align: right;">无</td>
+<td style="text-align: right;">不适用；DSA 选 2048 个 token</td>
+<td style="text-align: right;">512 个压缩条目</td>
+<td style="text-align: right;">1024 个压缩条目</td>
+</tr>
+<tr>
+<td>residual streams</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+</tr>
+</tbody>
+</table></div>
+<p>V4 开头的 hash routing 层仍然是 MoE，只是 expert IDs 由 token ID 查表确定。它不是 V3 的前三层 dense FFN。Flash 前两层使用纯滑窗 attention；Pro 前两层使用 HCA，后续再交错安排 CSA/HCA。原版 Pro 和 Flash 不能套用同一张尺寸表。</p>
+<p>参数量使用报告的近似口径；不能拿主干规模与包含 MTP 的 checkpoint 参数数直接相减。V3.2 增加了 indexer，因此“延续 V3 规模”不代表每个参数完全相同。</p>
+<p>来源：<a href="https://arxiv.org/abs/2405.04434">V2 报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/config.json">V2 配置</a>、<a href="https://arxiv.org/html/2412.19437v1">V3 报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/e815299b0bcbac849fa540c768ef21845365c9eb/config.json">V3 配置</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/config.json">V3.2 配置</a>、<a href="https://arxiv.org/html/2606.19348v1">V4 报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/config.json">Flash 配置</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json">Pro 配置</a>。</p>
+<h2 id="3-v2-每个-token-一份-latent-多个-head-使用它">3. V2：每个 token 一份 latent，多个 head 使用它</h2>
+<h3 id="3-1-联合压缩的对象是-k-v">3.1 联合压缩的对象是 K/V</h3>
+<p>以下使用行向量。设一个 token 的 hidden 为 <span class="math">\(h_j\in\mathbb R^D\)</span>：</p>
+<div class="math display-math">\[
+c_j=h_jW^{DKV},\qquad c_j\in\mathbb R^{512}.
+\]</div>
+
+<p>各 head 用各自的矩阵产生内容 K 和 V：</p>
+<div class="math display-math">\[
+k^C_{j,h}=c_jU_{K,h},\qquad v_{j,h}=c_jU_{V,h}.
+\]</div>
+
+<p>V2/V3 的每头内容 K、V 都是 128 维，所以 <span class="math">\(U_{K,h},U_{V,h}\)</span> 都是 <code>[512,128]</code>。实际模型还包含 latent 的 RMSNorm；这里先省略以看清线性关系。</p>
+<div class="codehilite text-diagram"><pre><span></span>一个 token 的 hidden
+        ↓ 下投影、归一化
+共享 latent c：[512]
+        ├─ U_K[head 0] → 内容 K[0]：[128]
+        ├─ U_V[head 0] → V[0]：     [128]
+        ├─ U_K[head 1] → 内容 K[1]：[128]
+        └─ U_V[head 1] → V[1]：     [128]
+</pre></div>
+
+
+<p>这是模型在训练中学出的表示，不是对任意已有 MHA 缓存做无损压缩。MQA 直接共享 K/V head；MLA 允许不同 head 从同一 latent 得到不同内容 K/V。</p>
+<h3 id="3-2-decode-不必恢复全部历史-k-v">3.2 decode 不必恢复全部历史 K/V</h3>
+<p>内容分数利用矩阵乘法的结合律：</p>
+<div class="math display-math">\[
+q_h^C(k_{j,h}^C)^T
+=q_h^CU_{K,h}^Tc_j^T
+=(q_h^CU_{K,h}^T)c_j^T.
+\]</div>
+
+<p>把 query 从 128 维变换为 512 维，再与历史 latent 点积，就避免了对每个历史位置展开 K。这个变换常称为 K 投影的权重吸收。</p>
+<p>Value 一侧利用线性性：</p>
+<div class="math display-math">\[
+\sum_j p_{h,j}(c_jU_{V,h})
+=\left(\sum_jp_{h,j}c_j\right)U_{V,h}.
+\]</div>
+
+<p>先对 latent 加权得到 512 维向量，再做每头的 V 投影。不是先把 softmax 权重乘 V 投影矩阵；两者相乘的维度通常就不匹配。</p>
+<p>各头 Q 的生成矩阵依然存在。吸收后每个 head 有自己的 query、attention 权重和 latent 加权结果。历史 latent 在 heads 间共享，不意味着所有 heads 的输出相同。</p>
+<h3 id="3-3-位置编码为什么单独存-64-维">3.3 位置编码为什么单独存 64 维</h3>
+<p>普通 RoPE 的旋转依赖 token 位置，不能把所有位置对应的旋转统一塞进一张固定矩阵。MLA 把内容分支与位置分支拆开：</p>
+<div class="math display-math">\[
+\ell_{t,h,j}=\alpha\left(
+(q^C_{t,h}U_{K,h}^T)c_j^T+q^R_{t,h}(k_j^R)^T
+\right).
+\]</div>
+
+<p>每层每 token 的核心缓存是：</p>
+<div class="codehilite text-diagram"><pre><span></span>c_j：[512]，归一化后的联合 KV latent
+k_R：[64]，已施加 RoPE 的位置 key
+</pre></div>
+
+
+<p>这里的 <code>kv_lora_rank</code> 是架构里的低秩宽度，不表示额外挂了 PEFT LoRA adapter。吸收也不能任意跨越 RMSNorm、softmax 或其他非线性操作。</p>
+<p><a href="https://arxiv.org/abs/2405.04434">V2 报告</a>给出 MLA 与 DeepSeekMoE 的设计；更详细的 decode 和 hidden 生命周期推导见<a href="attention-model-architectures.html#4-mla-压缩每个-token-的表示-不压缩-token-数">现有 MLA 教学</a>。</p>
+<h2 id="4-v3-mla-不变-把训练与-moe-扩展到更大规模">4. V3：MLA 不变，把训练与 MoE 扩展到更大规模</h2>
+<p>V3 继续使用 512 维联合 KV latent 和 64 维位置 key。变化不只是 attention，还包括训练系统和专家路由。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>技术</th>
+<th>输入、输出与作用</th>
+<th>推理时能看到什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeekMoE</td>
+<td>router 为 token 选择专家；专家各自执行 SwiGLU</td>
+<td>每个 MoE 层执行 8 个 routed experts 和 1 个 shared expert</td>
+</tr>
+<tr>
+<td>辅助损失自由的负载均衡</td>
+<td>训练时根据专家负载调整选择偏置</td>
+<td>偏置影响选谁；混合权重来自原 affinity</td>
+</tr>
+<tr>
+<td>Multi-Token Prediction，MTP</td>
+<td>训练主干同时学习额外的未来 token 预测目标</td>
+<td>普通主干生成不必执行 MTP；可用于推测生成</td>
+</tr>
+<tr>
+<td>FP8 混合精度训练</td>
+<td>为适合的矩阵运算选择 FP8 数据与 scales</td>
+<td>权重与 kernel 可使用低精度，但不能理解为所有算子都用 FP8</td>
+</tr>
+<tr>
+<td>DualPipe</td>
+<td>安排流水线中的前后向与通信，减少等待</td>
+<td>是训练流水线调度，不是新增 attention 公式</td>
+</tr>
+</tbody>
+</table></div>
+<p>“辅助损失自由”主要指用偏置调节代替强制的专家均衡辅助梯度。V3 仍保留小权重的 sequence-wise balance loss，不能写成“训练完全没有任何均衡辅助损失”。总参数增长也不会使一个 token 执行全部专家。</p>
+<p>MTP 模块不等于一次普通 forward 自动生成多个已确认 token。若用它做 speculative decoding，还需要候选生成、主模型验证、接受或拒绝，以及对应的 cache 管理。<a href="https://arxiv.org/html/2412.19437v1">V3 报告</a></p>
+<h2 id="5-v3-2-dsa-indexer-选择位置-主-mla-计算结果">5. V3.2 DSA：indexer 选择位置，主 MLA 计算结果</h2>
+<h3 id="5-1-两套-query-各自承担什么">5.1 两套 query 各自承担什么</h3>
+<p>V3.2 的 indexer 有 64 个 query heads，每头 128 维；主 MLA 有 128 个 query heads。Indexer 使用主 Q 下投影后的 latent 产生自己的 query，也保存自己的历史 indexer keys。</p>
+<div class="codehilite text-diagram"><pre><span></span>当前 hidden
+  ├─ 主 Q latent → indexer Q → 扫描 indexer keys → top-2048 位置
+  └─ 主 Q latent → 主 MLA Q ────────────────────→ 读取所选 MLA 条目
+                                                        ↓
+                                              主分数、softmax、V 加权
+</pre></div>
+
+
+<p>简化后的 indexer 分数：</p>
+<div class="math display-math">\[
+I_{t,j}=\sum_{a=1}^{64}w_{t,a}\operatorname{ReLU}
+\left(q^I_{t,a}(k^I_j)^T\right).
+\]</div>
+
+<p>Indexer 分数负责排序，不是最终 attention 权重。选中集合会被主 heads 共用，主 heads 仍各自计算分数。未选中的缓存继续保留，下一 query 仍可能选中它。</p>
+<h3 id="5-2-选择器怎样学会筛选">5.2 选择器怎样学会筛选</h3>
+<p>DSA 使用主 attention 的分布作为监督，训练 indexer 找到重要位置。先在冻结主干的阶段让 indexer 对齐目标分布，再继续训练稀疏 attention。不能把 top-k 理解为一个无需训练、随机截断历史的位置选择器。<a href="https://arxiv.org/html/2512.02556v1">V3.2 报告</a></p>
+<h3 id="5-3-稀疏的范围和代码实现的差别">5.3 稀疏的范围和代码实现的差别</h3>
+<p>设历史长度为 T，选择数为 k。单 token decode 的主 attention 从全历史读取变成读取 k 个条目，但 indexer 还要扫描 T 个历史 keys。对于长 prefill，主稀疏 attention 的配对数可接近 <span class="math">\(O(Sk)\)</span>；全历史扫描的 indexer 仍有二次项。DSA 整体不能直接称为严格线性 attention。</p>
+<p>官方教学参考代码有“计算完整 scores，再加 index mask”的分支，便于表达数学语义。高性能稀疏 kernel 可以直接读取选中的位置。阅读源码时，先确认选择集合的数学定义，再看参考代码是否先算全量 scores。实际部署 kernel 是否避免未选条目的计算，需要单独核对。<a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/inference/model.py">V3.2 参考实现</a></p>
+<h2 id="6-v4-csa-与-hca-压缩序列维度">6. V4：CSA 与 HCA 压缩序列维度</h2>
+<h3 id="6-1-压缩条目怎样生成">6.1 压缩条目怎样生成</h3>
+<p>设一个压缩组里有 m 个 token，每个先投影出候选向量 <span class="math">\(u_j\in\mathbb R^c\)</span> 和 pooling logits <span class="math">\(z_j\in\mathbb R^c\)</span>。用位置偏置 <span class="math">\(b_j\)</span> 后，对每个特征 d 单独沿 token 维归一化：</p>
+<div class="math display-math">\[
+\alpha_{j,d}=\frac{\exp(z_{j,d}+b_{j,d})}
+{\sum_{r\in\mathrm{group}}\exp(z_{r,d}+b_{r,d})},
+\qquad
+c_{\mathrm{group},d}=\sum_{j\in\mathrm{group}}\alpha_{j,d}u_{j,d}.
+\]</div>
+
+<p>例如一个 <code>[4,512]</code> 组可变成 <code>[512]</code>：第 0 个特征可以主要保留第 1 个 token，第 1 个特征可以主要保留第 3 个 token。每个特征都有自己的 pooling 权重，不是固定平均。</p>
+<p>这些权重来自组内 hidden 和位置参数，不依赖未来 query。摘要一旦生成，后续 queries 就可以复用。压缩是有损的模型表示，需要训练配合，不保证能逐 token 解压回原值。</p>
+<h3 id="6-2-csa-轻度压缩后选择">6.2 CSA：轻度压缩后选择</h3>
+<p>CSA 全称 Compressed Sparse Attention，压缩步长为 4。实际用两组投影让相邻块重叠：一个条目最多汇总 8 个 token 的候选信息。相邻条目共享部分来源，最终条目数仍约为 T/4。第一个条目的前邻居为空，按实现处理 padding。</p>
+<div class="codehilite text-diagram"><pre><span></span>历史 token → 约 T/4 个主压缩条目 [512]
+                    ↑
+历史 token → 约 T/4 个 indexer 压缩 keys [128]
+                    ↓ 当前 query 打分
+             top-k 条目编号
+                    ↓
+           主 attention 读取对应条目
+</pre></div>
+
+
+<p>Indexer 选择的是压缩条目编号，而不是 V3.2 的原始 token 编号。Pro 选 1024 条，Flash 选 512 条。</p>
+<h3 id="6-3-hca-重度压缩后全部读取">6.3 HCA：重度压缩后全部读取</h3>
+<p>HCA 全称 Heavily Compressed Attention。它使用不重叠的 128-token 组，得到约 T/128 个条目，不再用 indexer 截取 top-k。每个 query 读取全部因果可见的压缩条目。</p>
+<p>固定压缩率没有让历史变成固定大小状态：T 增长时，T/128 也增长。HCA 仍是压缩条目上的 softmax attention，不等于 recurrent linear attention。</p>
+<h3 id="6-4-两者都有近期窗口-且必须保持因果性">6.4 两者都有近期窗口，且必须保持因果性</h3>
+<p>CSA/HCA 的长程摘要会丢失细节。当前组尚未完成时，也不能读取包含未来 token 的摘要。所以每层额外保留 128 个近期 token 的未压缩条目。</p>
+<div class="codehilite text-diagram"><pre><span></span>主 attention 的读取集合
+= 近期窗口原始条目
++ 本次可见的长程压缩条目
+</pre></div>
+
+
+<p>两部分共同进入归一化，不能直接把两次独立 softmax 的结果相加。可以分段计算后正确合并 softmax 的统计量，但那是同一数学结果的 kernel 实现。</p>
+<p>压缩条目只在所需输入已经到达后变为可见。参考实现使用零基位置 t，以 <code>floor((t+1)/m)</code> 控制可用完整组数。位于组末尾的当前 token 已参与前向，因此刚完成的组可以被这个位置读取。比较论文中的不等号前，应先统一一基/零基位置记号。</p>
+<h3 id="6-5-同一个条目同时用作-k-和-v">6.5 同一个条目同时用作 K 和 V</h3>
+<p>V4 的主 attention 使用 shared K=V MQA。设读取集合为 C，忽略 RoPE 和 sink：</p>
+<div class="math display-math">\[
+P_h=\operatorname{softmax}(q_hC^T/\sqrt{512}),\qquad o_h=P_hC.
+\]</div>
+
+<p>这与 V3 的 512 维 latent 缓存宽度碰巧相同，但角色不同。V3 的 512 维 latent 还对应 head-specific 的 K/V 恢复矩阵；V4 的共享条目直接参与主 attention。</p>
+<p>每个 Q head 是 512 维，最后 64 维使用 RoPE。同一条目也用于 V，因此输出携带位置分量；参考实现对输出最后 64 维施加当前 query 位置的逆 RoPE。每头另有 attention sink logit b：</p>
+<div class="math display-math">\[
+p_{h,j}=\frac{\exp(\ell_{h,j})}{\sum_r\exp(\ell_{h,r})+\exp(b_h)}.
+\]</div>
+
+<p>Sink 增加分母，不提供一个普通历史 V；实际条目权重之和可以小于 1。</p>
+<p>来源：<a href="https://arxiv.org/html/2606.19348v1">V4 attention 公式</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/inference/model.py">官方参考实现</a>、<a href="https://huggingface.co/docs/transformers/v5.20.0/model_doc/deepseek_v4">Transformers V4 实现说明</a>。</p>
+<h2 id="7-用同一历史长度比较读取与缓存">7. 用同一历史长度比较读取与缓存</h2>
+<p>固定为单请求 decode：已有 P=131072 个历史 token，本次输入 1 个新 token，T=131073。这个新 token 尚未完成下一压缩组。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>每层、单请求</th>
+<th style="text-align: right;">V3</th>
+<th style="text-align: right;">V3.2</th>
+<th style="text-align: right;">V4-Pro CSA</th>
+<th style="text-align: right;">V4-Pro HCA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>长程主缓存条目数</td>
+<td style="text-align: right;">131073</td>
+<td style="text-align: right;">131073</td>
+<td style="text-align: right;">32768</td>
+<td style="text-align: right;">1024</td>
+</tr>
+<tr>
+<td>主 attention 访问的长程条目数</td>
+<td style="text-align: right;">131073</td>
+<td style="text-align: right;">至多 2048</td>
+<td style="text-align: right;">至多 1024</td>
+<td style="text-align: right;">1024</td>
+</tr>
+<tr>
+<td>独立局部窗口</td>
+<td style="text-align: right;">无；已包含在全量集合</td>
+<td style="text-align: right;">无独立保留窗口保证</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">128</td>
+</tr>
+<tr>
+<td>Indexer 扫描条目数</td>
+<td style="text-align: right;">无</td>
+<td style="text-align: right;">131073</td>
+<td style="text-align: right;">32768</td>
+<td style="text-align: right;">无</td>
+</tr>
+<tr>
+<td>主缓存每条逻辑宽度</td>
+<td style="text-align: right;">512 + 64</td>
+<td style="text-align: right;">512 + 64</td>
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">512</td>
+</tr>
+<tr>
+<td>额外 indexer key 宽度</td>
+<td style="text-align: right;">无</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">无</td>
+</tr>
+</tbody>
+</table></div>
+<p>在这个例子里，CSA/HCA 的主 attention 都读 1152 条，但 CSA 先在 32768 条细摘要中筛选；HCA 直接读全部粗摘要。不能据此断言两种层延迟相同。</p>
+<p>只按主缓存有效元素、并假设统一 BF16，容量可手算为：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>类型</th>
+<th style="text-align: right;">元素数</th>
+<th style="text-align: right;">假设 BF16 的字节数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>V3 / V3.2 主缓存</td>
+<td style="text-align: right;"><code>131073 × 576 = 75498048</code></td>
+<td style="text-align: right;"><code>150996096</code>，约 144 MiB</td>
+</tr>
+<tr>
+<td>CSA 主缓存，含窗口</td>
+<td style="text-align: right;"><code>(32768+128) × 512 = 16842752</code></td>
+<td style="text-align: right;"><code>33685504</code>，32.125 MiB</td>
+</tr>
+<tr>
+<td>HCA 主缓存，含窗口</td>
+<td style="text-align: right;"><code>(1024+128) × 512 = 589824</code></td>
+<td style="text-align: right;"><code>1179648</code>，1.125 MiB</td>
+</tr>
+</tbody>
+</table></div>
+<p>这是便于比较形状的假设值，不是实际部署显存。V3.2 还有 indexer cache；V4 有 indexer cache、压缩器的未完成组状态和重叠组状态。实际 cache 可能混用 FP8/BF16，还包含 scales、页表、分配粒度与容量预留。参考代码也可能在 BF16 tensor 中模拟量化精度，不能把它的分配量当作优化服务的物理格式。</p>
+<h2 id="8-mhc-同一个-token-的多条残差流">8. mHC：同一个 token 的多条残差流</h2>
+<h3 id="8-1-从普通残差到四条流">8.1 从普通残差到四条流</h3>
+<p>普通子层忽略 norm 后为 <span class="math">\(x'=x+F(x)\)</span>。F 可以是 attention 或 FFN。V4 把一个 token 的层间状态从 <code>[D]</code> 扩成 <code>[4,D]</code>：</p>
+<div class="math display-math">\[
+X&#x27;=BX+C\,F(AX),
+\quad A\in\mathbb R^{1\times4},\ B\in\mathbb R^{4\times4},\ C\in\mathbb R^{4\times1}.
+\]</div>
+
+<div class="codehilite text-diagram"><pre><span></span>X：[4,D] ── A：[1,4] ──→ 子层输入：[1,D] ── F ──→ [1,D]
+   │                                                 │
+   └── B：[4,4] ──→ 原残差混合：[4,D]       C：[4,1] ──→ [4,D]
+                            └──────────── 相加 ────────────┘
+                                           ↓
+                                      X_next：[4,D]
+</pre></div>
+
+
+<p>4 是 residual stream 数，不是 batch、token 数或 head 数。Attention/FFN 只接收一次 D 维输入，不因为有 4 条流就执行 4 份完整子层。Attention 前后和 FFN 前后分别有一套混合参数。</p>
+<h3 id="8-2-混合系数怎样产生">8.2 混合系数怎样产生</h3>
+<p>以 Pro 的 D=7168 为例，当前状态展平为 <code>[28672]</code>。一个小投影产生 <code>4+4+16=24</code> 个动态系数，再叠加可学习的静态偏置和缩放。A、C 使用有界非负变换，B 用 Sinkhorn-Knopp 处理。</p>
+<p>B 被限制为双随机矩阵：元素非负，每行和每列都为 1。有限次迭代只近似满足约束。Pro 配置中迭代次数为 20。</p>
+<p>只看两个流的一个特征：</p>
+<div class="math display-math">\[
+\begin{bmatrix}0.8&amp;0.2\\0.2&amp;0.8\end{bmatrix}
+\begin{bmatrix}10\\2\end{bmatrix}
+=
+\begin{bmatrix}8.4\\3.6\end{bmatrix}.
+\]</div>
+
+<p>这个例子里，流之间交换信息，但残差混合没有把数值无约束地放大。两项和仍为 12，各项位于原来的 2 到 10 之间。该性质针对固定 B 的残差混合路径。加入子层、动态系数的导数后，不构成整个网络永不失稳的证明。</p>
+<h3 id="8-3-多条-residual-不等于历史-hidden-cache">8.3 多条 residual 不等于历史 hidden cache</h3>
+<p>Decode 时保存的是当前 token 的 <code>[4,D]</code> 状态，逐层生成各层 cache 后就可以释放相应临时 activation。下一 token 依靠各层 cache 读取历史，无需重跑历史 FFN。增加残差流会增加 activation 读写与混合开销，但不会要求普通生成保存所有历史层的完整 hidden。</p>
+<p>来源：<a href="https://arxiv.org/html/2512.24880v2">mHC 原论文</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/inference/model.py">V4 实现</a>。</p>
+<h2 id="9-muon-训练时变换更新矩阵">9. Muon：训练时变换更新矩阵</h2>
+<p>Muon 是 optimizer，与 AdamW 属于同一层面。它作用在 backward 之后：</p>
+<div class="codehilite text-diagram"><pre><span></span>forward → loss → backward → 梯度矩阵 → 动量与更新变换 → 修改权重
+</pre></div>
+
+
+<p>设权重 <span class="math">\(W\in\mathbb R^{m\times n}\)</span>，梯度为 G。省略 Nesterov、weight decay 和额外缩放的示意为：</p>
+<div class="math display-math">\[
+M_t=\beta M_{t-1}+G_t,\qquad
+U_t\approx\operatorname{Ortho}(M_t),\qquad
+W_{t+1}=W_t-\eta U_t.
+\]</div>
+
+<p>Muon 近似正交化的是<strong>更新矩阵</strong>，不直接强制权重 W 正交。与按元素估计尺度的优化器相比，它利用整个更新矩阵的结构。</p>
+<p>用一个理想化的满秩对角例子理解：</p>
+<div class="math display-math">\[
+M=\begin{bmatrix}100&amp;0\\0&amp;1\end{bmatrix}
+\quad\longrightarrow\quad
+\operatorname{Ortho}(M)=\begin{bmatrix}1&amp;0\\0&amp;1\end{bmatrix}.
+\]</div>
+
+<p>把整个 M 除以一个常数，仍保留 100:1 的强度差。理想正交化调整不同方向的尺度，再用学习率控制整体更新。一般非对角矩阵不能逐元素照搬这个例子，有限次近似也不保证精确得到单位矩阵。</p>
+<h3 id="newton-schulz-与-v4-的混合迭代">Newton-Schulz 与 V4 的混合迭代</h3>
+<p>正交化用一系列矩阵乘法近似完成。归一化初始矩阵后，迭代具有如下形式：</p>
+<div class="math display-math">\[
+X_{k+1}=aX_k+b(X_kX_k^T)X_k+c(X_kX_k^T)^2X_k.
+\]</div>
+
+<p>V4 使用 10 次混合迭代：前 8 次与后 2 次使用不同系数，并使用 Nesterov 和更新 RMS 缩放。Embedding、预测头、RMSNorm，以及 mHC 的静态偏置和 gating factors 仍使用 AdamW。</p>
+<p>Muon 增加了 optimizer 阶段的矩阵运算。评估收益应比较达到同等质量的总训练时间，不能直接推断每步更快。推理只读取已经训练好的权重，不执行 Muon。mHC 和 CSA/HCA 则属于 forward，推理仍会执行。</p>
+<p>来源：<a href="https://kellerjordan.github.io/posts/muon/">Muon 作者说明</a>、<a href="https://github.com/KellerJordan/Muon">实现仓库</a>、<a href="https://arxiv.org/html/2606.19348v1">V4 optimizer 算法</a>。</p>
+<h2 id="10-阅读顺序与来源">10. 阅读顺序与来源</h2>
+<p>先把<a href="deepseek-forward-shapes.html">前向与形状</a>中的 V3 路径走通，再看 V3.2 增加的 indexer，最后把 V4 的 cache、输出投影与 residual 替换进去。遇到通用概念，可回到 <a href="attention-transformer-runtime.html">Transformer 运行全过程</a>、<a href="gpu-precision-and-quantization.html">浮点格式与量化</a>和<a href="gpu-communication-and-allreduce.html">MoE 所需的通信基础</a>。</p>
+<p>本文配置固定在下列 revision，完整 JSON 位于<a href="assets/deepseek-configs.json">配置快照</a>。固定配置用于复核尺寸，不代表已执行这些模型。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>固定配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>V2</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/config.json">4461458f</a></td>
+</tr>
+<tr>
+<td>V3</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/e815299b0bcbac849fa540c768ef21845365c9eb/config.json">e815299b</a></td>
+</tr>
+<tr>
+<td>V3.2</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/config.json">a7e62ac0</a></td>
+</tr>
+<tr>
+<td>V4-Flash</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/config.json">60d8d707</a></td>
+</tr>
+<tr>
+<td>V4-Pro</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json">b5968e91</a></td>
+</tr>
+</tbody>
+</table></div></article><footer>DeepSeek 架构与前向教学，附官方配置快照、技术报告和参考代码；形状与容量为静态推导，未运行模型或 GPU 性能验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-几代模型分别改变了什么">1. 几代模型分别改变了什么</a><a class="level-2" href="#2-配置与参数规模">2. 配置与参数规模</a><a class="level-2" href="#3-v2-每个-token-一份-latent-多个-head-使用它">3. V2：每个 token 一份 latent，多个 head 使用它</a><a class="level-2" href="#4-v3-mla-不变-把训练与-moe-扩展到更大规模">4. V3：MLA 不变，把训练与 MoE 扩展到更大规模</a><a class="level-2" href="#5-v3-2-dsa-indexer-选择位置-主-mla-计算结果">5. V3.2 DSA：indexer 选择位置，主 MLA 计算结果</a><a class="level-2" href="#6-v4-csa-与-hca-压缩序列维度">6. V4：CSA 与 HCA 压缩序列维度</a><a class="level-2" href="#7-用同一历史长度比较读取与缓存">7. 用同一历史长度比较读取与缓存</a><a class="level-2" href="#8-mhc-同一个-token-的多条残差流">8. mHC：同一个 token 的多条残差流</a><a class="level-2" href="#9-muon-训练时变换更新矩阵">9. Muon：训练时变换更新矩阵</a><a class="level-2" href="#10-阅读顺序与来源">10. 阅读顺序与来源</a></nav></aside></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>

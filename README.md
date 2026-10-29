@@ -19,6 +19,7 @@
 - Attention 独立成板块：[Transformer 运行全过程](Attention/transformer-runtime.md) 从文本、Q/K/V、每层计算走到 prefill、KV cache、decode 与训练；[FlashAttention 1–4](CUDA/flash-attention.md) 从 online softmax 推导讲到四代前后向、Ampere/Hopper/Blackwell、TMA/TMEM、条件缩放与 2-CTA，并附教学实现和源码入口。
 - [Flash Linear Attention](Attention/flash-linear-attention.md) 讲清线性注意力的矩阵状态、causal 递推、chunkwise 公式、GLA 遗忘门、DeltaNet/Gated DeltaNet、GPU 执行与 FLA 库接口，并提供 Torch 参考实现。
 - [DeepSeek、Kimi 与 Qwen 架构](Attention/model-architectures.md) 对照代表版本的主干配置，讲解 MLA/GQA、DSA/CSA/CSA2/QSA、KDA/GDN、MoE/LatentMoE、mHC/AttnRes/GR、多模态、MTP 与缓存，并保存官方配置的版本化摘录。
+- DeepSeek 独立成板块：[V2–V4 架构演进](DeepSeek/evolution.md) 讲 MLA、DSA、CSA/HCA、MoE、mHC 与 Muon；[一次前向与张量形状](DeepSeek/forward-shapes.md) 对照 V3、V3.2、V4-Pro 的权重、cache、decode/prefill 和输出，并附固定版本的官方配置。
 - 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、冰蓝浅色与中性深灰主题及手机阅读。深色模式提高正文与代码的可读性；首次访问跟随系统主题，手动选择后记住偏好。
 
 ## 内容来源
@@ -31,7 +32,7 @@ STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存�
 
 ## 维护方式
 
-编辑各题型目录、`STL/`、`Python/`、`PyTorch/`、`CUDA/`、`Attention/` 与 `GPU/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
+编辑各题型目录、`STL/`、`Python/`、`PyTorch/`、`CUDA/`、`Attention/`、`DeepSeek/` 与 `GPU/` 下的 Markdown，然后生成网站。根目录的 HTML、`assets/code.css` 和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
 
 构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
 

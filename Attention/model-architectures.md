@@ -1,5 +1,7 @@
 # DeepSeek、Kimi、Qwen：模型结构与注意力变体
 
+DeepSeek 的逐代推导已独立整理为[架构演进](../DeepSeek/evolution.md)和[一次前向与张量形状](../DeepSeek/forward-shapes.md)。本页继续保留不同模型家族的横向对照。
+
 ## 1. 按版本看结构，按计算角色理解名词
 
 资料核对日期为 **2026-10-28**。本页选择三家公开模型的主要架构路线，覆盖 DeepSeek-V3 到 V4.1、Kimi-K2 到 K3，以及 Qwen3、Next、3.5、3.8 的代表分支。它不是所有 checkpoint、API 别名或后训练版本的目录。
