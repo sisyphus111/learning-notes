@@ -1,4 +1,36 @@
 @font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-BoldItalic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Notes Mono";
   src: url("fonts/sarasa-fixed-sc-regular.woff2") format("woff2");
   font-weight: 400;
@@ -26,7 +58,7 @@
   --syntax-string: #10b981;
   --syntax-number: #8b5cf6;
   --syntax-function: #f59e0b;
-  --font-mono: "Notes Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-mono: "JetBrains Mono", "Notes Mono", "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;
   line-height: 1.7;
@@ -597,6 +629,7 @@ article hr {
 /* 代码样式 */
 code {
   font: 13px/1.7 var(--font-mono);
+  font-variant-ligatures: none;
 }
 
 p code,
@@ -626,7 +659,7 @@ summary code {
   margin: 0;
   overflow: auto;
   padding: 40px 18px 18px;
-  font: 14px/1.65 var(--font-mono);
+  font: 15px/1.7 var(--font-mono);
   font-variant-ligatures: none;
   font-kerning: none;
   letter-spacing: 0;
@@ -646,6 +679,7 @@ summary code {
 
 /* Diagram rails use fixed character cells, including two-cell CJK glyphs. */
 .text-diagram pre {
+  font-family: "Notes Mono", monospace;
   font-size: 15px;
   line-height: 1.25;
 }

@@ -1,4 +1,12 @@
-# Notes Mono 字体资产
+# 网站等宽字体资产
+
+## JetBrains Mono：代码与行内代码
+
+代码使用 [JetBrains Mono v2.304](https://github.com/JetBrains/JetBrainsMono/tree/v2.304)，包含 Regular、Bold、Italic 和 BoldItalic 四个原版 WOFF2 文件，直接从上游 `fonts/webfonts/` 目录获取。字体随网站提供，无需访问者安装字体或连接第三方字体 CDN。原始许可证为 SIL OFL 1.1，见 [JetBrainsMono-OFL.txt](JetBrainsMono-OFL.txt)。
+
+普通代码优先使用 JetBrains Mono；中文等未覆盖字符由下述 Sarasa Fixed 子集补充。代码关闭编程连字，保持操作符逐字符显示。ASCII 字符图继续整体使用 `Notes Mono`，避免混合字体字宽破坏框线与中文对齐。
+
+## Notes Mono：字符图与中文后备
 
 `sarasa-fixed-sc-regular.woff2` 是 [Sarasa Gothic v1.0.43](https://github.com/be5invis/Sarasa-Gothic/releases/tag/v1.0.43) 中 `SarasaFixedSC-Regular.ttf` 的字符子集，供正文中的等宽文本和字符图使用。CSS 使用别名 `Notes Mono`。原始许可证为 SIL OFL 1.1，见同目录 [LICENSE](LICENSE)；保留原作者署名和字体名称。
 

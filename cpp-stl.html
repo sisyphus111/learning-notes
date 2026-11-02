@@ -3,7 +3,7 @@
 <title>STL 速查 · 求知录</title><meta name="description" content="容器、算法与常用写法">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
-<link rel="stylesheet" href="assets/style.css?v=cd516edc15"><link rel="stylesheet" href="assets/code.css">
+<link rel="stylesheet" href="assets/style.css?v=f1d89bddbd"><link rel="stylesheet" href="assets/code.css">
 <script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
 <script defer src="assets/site.js?v=791aca5848"></script>
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
@@ -21,6 +21,60 @@
 <a href="stl-sequence-containers.html">STL 02序列容器的底层行为array、vector、string、deque、list 的存储与失效规则。</a>
 <a href="stl-associative-containers.html">STL 03树容器与哈希容器map/set 与 unordered 系列的查找、插入和引用稳定性。</a>
 <a href="stl-adapters-iterators.html">STL 04适配器、迭代器与算法stack、queue、priority_queue、范围语义与算法修改行为。</a></p>
+<h2 id="lambda-匿名函数">lambda 匿名函数</h2>
+<p>lambda 用来在使用位置直接定义一小段函数逻辑。机考里常把它作为 <code>sort</code> 或 <code>priority_queue</code> 的自定义比较器，也可以先用 <code>auto</code> 保存，再像普通函数一样调用。</p>
+<h3 id="定义与调用">定义与调用</h3>
+<p>基本形式是 <code>auto 函数变量 = [捕获列表](参数列表) -&gt; 返回类型 { 函数体 };</code>。返回类型通常可以推导，此时省略 <code>-&gt; 返回类型</code>。</p>
+<div class="codehilite"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">add</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">add</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span><span class="w">                       </span><span class="c1">// 5</span>
+
+<span class="c1">// 省略返回类型；下面的 cmp 可以传给 sort</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cmp</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span><span class="w">                   </span><span class="c1">// true</span>
+</pre></div>
+
+
+<p><code>[]</code> 是捕获列表，决定函数体怎样使用外部局部变量；<code>(int a, int b)</code> 才是每次调用时传入的参数。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>捕获写法</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[]</code></td>
+<td>不捕获外部局部变量</td>
+</tr>
+<tr>
+<td><code>[limit]</code></td>
+<td>复制 <code>limit</code>，保留创建 lambda 时的值</td>
+</tr>
+<tr>
+<td><code>[&amp;limit]</code></td>
+<td>引用 <code>limit</code>，调用时访问外部变量</td>
+</tr>
+<tr>
+<td><code>[=]</code> / <code>[&amp;]</code></td>
+<td>默认按值 / 按引用捕获函数体所需的外部局部变量</td>
+</tr>
+</tbody>
+</table></div>
+<div class="codehilite"><pre><span></span><span class="kt">int</span><span class="w"> </span><span class="n">limit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">by_value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="n">limit</span><span class="p">](</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">limit</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">by_reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="n">limit</span><span class="p">](</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">limit</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
+<span class="n">limit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">20</span><span class="p">;</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">by_value</span><span class="p">(</span><span class="mi">15</span><span class="p">);</span><span class="w">                 </span><span class="c1">// true，比较 15 &gt; 10</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">second</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">by_reference</span><span class="p">(</span><span class="mi">15</span><span class="p">);</span><span class="w">            </span><span class="c1">// false，比较 15 &gt; 20</span>
+</pre></div>
+
+
+<p>引用捕获要求外部变量在调用时仍然存活。比较器若捕获外部状态，排序过程中或堆仍有元素时，不要改变会影响比较结果的状态。</p>
 <h2 id="常用写法速查">常用写法速查</h2>
 <h3 id="容器">容器</h3>
 <h3 id="vector-动态数组">vector - 动态数组</h3>
@@ -162,8 +216,8 @@
 
 <hr />
 <h3 id="priority_queue-优先队列-堆">priority_queue - 优先队列（堆）</h3>
-<div class="codehilite"><pre><span></span><span class="n">priority_queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pq</span><span class="p">;</span><span class="w">                     </span><span class="c1">// 大根堆</span>
-<span class="n">priority_queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">greater</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">pq</span><span class="p">;</span><span class="w"> </span><span class="c1">// 小根堆</span>
+<div class="codehilite"><pre><span></span><span class="n">priority_queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pq</span><span class="p">;</span><span class="w">                     </span><span class="c1">// 默认大根堆，top() 最大</span>
+<span class="n">priority_queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">greater</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">min_heap</span><span class="p">;</span><span class="w"> </span><span class="c1">// 小根堆，top() 最小</span>
 
 <span class="n">pq</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">x</span><span class="p">);</span><span class="w">                 </span><span class="c1">// 插入</span>
 <span class="n">pq</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span><span class="w">                   </span><span class="c1">// 删除堆顶</span>
@@ -171,40 +225,96 @@
 <span class="n">pq</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
 <span class="n">pq</span><span class="p">.</span><span class="n">empty</span><span class="p">();</span>
 
-<span class="c1">// pair 默认按 first 比较</span>
-<span class="n">priority_queue</span><span class="o">&lt;</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">pq</span><span class="p">;</span>
-
-<span class="c1">// 自定义比较</span>
-<span class="k">auto</span><span class="w"> </span><span class="n">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
-<span class="n">priority_queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="k">decltype</span><span class="p">(</span><span class="n">cmp</span><span class="p">)</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pq</span><span class="p">(</span><span class="n">cmp</span><span class="p">);</span>
+<span class="c1">// pair 先比较 first；first 相同时再比较 second</span>
+<span class="n">priority_queue</span><span class="o">&lt;</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">pairs</span><span class="p">;</span>
 </pre></div>
 
 
+<p><strong>用 lambda 自定义最小堆：</strong></p>
+<div class="codehilite"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
+<span class="n">priority_queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="k">decltype</span><span class="p">(</span><span class="n">cmp</span><span class="p">)</span><span class="o">&gt;</span><span class="w"> </span><span class="n">min_heap</span><span class="p">(</span><span class="n">cmp</span><span class="p">);</span>
+
+<span class="n">min_heap</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+<span class="n">min_heap</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="n">min_heap</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">min_heap</span><span class="p">.</span><span class="n">top</span><span class="p">();</span><span class="w">                 </span><span class="c1">// 1</span>
+<span class="n">min_heap</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">second</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">min_heap</span><span class="p">.</span><span class="n">top</span><span class="p">();</span><span class="w">                </span><span class="c1">// 3</span>
+</pre></div>
+
+
+<p><code>priority_queue&lt;元素类型, 底层容器类型, 比较器类型&gt;</code> 的第三个参数需要一个<strong>类型</strong>，所以用 <code>decltype(cmp)</code> 取得这个 lambda 的类型；构造时的 <code>(cmp)</code> 再把实际比较器对象传进去。C++17 中这种写法不能省掉构造参数 <code>(cmp)</code>。</p>
+<p>对堆而言，<code>cmp(a, b) == true</code> 表示 <code>a</code> 的优先级比 <code>b</code> 低。因此 <code>a &gt; b</code> 会让较小的值留在堆顶；<code>pop()</code> 只删除堆顶，不返回它，取值时先 <code>top()</code> 再 <code>pop()</code>。</p>
+<p>自定义结构体同样可用，例如按截止时间从早到晚取任务，相同时先取编号小的：</p>
+<div class="codehilite"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">Task</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">deadline</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">Task</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Task</span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">deadline</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">deadline</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">deadline</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">deadline</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">id</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="n">priority_queue</span><span class="o">&lt;</span><span class="n">Task</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Task</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="k">decltype</span><span class="p">(</span><span class="n">cmp</span><span class="p">)</span><span class="o">&gt;</span><span class="w"> </span><span class="n">tasks</span><span class="p">(</span><span class="n">cmp</span><span class="p">);</span>
+<span class="n">tasks</span><span class="p">.</span><span class="n">push</span><span class="p">({</span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">});</span>
+<span class="n">tasks</span><span class="p">.</span><span class="n">push</span><span class="p">({</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">});</span>
+<span class="n">tasks</span><span class="p">.</span><span class="n">push</span><span class="p">({</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">});</span>
+<span class="n">Task</span><span class="w"> </span><span class="n">next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tasks</span><span class="p">.</span><span class="n">top</span><span class="p">();</span><span class="w">                    </span><span class="c1">// deadline = 2，id = 1</span>
+</pre></div>
+
+
+<p>这些片段使用 <code>&lt;queue&gt;</code>、<code>&lt;vector&gt;</code>；<code>greater&lt;int&gt;</code> 还需要 <code>&lt;functional&gt;</code>。按本站片段约定，省略了 <code>std::</code> 前缀。</p>
 <hr />
 <h2 id="算法">算法</h2>
 <h3 id="排序">排序</h3>
 <div class="codehilite"><pre><span></span><span class="n">sort</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">());</span><span class="w">                   </span><span class="c1">// 升序</span>
 <span class="n">sort</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="n">greater</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">());</span><span class="w">   </span><span class="c1">// 降序</span>
 
-<span class="c1">// 自定义比较</span>
+<span class="c1">// 直接传入 lambda：降序</span>
 <span class="n">sort</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
 <span class="p">});</span>
 
-<span class="c1">// 结构体排序</span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">Node</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
-<span class="p">};</span>
-<span class="n">sort</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">Node</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Node</span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">y</span><span class="p">;</span>
-<span class="p">});</span>
+<span class="c1">// 也可以先定义，再传给 sort</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">cmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
+<span class="n">sort</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="n">cmp</span><span class="p">);</span><span class="w">              </span><span class="c1">// 升序</span>
 
-<span class="c1">// 稳定排序</span>
+<span class="c1">// 稳定排序：比较器认为等价的元素保留原来的相对顺序</span>
 <span class="n">stable_sort</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
 </pre></div>
 
 
+<p><strong>结构体按多个字段排序：</strong>先按 <code>x</code> 升序，<code>x</code> 相同时按 <code>y</code> 升序。</p>
+<div class="codehilite"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">Node</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="n">vector</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span><span class="w"> </span><span class="n">nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{{</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">}};</span>
+<span class="n">sort</span><span class="p">(</span><span class="n">nodes</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">nodes</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">Node</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Node</span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">y</span><span class="p">;</span>
+<span class="p">});</span>
+<span class="c1">// 排序结果：{1, 2}, {1, 3}, {2, 1}</span>
+</pre></div>
+
+
+<p>对 <code>sort</code> 而言，<code>cmp(a, b) == true</code> 表示 <code>a</code> 应排在 <code>b</code> 前面。比较器必须满足严格弱序，不能把 <code>&lt;</code> / <code>&gt;</code> 写成 <code>&lt;=</code> / <code>&gt;=</code>；相等时应返回 <code>false</code>。结构体用 <code>const Node&amp;</code> 传参，避免每次比较都复制对象。<code>sort</code> 需要 <code>&lt;algorithm&gt;</code>。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>想让较小元素先出现</th>
+<th>比较器</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sort</code> 升序排列</td>
+<td><code>return a &lt; b;</code></td>
+</tr>
+<tr>
+<td><code>priority_queue</code> 最小堆</td>
+<td><code>return a &gt; b;</code></td>
+</tr>
+</tbody>
+</table></div>
 <hr />
 <h3 id="二分查找">二分查找</h3>
 <div class="codehilite"><pre><span></span><span class="c1">// 前提：数组已排序</span>
@@ -387,6 +497,63 @@
 
 
 <hr />
+<h2 id="数值边界-numeric_limits">数值边界：numeric_limits</h2>
+<p><code>std::numeric_limits&lt;T&gt;</code> 用来查询类型 <code>T</code> 的数值范围，需要头文件 <code>&lt;limits&gt;</code>。机考中获取 <code>int</code> 的最大值和最小值，直接写：</p>
+<div class="codehilite"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;limits&gt;</span>
+
+<span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">int_max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">();</span>
+<span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">int_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;::</span><span class="n">min</span><span class="p">();</span>
+<span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">int_lowest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;::</span><span class="n">lowest</span><span class="p">();</span><span class="w"> </span><span class="c1">// 对 int 等于 min()</span>
+
+<span class="k">constexpr</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ll_max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">();</span>
+<span class="k">constexpr</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ll_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="o">&gt;::</span><span class="n">lowest</span><span class="p">();</span>
+</pre></div>
+
+
+<p>在常见的 32 位 <code>int</code> 环境中，最大值是 <code>2147483647</code>，最小值是 <code>-2147483648</code>。使用上面的函数可以避免硬编码位宽；最小值不要写成 <code>-int_max</code>，它在该环境中会差 1。</p>
+<p>常用来初始化“求最大值 / 最小值”的答案：</p>
+<div class="codehilite"><pre><span></span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">-5</span><span class="p">,</span><span class="w"> </span><span class="mi">-2</span><span class="p">,</span><span class="w"> </span><span class="mi">-9</span><span class="p">};</span><span class="w">           </span><span class="c1">// 此处保证非空</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">best_max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;::</span><span class="n">lowest</span><span class="p">();</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">best_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">();</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">values</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">best_max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span><span class="n">best_max</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">);</span>
+<span class="w">    </span><span class="n">best_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">best_min</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="c1">// best_max = -2，best_min = -9</span>
+</pre></div>
+
+
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>写法</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>numeric_limits&lt;int&gt;::max()</code></td>
+<td><code>int</code> 的最大值</td>
+</tr>
+<tr>
+<td><code>numeric_limits&lt;int&gt;::min()</code> / <code>lowest()</code></td>
+<td><code>int</code> 的最小值</td>
+</tr>
+<tr>
+<td><code>numeric_limits&lt;double&gt;::max()</code></td>
+<td><code>double</code> 的最大有限值</td>
+</tr>
+<tr>
+<td><code>numeric_limits&lt;double&gt;::lowest()</code></td>
+<td><code>double</code> 的最负有限值</td>
+</tr>
+<tr>
+<td><code>numeric_limits&lt;double&gt;::min()</code></td>
+<td><code>double</code> 的最小正正规数，不是最负值</td>
+</tr>
+</tbody>
+</table></div>
+<p>也可以用 <code>&lt;climits&gt;</code> 中的 <code>INT_MAX</code>、<code>INT_MIN</code>、<code>LLONG_MAX</code>、<code>LLONG_MIN</code>。这些整数边界是有限值，不是数学上的无穷；不要直接计算 <code>int_max + 1</code>、<code>int_min - 1</code> 或 <code>-int_min</code>，它们会造成有符号整数溢出。最短路或 DP 若用最大值表示“不可达”，先判断是否可达，并确保后续加法不超出类型范围。</p>
 <h2 id="常见陷阱">常见陷阱</h2>
 <ol>
 <li><strong>无符号类型</strong>：<code>size()</code> 返回无符号类型，减法可能溢出</li>
@@ -452,7 +619,7 @@
 <td>O(log n) 插入/删除</td>
 </tr>
 </tbody>
-</table></div></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#板块导航">板块导航</a><a class="level-2" href="#常用写法速查">常用写法速查</a><a class="level-2" href="#算法">算法</a><a class="level-2" href="#输入输出">输入输出</a><a class="level-2" href="#常用函数">常用函数</a><a class="level-2" href="#常见陷阱">常见陷阱</a><a class="level-2" href="#容器选择">容器选择</a></nav></aside></div>
+</table></div></article><footer>STL 内容选自旧手册，现以 Markdown 维护。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#板块导航">板块导航</a><a class="level-2" href="#lambda-匿名函数">lambda 匿名函数</a><a class="level-2" href="#常用写法速查">常用写法速查</a><a class="level-2" href="#算法">算法</a><a class="level-2" href="#输入输出">输入输出</a><a class="level-2" href="#常用函数">常用函数</a><a class="level-2" href="#数值边界-numeric_limits">数值边界：numeric_limits</a><a class="level-2" href="#常见陷阱">常见陷阱</a><a class="level-2" href="#容器选择">容器选择</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>

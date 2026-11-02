@@ -11,6 +11,47 @@ STL 不只是一组可以背诵的函数。容器的底层结构决定了它怎�
 [STL 03树容器与哈希容器map/set 与 unordered 系列的查找、插入和引用稳定性。](stl-associative-containers.md)
 [STL 04适配器、迭代器与算法stack、queue、priority_queue、范围语义与算法修改行为。](stl-adapters-iterators.md)
 
+## lambda 匿名函数
+
+lambda 用来在使用位置直接定义一小段函数逻辑。机考里常把它作为 `sort` 或 `priority_queue` 的自定义比较器，也可以先用 `auto` 保存，再像普通函数一样调用。
+
+### 定义与调用
+
+基本形式是 `auto 函数变量 = [捕获列表](参数列表) -> 返回类型 { 函数体 };`。返回类型通常可以推导，此时省略 `-> 返回类型`。
+
+```cpp
+auto add = [](int a, int b) -> int {
+    return a + b;
+};
+int sum = add(2, 3);                       // 5
+
+// 省略返回类型；下面的 cmp 可以传给 sort
+auto cmp = [](int a, int b) {
+    return a < b;
+};
+bool before = cmp(2, 3);                   // true
+```
+
+`[]` 是捕获列表，决定函数体怎样使用外部局部变量；`(int a, int b)` 才是每次调用时传入的参数。
+
+| 捕获写法 | 含义 |
+| --- | --- |
+| `[]` | 不捕获外部局部变量 |
+| `[limit]` | 复制 `limit`，保留创建 lambda 时的值 |
+| `[&limit]` | 引用 `limit`，调用时访问外部变量 |
+| `[=]` / `[&]` | 默认按值 / 按引用捕获函数体所需的外部局部变量 |
+
+```cpp
+int limit = 10;
+auto by_value = [limit](int x) { return x > limit; };
+auto by_reference = [&limit](int x) { return x > limit; };
+limit = 20;
+bool first = by_value(15);                 // true，比较 15 > 10
+bool second = by_reference(15);            // false，比较 15 > 20
+```
+
+引用捕获要求外部变量在调用时仍然存活。比较器若捕获外部状态，排序过程中或堆仍有元素时，不要改变会影响比较结果的状态。
+
 ## 常用写法速查
 
 ### 容器
@@ -172,8 +213,8 @@ dq[i];                      // 随机访问
 ### priority_queue - 优先队列（堆）
 
 ```cpp
-priority_queue<int> pq;                     // 大根堆
-priority_queue<int, vector<int>, greater<int>> pq; // 小根堆
+priority_queue<int> pq;                     // 默认大根堆，top() 最大
+priority_queue<int, vector<int>, greater<int>> min_heap; // 小根堆，top() 最小
 
 pq.push(x);                 // 插入
 pq.pop();                   // 删除堆顶
@@ -181,13 +222,47 @@ pq.top();                   // 堆顶
 pq.size();
 pq.empty();
 
-// pair 默认按 first 比较
-priority_queue<pair<int, int>> pq;
-
-// 自定义比较
-auto cmp = [](int a, int b) { return a > b; };
-priority_queue<int, vector<int>, decltype(cmp)> pq(cmp);
+// pair 先比较 first；first 相同时再比较 second
+priority_queue<pair<int, int>> pairs;
 ```
+
+**用 lambda 自定义最小堆：**
+
+```cpp
+auto cmp = [](int a, int b) { return a > b; };
+priority_queue<int, vector<int>, decltype(cmp)> min_heap(cmp);
+
+min_heap.push(5);
+min_heap.push(1);
+min_heap.push(3);
+int first = min_heap.top();                 // 1
+min_heap.pop();
+int second = min_heap.top();                // 3
+```
+
+`priority_queue<元素类型, 底层容器类型, 比较器类型>` 的第三个参数需要一个**类型**，所以用 `decltype(cmp)` 取得这个 lambda 的类型；构造时的 `(cmp)` 再把实际比较器对象传进去。C++17 中这种写法不能省掉构造参数 `(cmp)`。
+
+对堆而言，`cmp(a, b) == true` 表示 `a` 的优先级比 `b` 低。因此 `a > b` 会让较小的值留在堆顶；`pop()` 只删除堆顶，不返回它，取值时先 `top()` 再 `pop()`。
+
+自定义结构体同样可用，例如按截止时间从早到晚取任务，相同时先取编号小的：
+
+```cpp
+struct Task {
+    int deadline;
+    int id;
+};
+auto cmp = [](const Task& a, const Task& b) {
+    if (a.deadline != b.deadline) return a.deadline > b.deadline;
+    return a.id > b.id;
+};
+priority_queue<Task, vector<Task>, decltype(cmp)> tasks(cmp);
+tasks.push({5, 1});
+tasks.push({2, 3});
+tasks.push({2, 1});
+Task next = tasks.top();                    // deadline = 2，id = 1
+```
+
+这些片段使用 `<queue>`、`<vector>`；`greater<int>` 还需要 `<functional>`。按本站片段约定，省略了 `std::` 前缀。
 
 ---
 
@@ -199,23 +274,39 @@ priority_queue<int, vector<int>, decltype(cmp)> pq(cmp);
 sort(v.begin(), v.end());                   // 升序
 sort(v.begin(), v.end(), greater<int>());   // 降序
 
-// 自定义比较
+// 直接传入 lambda：降序
 sort(v.begin(), v.end(), [](int a, int b) {
     return a > b;
 });
 
-// 结构体排序
+// 也可以先定义，再传给 sort
+auto cmp = [](int a, int b) { return a < b; };
+sort(v.begin(), v.end(), cmp);              // 升序
+
+// 稳定排序：比较器认为等价的元素保留原来的相对顺序
+stable_sort(v.begin(), v.end());
+```
+
+**结构体按多个字段排序：**先按 `x` 升序，`x` 相同时按 `y` 升序。
+
+```cpp
 struct Node {
     int x, y;
 };
-sort(v.begin(), v.end(), [](const Node& a, const Node& b) {
+vector<Node> nodes = {{2, 1}, {1, 3}, {1, 2}};
+sort(nodes.begin(), nodes.end(), [](const Node& a, const Node& b) {
     if (a.x != b.x) return a.x < b.x;
     return a.y < b.y;
 });
-
-// 稳定排序
-stable_sort(v.begin(), v.end());
+// 排序结果：{1, 2}, {1, 3}, {2, 1}
 ```
+
+对 `sort` 而言，`cmp(a, b) == true` 表示 `a` 应排在 `b` 前面。比较器必须满足严格弱序，不能把 `<` / `>` 写成 `<=` / `>=`；相等时应返回 `false`。结构体用 `const Node&` 传参，避免每次比较都复制对象。`sort` 需要 `<algorithm>`。
+
+| 想让较小元素先出现 | 比较器 |
+| --- | --- |
+| `sort` 升序排列 | `return a < b;` |
+| `priority_queue` 最小堆 | `return a > b;` |
 
 ---
 
@@ -427,6 +518,46 @@ __builtin_ffs(x);           // 最低位 1 的位置（1-indexed）
 ```
 
 ---
+
+## 数值边界：numeric_limits
+
+`std::numeric_limits<T>` 用来查询类型 `T` 的数值范围，需要头文件 `<limits>`。机考中获取 `int` 的最大值和最小值，直接写：
+
+```cpp
+#include <limits>
+
+constexpr int int_max = std::numeric_limits<int>::max();
+constexpr int int_min = std::numeric_limits<int>::min();
+constexpr int int_lowest = std::numeric_limits<int>::lowest(); // 对 int 等于 min()
+
+constexpr long long ll_max = std::numeric_limits<long long>::max();
+constexpr long long ll_min = std::numeric_limits<long long>::lowest();
+```
+
+在常见的 32 位 `int` 环境中，最大值是 `2147483647`，最小值是 `-2147483648`。使用上面的函数可以避免硬编码位宽；最小值不要写成 `-int_max`，它在该环境中会差 1。
+
+常用来初始化“求最大值 / 最小值”的答案：
+
+```cpp
+vector<int> values = {-5, -2, -9};           // 此处保证非空
+int best_max = std::numeric_limits<int>::lowest();
+int best_min = std::numeric_limits<int>::max();
+for (int x : values) {
+    best_max = std::max(best_max, x);
+    best_min = std::min(best_min, x);
+}
+// best_max = -2，best_min = -9
+```
+
+| 写法 | 含义 |
+| --- | --- |
+| `numeric_limits<int>::max()` | `int` 的最大值 |
+| `numeric_limits<int>::min()` / `lowest()` | `int` 的最小值 |
+| `numeric_limits<double>::max()` | `double` 的最大有限值 |
+| `numeric_limits<double>::lowest()` | `double` 的最负有限值 |
+| `numeric_limits<double>::min()` | `double` 的最小正正规数，不是最负值 |
+
+也可以用 `<climits>` 中的 `INT_MAX`、`INT_MIN`、`LLONG_MAX`、`LLONG_MIN`。这些整数边界是有限值，不是数学上的无穷；不要直接计算 `int_max + 1`、`int_min - 1` 或 `-int_min`，它们会造成有符号整数溢出。最短路或 DP 若用最大值表示“不可达”，先判断是否可达，并确保后续加法不超出类型范围。
 
 ## 常见陷阱
 
