@@ -519,7 +519,113 @@ X_{k+1}=aX_k+b(X_kX_k^T)X_k+c(X_kX_k^T)^2X_k.
 <p>V4 使用 10 次混合迭代：前 8 次与后 2 次使用不同系数，并使用 Nesterov 和更新 RMS 缩放。Embedding、预测头、RMSNorm，以及 mHC 的静态偏置和 gating factors 仍使用 AdamW。</p>
 <p>Muon 增加了 optimizer 阶段的矩阵运算。评估收益应比较达到同等质量的总训练时间，不能直接推断每步更快。推理只读取已经训练好的权重，不执行 Muon。mHC 和 CSA/HCA 则属于 forward，推理仍会执行。</p>
 <p>来源：<a href="https://kellerjordan.github.io/posts/muon/">Muon 作者说明</a>、<a href="https://github.com/KellerJordan/Muon">实现仓库</a>、<a href="https://arxiv.org/html/2606.19348v1">V4 optimizer 算法</a>。</p>
-<h2 id="10-阅读顺序与来源">10. 阅读顺序与来源</h2>
+<h2 id="10-从-v3-2-到-v4-设计是否更保守">10. 从 V3.2 到 V4：设计是否更保守</h2>
+<p><strong>V4 的 KV 使用方式更直接，但对历史信息的压缩更激进。</strong> 如果“保守”指减少 MLA 中显式的 K/V 上投影与权重吸收，能理解这种判断；如果指架构改动更小，或者更完整地保留历史细节，这个判断就不成立。</p>
+<p>本节于 2026-11-03 补充。下面先比较公开结构，再讨论设计取舍；“更直接”“更激进”是基于机制的分析，不是论文给出的能力排名，也不是本机性能测量。</p>
+<h3 id="10-1-kv-使用方式更直接-但核心计算有连续性">10.1 KV 使用方式更直接，但核心计算有连续性</h3>
+<p>V3.2 的 MLA 在模型定义中，通过共同 latent 生成各 head 的内容 K/V。执行时可以吸收 K 投影，并将 V 投影移到加权聚合之后，从而直接读取 latent。V4 则直接规定：压缩条目兼作主 attention 的 K 和 V。</p>
+<div class="codehilite text-diagram"><pre><span></span>V3.2，按吸收后的执行方式理解：
+逐 token 的共同 latent → indexer 选位置 → 多头打分与 latent 聚合 → 输出映射
+
+V4 CSA：
+多个 token 的学习压缩条目 → indexer 选条目 → 与近期窗口共同参与 attention → 分组输出映射
+
+V4 HCA：
+更粗的学习压缩条目 → 全部可见条目与近期窗口共同参与 attention → 分组输出映射
+</pre></div>
+
+
+<p>V3.2 报告明确说明，DSA 使用 MLA 的 <strong>MQA mode</strong>。它的高效核心计算也已经是多个 query heads 读取共同 latent。因此，不能把“未吸收 MLA 的模型定义图”和“V4 的直接执行图”当成同一层面的比较，再由此得出 V4 退回了简单 attention。<a href="https://arxiv.org/html/2512.02556v1">V3.2 §2.1 与附录 A</a></p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>比较对象</th>
+<th>V3.2 的吸收后 MLA</th>
+<th>V4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>内容打分</td>
+<td>各 head 的 query 对共享 latent 打分</td>
+<td>各 head 的 query 对共享压缩条目打分</td>
+</tr>
+<tr>
+<td>内容聚合</td>
+<td>各 head 对同一 latent cache 加权</td>
+<td>各 head 对同一读取集合加权</td>
+</tr>
+<tr>
+<td>head 差异在哪里</td>
+<td>query、attention 权重及输出映射</td>
+<td>query、attention 权重及分组输出映射</td>
+</tr>
+<tr>
+<td>历史条目的单位</td>
+<td>每个 token 一份 latent</td>
+<td>多个 token 合成摘要，另保留近期逐 token 条目</td>
+</tr>
+</tbody>
+</table></div>
+<p>这张表只对照内容读取主线。两代的位置处理、归一化和参数化也有差别，不能据此把它们认定为同一个函数。V4 仍保留 query 的低秩中间表示，称它“放弃 latent”也不准确。<a href="https://arxiv.org/html/2606.19348v1">V4 §2.3</a></p>
+<h3 id="10-2-对历史细节的取舍-v4-反而更大胆">10.2 对历史细节的取舍，V4 反而更大胆</h3>
+<p>假设很早之前的一段代码包含几个变量名，当前 query 需要其中一个位置的信息。</p>
+<p>在 V3.2 中，每个历史位置仍保留自己的 MLA 条目。Indexer 这次没有选中某个位置，下一次仍有机会选择它。单条 latent 本身是压缩表示，但<strong>不同位置的记录仍然分别保存</strong>。</p>
+<p>在 V4 中，超出近期窗口的内容主要由学习得到的摘要承载。多个 token 已合并成一条记录，后来的 query 可以读取这条记录，却不能要求这一层再单独取回合并前那个位置的原始 KV 条目。</p>
+<div class="codehilite text-diagram"><pre><span></span>V3.2：保存逐位置条目，每次读取时选择
+V4：  先决定怎样合并位置，再读取或选择合并后的条目
+</pre></div>
+
+
+<p>这意味着 V4 的压缩器要提前学会保留未来可能用到的信息。HCA 每 128 个 token 形成一个条目，对逐位置访问自由度的约束尤其明显。SWA 保留近期细节，CSA 提供较细的长程摘要，HCA 提供较粗的长程覆盖，三者在不同层和读取分支中协作。</p>
+<p>这种组织比 V3.2 更积极地减少历史记录，但不能直接推导“任务效果更差”。摘要可以学到有用信息，前面的层也可以把信息传入后续表示。具体丢失哪些任务所需的细节，仍要通过质量评估判断。</p>
+<h3 id="10-3-更重视执行成本-是合理解读而非已验证结论">10.3 更重视执行成本，是合理解读而非已验证结论</h3>
+<p>V4 不再要求先定义各 head 的内容 K/V 展开，再靠吸收避免展开。它用直接的 shared K=V 接口组织主 attention，并通过 grouped output projection 控制宽输出的投影成本。<a href="https://arxiv.org/html/2606.19348v1">V4 shared-KV 与输出投影</a></p>
+<p><strong>我的解读是：设计者把更多重点放在历史条目数量、共享方式和可控的执行成本上。</strong> 这是从机制得到的判断。不能进一步省略验证，声称 V4 的全部 kernels 都更简单或更快：压缩器、indexer、SWA、缓存更新与因果边界也增加了工作。</p>
+<p>比较效率应至少区分：</p>
+<ul>
+<li>为当前 query 搬运多少历史数据；</li>
+<li>生成、选择和处理摘要需要多少计算；</li>
+<li>不同 batch、历史长度和 TP 布局下，主要瓶颈是什么；</li>
+<li>与该成本对应的模型质量是否达到同一要求。</li>
+</ul>
+<p>原版 V4 的压缩条目仍随历史增长，共享 KV 也不会自动解决所有 TP 下的缓存复制。不能将“每条记录更少”推导为“所有执行成本都与历史长度无关”。</p>
+<h3 id="10-4-不能只数矩阵-判断谁的表达能力更强">10.4 不能只数矩阵，判断谁的表达能力更强</h3>
+<p>共享 K/V、分组输出瓶颈都对参数之间的关系施加约束。相对一张完全自由的同形状大输出矩阵，分组投影确实限制了映射，并减少相应成本。</p>
+<p>但比较对象是 V3.2 时，结论没有这么直接：V3.2 本身也包含共同 latent、各 head 的投影与输出矩阵之间的因子分解。V4 又同时改变了位置处理、head 输出宽度和序列压缩。仅仅观察“少了一张上投影”或者“用了 MQA”，不足以证明两代模型存在严格的表达能力高低关系。</p>
+<p>在所核对的公开报告中，我没有看到隔离这些因素的完整同预算消融：保持其他结构和训练条件一致，只替换这套 attention 参数化，再比较质量与性能。因此，下列判断需要分别保留证据边界：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>“更保守”的具体含义</th>
+<th>本节判断</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KV 使用方式更直接，不再突出复杂的吸收技巧</td>
+<td>基本同意</td>
+</tr>
+<tr>
+<td>更愿意约束结构，换取可控的存储和执行成本</td>
+<td>部分同意，属于设计解读</td>
+</tr>
+<tr>
+<td>对旧 attention 架构的改动更小</td>
+<td>不同意，新增了跨 token 压缩与多粒度组合</td>
+</tr>
+<tr>
+<td>对历史细节保留得更完整、更谨慎</td>
+<td>不同意，逐位置记录被进一步合并</td>
+</tr>
+<tr>
+<td>表达能力或任务效果一定弱于 V3.2</td>
+<td>证据不足</td>
+</tr>
+</tbody>
+</table></div>
+<p>理解这次变化，可以沿着一个问题继续追踪：<strong>除了让每个 token 的历史表示更紧凑，还能怎样决定哪些细节值得长期保存，以及以什么粒度保存？</strong> 这正是 CSA/HCA 与局部窗口组合需要解决的问题。</p>
+<h2 id="11-阅读顺序与来源">11. 阅读顺序与来源</h2>
 <p>先把<a href="deepseek-forward-shapes.html">前向与形状</a>中的 V3 路径走通，再看 V3.2 增加的 indexer，最后把 V4 的 cache、输出投影与 residual 替换进去。遇到通用概念，可回到 <a href="attention-transformer-runtime.html">Transformer 运行全过程</a>、<a href="gpu-precision-and-quantization.html">浮点格式与量化</a>和<a href="gpu-communication-and-allreduce.html">MoE 所需的通信基础</a>。</p>
 <p>本文配置固定在下列 revision，完整 JSON 位于<a href="assets/deepseek-configs.json">配置快照</a>。固定配置用于复核尺寸，不代表已执行这些模型。</p>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
@@ -551,7 +657,7 @@ X_{k+1}=aX_k+b(X_kX_k^T)X_k+c(X_kX_k^T)^2X_k.
 <td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json">b5968e91</a></td>
 </tr>
 </tbody>
-</table></div></article><footer>DeepSeek 架构与前向教学，附官方配置快照、技术报告和参考代码；形状与容量为静态推导，未运行模型或 GPU 性能验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-几代模型分别改变了什么">1. 几代模型分别改变了什么</a><a class="level-2" href="#2-配置与参数规模">2. 配置与参数规模</a><a class="level-2" href="#3-v2-每个-token-一份-latent-多个-head-使用它">3. V2：每个 token 一份 latent，多个 head 使用它</a><a class="level-2" href="#4-v3-mla-不变-把训练与-moe-扩展到更大规模">4. V3：MLA 不变，把训练与 MoE 扩展到更大规模</a><a class="level-2" href="#5-v3-2-dsa-indexer-选择位置-主-mla-计算结果">5. V3.2 DSA：indexer 选择位置，主 MLA 计算结果</a><a class="level-2" href="#6-v4-csa-与-hca-压缩序列维度">6. V4：CSA 与 HCA 压缩序列维度</a><a class="level-2" href="#7-用同一历史长度比较读取与缓存">7. 用同一历史长度比较读取与缓存</a><a class="level-2" href="#8-mhc-同一个-token-的多条残差流">8. mHC：同一个 token 的多条残差流</a><a class="level-2" href="#9-muon-训练时变换更新矩阵">9. Muon：训练时变换更新矩阵</a><a class="level-2" href="#10-阅读顺序与来源">10. 阅读顺序与来源</a></nav></aside></div>
+</table></div></article><footer>DeepSeek 架构与前向教学，附官方配置快照、技术报告和参考代码；形状与容量为静态推导，未运行模型或 GPU 性能验证。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#1-几代模型分别改变了什么">1. 几代模型分别改变了什么</a><a class="level-2" href="#2-配置与参数规模">2. 配置与参数规模</a><a class="level-2" href="#3-v2-每个-token-一份-latent-多个-head-使用它">3. V2：每个 token 一份 latent，多个 head 使用它</a><a class="level-2" href="#4-v3-mla-不变-把训练与-moe-扩展到更大规模">4. V3：MLA 不变，把训练与 MoE 扩展到更大规模</a><a class="level-2" href="#5-v3-2-dsa-indexer-选择位置-主-mla-计算结果">5. V3.2 DSA：indexer 选择位置，主 MLA 计算结果</a><a class="level-2" href="#6-v4-csa-与-hca-压缩序列维度">6. V4：CSA 与 HCA 压缩序列维度</a><a class="level-2" href="#7-用同一历史长度比较读取与缓存">7. 用同一历史长度比较读取与缓存</a><a class="level-2" href="#8-mhc-同一个-token-的多条残差流">8. mHC：同一个 token 的多条残差流</a><a class="level-2" href="#9-muon-训练时变换更新矩阵">9. Muon：训练时变换更新矩阵</a><a class="level-2" href="#10-从-v3-2-到-v4-设计是否更保守">10. 从 V3.2 到 V4：设计是否更保守</a><a class="level-2" href="#11-阅读顺序与来源">11. 阅读顺序与来源</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
