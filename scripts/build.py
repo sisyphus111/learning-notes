@@ -100,8 +100,8 @@ GPU_REFERENCES = [
      'torch.compile · capture / replay · 虚拟地址 · 图内分配 · 共享 pool'),
     ('GPU/precision-and-quantization.md', 'gpu-precision-and-quantization.html', '浮点格式、混合精度与量化',
      'FP16 / BF16 · TF32 · FP8 · E8M0 · MXFP8 / NVFP4 · scale'),
-    ('GPU/communication-and-allreduce.md', 'gpu-communication-and-allreduce.html', 'MPI 与 Ring / Tree AllReduce',
-     '通信语义 · 逐轮部分和 · ReduceScatter / AllGather · 双树 · 流量与延迟'),
+    ('GPU/communication-and-allreduce.md', 'gpu-communication-and-allreduce.html', 'MPI 与 AllReduce 算法',
+     'Ring / Tree · Recursive Doubling · One-shot / Two-shot · 通信量与依赖'),
 ]
 PAGES = CHAPTERS + REFERENCES + PYTHON_REFERENCES + PYTORCH_REFERENCES + CUDA_REFERENCES + ATTENTION_REFERENCES + DEEPSEEK_REFERENCES + GPU_REFERENCES
 BY_SOURCE = {str((ROOT / source).resolve()): output for source, output, _, _ in PAGES}
