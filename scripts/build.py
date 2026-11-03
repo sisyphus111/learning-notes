@@ -66,6 +66,8 @@ CUDA_REFERENCES = [
      'thread · warp · block · cluster · grid · SM / GPC · 同步范围'),
     ('CUDA/gemm.md', 'cuda-gemm.html', 'GEMM 计算与优化',
      '分块复用 · K 循环 · Tensor Core · TMA · 流水线 · Split-K · scale 布局'),
+    ('CUDA/gemm-performance-analysis.md', 'cuda-gemm-performance-analysis.html', 'GEMM 性能分析方法',
+     '宏观约束与微观执行 · 并行度 · 分层算术强度 · GEMV / GEMM · TP'),
     ('CUDA/compilation-and-instructions.md', 'cuda-compilation-and-instructions.html', 'PTX、SASS 与编译流程',
      'CUDA C++ · Triton · CuTe DSL · ptxas · cubin · AOT / JIT'),
 ]

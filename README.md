@@ -15,6 +15,7 @@
 - GPU 软件栈独立成板块：[驱动、运行时与框架](GPU/driver-runtime-framework.md) 从 H100 设备讲到内核驱动、libcuda / libcudart、PyTorch、容器和版本；[GPU 软件栈与工具](GPU/software-stack.md) 区分计算库、CUTLASS / CuTe、编译工具与推理框架；[计算图、编译与 CUDA Graph](GPU/graphs-and-compilation.md) 解释编译优化与执行重放，并展开 CUDA / PyTorch API、固定虚拟地址、图内分配、private pool 与跨图共享。
 - [浮点格式、混合精度与量化](GPU/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
 - [GEMM 计算与优化](CUDA/gemm.md) 从点积和 K 分段讲起，连接 CTA/register tiling、内存布局、Tensor Core、异步流水线、Split-K、persistent/grouped GEMM、融合与 scale 转置。
+- [GEMM 性能分析方法](CUDA/gemm-performance-analysis.md) 把宏观计算/流量约束与 CTA、warp、指令和存储层级对应起来，用具体 shape 解释并行度、GEMV/GEMM 复用、流水线和 TP 加速边界。
 - [Qwen3-32B / H100 TP 案例](Attention/qwen3-h100-tp-case.md) 用实际模型尺寸推导 GEMV/GEMM、roofline、通信、CTA/warp/shared memory/register 预算，区分单请求延迟、系统吞吐和多副本比较，并附数值复算脚本。
 - [MoE FFN：EP 与 TP](Attention/moe-ep-tp.md) 固定全局 token 数与 GPU 数，比较专家 GEMM 形状、A2A/AllReduce 发送量、输入输出布局、负载不均衡、显存和混合并行。
 - Attention 独立成板块：[Transformer 运行全过程](Attention/transformer-runtime.md) 从文本、Q/K/V、每层计算走到 prefill、KV cache、decode 与训练；[FlashAttention 1–4](CUDA/flash-attention.md) 从 online softmax 推导讲到四代前后向、Ampere/Hopper/Blackwell、TMA/TMEM、条件缩放与 2-CTA，并附教学实现和源码入口。
