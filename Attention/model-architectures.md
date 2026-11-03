@@ -302,185 +302,234 @@ Flash 有 43 层、hidden 4096、64 个主 query heads；Pro 有 61 层、hidden
 
 ### V4.1 的 CED：改变 prompt 经过哪些层
 
-**V4.1-Flash 将40层分成前20层 causal encoder 和后20层 decoder。两段都更新 hidden；区别主要是后半段的 global KV 从 encoder 输出生成，并由多个层共享。** 本节于2026-11-03补充，层编号均从1开始。
+**V4.1-Flash 把40层分成前20层 encoder 和后20层 decoder。前半段为历史 token 产生表示，后半段继续加工当前 token，并读取前半段建立的历史资料。** 两段都有 attention、FFN 和残差连接。下面的层号从1开始。
 
-| 基础配置 | 数值 |
-| --- | --- |
-| 语言主干 | 40层，hidden 5120 |
-| 主 attention | 64个 Q heads，1组共享 KV，每条宽512 |
-| Q 中间 latent | 1280维 |
-| Indexer | 32个 Q heads，每头128维；top-512 |
-| 局部 SWA | 每层最多128个 token |
-| FFN | 384个 routed experts，每 token选6个，另有1个 shared expert；单专家intermediate为2304 |
+#### 从一个输入走到下一词预测
 
-V4.1 保留 shared K=V 的读取方式，但全局分支采用 CSA2，不再交错采用 V4 的 CSA/HCA。官方口径是552B主干，另有196B Engram；prefill激活8B，decode激活16B。[V4.1报告][ds41-report]、[固定配置][ds41]
-
-#### Encoder 和 decoder 都在计算 Transformer blocks
-
-文本 token 只在入口查 embedding；到 decoder 时继续使用 encoder 输出的 hidden，不重新查一次词表：
+文本只在入口查一次 embedding。之后传递的一直是 hidden：
 
 ```text
-token IDs
-   ↓ embedding
-初始 hidden
-   ↓ 第1～20层：causal encoder
-encoder 输出 hidden
-   ↓ 第21～40层：decoder
-最终 hidden
-   ↓ LM head
-下一个 token 的概率
+token IDs → embedding
+                ↓
+       第1～20层 encoder
+                ↓
+       encoder 输出 hidden
+                ↓
+       第21～40层 decoder
+                ↓
+             LM head
+                ↓
+       下一个 token 的概率
 ```
 
-两段都有 attention、FFN 与残差更新。“Encoder/decoder”在这里描述前后两段的职责，不表示存在两套完全不同的矩阵算子。前20层同样遵守因果关系，历史位置 j 的表示不能看到未来 token。
+两段都保持因果关系：位置 j 的计算不能读取未来位置。Decoder 的第一层接收 encoder 最后一层的输出，并不重新查一次 embedding。
 
-普通逐层模型里，一层的历史 K/V 来自历史 token 当时进入该层的 hidden。CED 改变的是 decoder 的 global KV 来源：
+这里有两种历史缓存，先把用途分开：
 
-| 对象 | Encoder 前20层 | Decoder 后20层 |
-| --- | --- | --- |
-| 当前主 Q | 当前层的输入 hidden | 当前层的输入 hidden |
-| Global KV | Encoder 内指定来源层的自身输入 hidden | 第20层的 encoder 输出，经过指定投影 |
-| 局部 SWA KV | 每层自己的输入 hidden | 每层自己的输入 hidden |
-| Attention、FFN 与输出 hidden | 各层继续计算 | 各层继续计算 |
+- **Global KV**：保存可供长程读取的历史资料。当前 query 通过 indexer 选择其中一部分。
+- **SWA KV**：每层自己的近期记录，窗口最多128个 token。窗口内的位置直接参与该层的局部 attention。
 
-例如，第25层用自己当前的 query，读取由第20层输出建立的历史表示。第26层又产生自己的 query。即使两层读取同一份 global KV，得到的 attention 权重与输出也可以不同。[CED §2.2][ds41-report]
+**V4.1 的重要变化是：后20层共用一份由第20层输出生成的 global KV。各层的 query 和 SWA KV 仍从各自的 hidden 生成。**
 
-#### Encoder 自己也有 KV cache
-
-Encoder 计算同样需要历史。它逻辑上维护三份 global KV 来源，以及每层各自的局部 SWA cache：
-
-| 层范围 | Global KV 如何建立和共享 | 本层局部缓存 |
-| --- | --- | --- |
-| 1～2 | 没有 global 分支，只做 SWA | 每层自己的 SWA KV |
-| 3～8 | 第3层生成一份，供本组6层共享 | 每层自己的 SWA KV |
-| 9～14 | 第9层生成另一份，供本组6层共享 | 每层自己的 SWA KV |
-| 15～20 | 第15层生成另一份，供本组6层共享 | 每层自己的 SWA KV |
-
-Encoder 的 global 条目以两个 token 为一组学习压缩，没有 V4 CSA 的相邻组重叠。对于长度 S 的历史，每个来源的主缓存逻辑形状约为 `[floor(S/2),512]`，另有对应的 indexer keys；每层局部窗口最多是 `[128,512]`。
-
-**上述三份 global cache 服务 encoder 自己。Decoder 使用的是另一份 global cache：**
+例如第25层会这样计算：
 
 ```text
-Encoder 第1～20层
-   │  计算时使用encoder自身的global/SWA缓存
-   ↓
-第20层输出 [S,5120]
-   ↓ 由第21层的global来源模块投影
-Decoder global KV [S,512]
-   ├→ 第21层读取
-   ├→ 第22层读取
-   ├→ ……
-   └→ 第40层读取
+当前 token 进入第25层的 hidden
+           ├→ 第25层自己的 query
+           └→ 第25层自己的 SWA KV
+
+历史 token 的第20层输出
+           ↓ 指定投影
+       共享 global KV
+           ↓ 第25层按自己的query读取
+       attention 输出，再经过FFN更新hidden
 ```
 
-Decoder global KV 的压缩率为1，保留逐位置条目，主要依靠跨层共享节省存储。它不是把 encoder 的某一份现成 KV cache 直接交给 decoder。这里说的是单请求的逻辑缓存归属，跨 GPU 的分片、复制与物理布局另由并行实现决定。
+第26层可以读取同一份 global KV，但会生成不同的 query，因此仍然能得到不同结果。这就是 CED 在这份模型里的分工。[CED §2.2][ds41-report]
+
+#### Encoder 也需要自己的历史缓存
+
+Encoder 需要读取历史，不能只有 decoder 有缓存。它的实际安排是：
+
+| 层范围 | Global KV | SWA KV |
+| --- | --- | --- |
+| 1～2 | 没有 global 分支 | 每层自己保存 |
+| 3～8 | 第3层生成一份，供本组6层使用 | 每层自己保存 |
+| 9～14 | 第9层生成另一份，供本组6层使用 | 每层自己保存 |
+| 15～20 | 第15层生成另一份，供本组6层使用 | 每层自己保存 |
+
+这三份 global cache 供 encoder 自己计算使用。它们把两个相邻 token 的信息合成一个512维条目。
+
+Decoder 使用另外一份缓存。第21层的来源模块把第20层输出投影成512维条目，每个 token 一条。第21～40层共享这些条目。
+
+```text
+Encoder 自己用：3份压缩后的global cache + 每层自己的SWA cache
+Decoder 自己用：1份从encoder输出生成的global cache + 每层自己的SWA cache
+```
+
+这些数量描述单个请求的逻辑缓存。跨GPU是否复制或分片，要另外看并行实现。SWA cache是当前推理所需的局部状态，不表示所有状态都永久存入SSD或prefix cache。
 
 ### CSA2：跨层共享 KV 和跨层复用索引是两件事
 
-CED 规定 decoder global KV 的来源；CSA2 安排哪些层生成它、哪些层共享它，以及哪些层重新选择读取位置。
+即使共享同一份 global KV，不同层仍然可以重新选择要读的位置。CSA2 把层分成三种角色：
 
-| 模式 | Global KV / indexer K | Top-k位置 | 当前主 Q、SWA KV与attention输出 |
-| --- | --- | --- | --- |
-| **Full** | 本层负责生成 | 本层重新选择 | 本层计算 |
-| **Reindex** | 复用来源层的缓存 | 用自己的 indexer Q 重新选择 | 本层计算 |
-| **Reuse** | 复用来源层的缓存 | 复用此前来源层的选择 | 仍由本层计算 |
+| 角色 | 这层做什么 |
+| --- | --- |
+| **Full** | 负责生成本组global KV和indexer keys，并选出top-k位置 |
+| **Reindex** | 使用已有global KV，用自己的indexer query重新选位置 |
+| **Reuse** | 使用已有global KV，也沿用前面一层选出的位置 |
 
-**Full 表示完整执行这些组件，并不是 full attention。Reuse 复用的也不是上一层的输出。** 它复用读取位置，本层的主 query 仍然产生新的 attention 权重。
+Full 指这些组件都执行，不是“计算全历史 full attention”。三种角色都要生成自己的主 query 和局部 SWA KV，并计算本层 attention 输出。
 
-实际模式安排为：
+具体安排如下：
 
-| 层范围 | 模式安排 | Global KV来源 |
+| 层范围 | 谁负责生成缓存和选择位置 |
+| --- | --- |
+| 3～8、9～14、15～20 | 每组第一层Full，后5层Reuse |
+| 21～24 | 第21层Full，后3层Reuse |
+| 25～28、29～32、33～36、37～40 | 每组第一层Reindex，后3层Reuse；都用第21层的global缓存 |
+
+可以跟着当前 token 走一遍：第21层选出一组历史位置，22～24层用同一组位置，但各自重新算attention权重。第25层用自己的indexer重新选择，26～28层再使用这次选择。下一轮来了新token，负责索引的层会重新选，不会永远使用上一轮的位置。
+
+#### 分级 indexer 怎样少做重复扫描
+
+第21层先扫描所有可见global条目，选出自己的top-512。它还会建立一个更大的候选池。先把每8个位置划为一组，用组内最高分给组排序，再选最多2048组。展开这些组后，最多得到16384个候选位置。
+
+第25、29、33、37层只需在候选池中重新选择512条。**16384是搜索范围，512是最终主attention读取的global条目数量。** 第21层的全历史扫描仍然存在。
+
+CSA2 还简化了索引key的生成：先得到512维主KV条目，再把它投影成128维indexer key。Encoder里的两token压缩也不采用V4 CSA的相邻组重叠。[CSA2 §2.3][ds41-report]
+
+### SWA Bounded Replay：只重算一小段，补回局部缓存
+
+**它解决的是：global KV还能复用，但继续计算需要的局部SWA KV缺了。做法是只运行一小段末尾输入，重新算出这些层的局部KV，再接着处理。** V4.1 把这段长度限制为最多128个token，所以叫 bounded；重新执行这段输入的前向计算，就是 replay。
+
+这里不是重新生成这几个token的文字，也不是只把token IDs复制进缓存。局部KV来自各层hidden，因此要让这些已知token重新经过所需的attention、FFN和残差计算，才能得到各层的局部KV。
+
+#### 情景一：旧对话的global缓存还在，encoder局部缓存没了
+
+假设已经处理过10000个token。过了一段时间，请求再次到来，服务系统还留着这段前缀的global KV，但encoder的近期SWA状态已经被回收。
+
+当前持有的东西是：
+
+| 对象 | 是否还在 | 能做什么 |
 | --- | --- | --- |
-| 3～8、9～14、15～20 | 每组首层Full，后5层Reuse | 各组自己的encoder来源 |
-| 21～24 | 第21层Full，后3层Reuse | 第21层从encoder最终输出建立的decoder缓存 |
-| 25～28 | 第25层Reindex，后3层Reuse | 继续使用第21层的缓存 |
-| 29～32、33～36、37～40 | 每组首层Reindex，后3层Reuse | 同样使用第21层的缓存 |
+| 已知前缀的token内容与位置 | 在 | 可以重新执行所需的一段输入 |
+| 旧global KV | 在 | 长程attention继续读取旧历史 |
+| Encoder各层SWA KV | 缺失 | 需要补回，不能直接复制global KV代替 |
 
-例如，第21层为当前 token 选出集合 A，22～24层使用 A；第25层用自己的 indexer Q 选出集合 B，26～28层使用 B。**这是当前 query 沿深度的复用，下一轮 decode 的新 query 会重新生成选择结果。**
+要继续处理新输入，各层都需要自己的局部记录。Global KV来自不同来源层，有自己的投影和压缩，不能直接充当每层缺失的SWA KV。
 
-#### Indexer K 从主 KV 条目生成
-
-CSA2 的来源层先生成主 global KV，再从主条目投影 indexer K：
+Encoder Bounded Replay 选择旧前缀最后128个位置，即第9873～10000个token：
 
 ```text
-来源 hidden
-    ↓ 主KV投影；encoder来源还会按两个token压缩
-global KV条目 [512]
-    ↓ 独立的indexer K投影与归一化
-indexer key [128]
+旧前缀：  [1 …… 9872] [9873 …… 10000]
+                         └─重算这段─┘
+新输入：                              [10001 ……]
 ```
 
-这省去了 V4 CSA 从 hidden 开始的独立 indexer 压缩路径。后续 Reindex 层用自己的 indexer Q 查询这套共享 keys；Reuse 层跳过本层 indexer 查询。
+这段尾部重新从embedding进入encoder，使用原来的位置编号。重放时：
 
-#### Decoder 的分级 indexer：候选池与最终 top-k 分开
+1. Global attention继续使用已保存的global KV，只读取因果可见的位置。
+2. 局部SWA只读取重放段内已经算出的局部条目。
+3. 把重算出的各层SWA KV留下，供后面的计算使用。
+4. 旧global KV保持原样，不用重放结果覆盖。
 
-第21层给全部因果可见的 global 条目打分。一方面选出自己的 top-512，另一方面按每8个位置一组，用组内最大分数选择最多2048组，建立最多16384个位置的候选池。
+接着，新输入正常经过模型，并生成新的global KV和SWA KV。它依赖刚恢复的局部状态，因此数值也可能与从头完整重算不同。
 
-后续第25、29、33、37层的 Reindex 只需在候选池内重新打分，各自选出 top-512。候选池共享，但最终位置集合可以不同。第21层仍有一次全历史扫描，不能据此说整个模型的索引成本与历史长度无关。
+#### 为什么“窗口只有128”却不能保证精确恢复
 
-#### 用第25层走一遍计算
+关键在于：**深层KV来自深层hidden，而这个hidden已经受前面层的历史影响。** 只拿到最后128个token的原文，不等于拿到了它们原先进入每层时的hidden。
 
-第25层是 Reindex，当前层输入仍从其残差状态读出：
+先把窗口缩小为4个token来观察。假设旧前缀有1000个token，只重放997～1000：
+
+| 重放位置 | 正常SWA可以看哪些位置 | 截断后这次SWA只能看哪些位置 |
+| --- | --- | --- |
+| 997 | 994、995、996、997 | 997 |
+| 998 | 995、996、997、998 | 997、998 |
+| 999 | 996、997、998、999 | 997、998、999 |
+| 1000 | 997、998、999、1000 | 997、998、999、1000 |
+
+第一行已经发生了变化：997在局部路径上少看了三个位置。它的attention输出可能变化，这个输出进入更深层后，又会影响997在深层生成的KV。
+
+到1000时，窗口里的四个位置虽然已经齐了，但其中997、998的深层表示可能已经变了。因此，**“最后窗口凑齐”不代表恢复了原先完整前向的数值。**
+
+表中截断的是SWA这一条局部路径。有global分支的层仍可访问缓存中因果可见的长程信息，不能把它理解成整个模型只能看到这4个token。
+
+如果要精确恢复，就需要往前追溯那些生成hidden所需的局部依赖。层数增加，所需前缀还会向前扩展。论文用层数乘窗口大小描述这种多层回溯范围。Bounded Replay则固定只取一个窗口，接受近似状态，以控制重算量。
+
+#### 情景二：长prompt刚经过encoder，decoder局部缓存还没建
+
+现在换成一次没有prefix缓存的新请求。10000个prompt token已完整经过前20层encoder，所以已经有：
 
 ```text
-本层 attention 输入 [1,5120]
-    ↓ Q下投影、RMSNorm
-Q中间 latent [1,1280]
-    ├→ 主Q上投影      → [64,512]
-    └→ Indexer Q上投影 → [32,128]
-
-本层 attention 输入 [1,5120]
-    ↓ 局部KV投影、归一化和位置处理
-当前SWA条目 [1,512] → 更新本层SWA窗口
+全部prompt的encoder输出 [10000,5120]
+    ↓ 投影
+供后20层共享的global KV
 ```
 
-历史足够长时，重新筛选后读取512条 global KV，加上本层最近128条 SWA KV：
+这时global历史资料准备好了，但decoder各层的SWA KV来自它们自己的hidden，仍然需要计算。
 
-```text
-选中global条目 [512,512] ─┐
-                         ├→ 逻辑读取集合 [640,512]
-本层SWA条目    [128,512] ─┘
-
-主Q [64,512] @ 读取集合.T [512,640] → 分数 [64,640]
-统一归一化，包含sink规则                 → 权重 [64,640]
-权重 [64,640] @ 读取集合 [640,512]   → 输出 [64,512]
-```
-
-512维已经包含位置处理使用的64维。位置编码、输出逆旋转和缓存精度处理不会改变上面的逻辑形状。实际 kernel 可以按索引直接读缓存，不必物化整个读取集合。
-
-输出按每8个heads分组，共8组：`[64,512] → [8,4096] → [8,1024] → [1,8192] → [1,5120]`。随后写回残差，进入FFN。第26层没有自己的 indexer 查询，但仍计算自己的主 Q、局部 KV 和上述正式 attention。[CSA2 §2.3][ds41-report]
-
-#### Prefill 与 decode 为什么不同
-
-长 prompt 的主路径是：
+如果让10000个token都经过后20层，就失去了CED节省prefill工作的主要收益。Decoder Bounded Replay只拿最后128个位置的encoder输出，送过后20层：
 
 ```text
 全部prompt → 前20层encoder → 全部位置的encoder输出
-                               ├→ 生成decoder global KV
-                               └→ 取最后128个位置
-                                      ↓ 经过后20层decoder
-                                  建立decoder的SWA KV
+                                  ├→ 生成decoder global KV
+                                  └→ 取最后128个位置的hidden
+                                             ↓
+                                      经过后20层decoder
+                                             ↓
+                                      生成各层SWA KV
 ```
 
-为了建立 decoder global KV，无需让全部 prompt 完整经过后20层。但 decoder 的局部状态仍需计算。因此，普通 decode 的每个新 token 仍经过全部40层，输出下一个 token 的概率；后半段没有被删除。
+对decoder来说，这里可以理解成**补跑尾部**：这些位置未必此前已执行过decoder。它们从encoder输出进入后半段，不重新查embedding，也不重新跑前20层。
 
-上述 SWA 是当前推理需要的局部状态，不等于长期持久化的 prefix cache。Decoder SWA 供 decode 使用，不进入 prefix cache；encoder SWA 缺失时可以通过重放恢复。
+补跑时仍读取可见的global缓存，局部SWA则限制在尾部这段内。因此它同样是近似的。论文报告质量影响很小，并在后训练中模拟这种过程，让模型适应；这并不构成数学等价保证。[报告 §3.2.2][ds41-report]
 
-这里的 Decoder SWA Bounded Replay 是**近似恢复**：只运行尾部128个位置，并截断重放段以前的局部依赖。它不保证与完整 prompt 经过全部 decoder 的结果数学等价。论文通过质量评估与后训练适配支持这一取舍；长 prompt 下才有接近减半的 prefill 收益。
+#### 两种 replay 分别什么时候发生
 
-另一个 Encoder SWA Bounded Replay 用于“global prefix cache命中，但encoder SWA状态缺失”。它重放已缓存前缀的尾部，重建SWA，继续复用已有global KV；新后缀则正常生成两类缓存。这与Decoder每次prefill建立局部状态的用途不同，也与ReplaySSM的checkpoint/input-buffer机制不同。[Bounded Replay §3.2.2][ds41-report]
+| 场景 | 从哪里开始重算 | 补回什么 | 主要节省什么 |
+| --- | --- | --- | --- |
+| Encoder replay：global prefix cache命中，但encoder SWA缺失 | 旧前缀末尾token的embedding | Encoder各层SWA状态 | 避免为局部状态回溯很长前缀，降低长期缓存负担 |
+| Decoder replay：prefill需要建立decoder局部状态 | Prompt末尾位置的encoder输出 | Decoder各层SWA状态 | 避免全部prompt都完整经过后20层 |
 
-#### FFN 与其他模块
+完成 prefill 后，新 token 的普通 decode 仍经过全部40层，并更新现有 SWA 状态。生成过程无需每步都重放最近128个 token。
 
-| 模块 | 具体位置与作用 |
+Decoder SWA状态用于后续decode，不存入长期prefix cache。Encoder SWA可以短时间保留，缺失时再恢复。Global KV则继续作为可长期复用的历史缓存。SWA Bounded Replay与ReplaySSM解决的是不同状态管理问题，不能把两者的“replay”混为一个算法。
+
+### V4.1 的具体尺寸与其他模块
+
+先看一层已经取得输入hidden、且历史足够长时的主attention：
+
+```text
+当前hidden [1,5120]
+    ↓ Q下投影、RMSNorm
+Q中间表示 [1,1280]
+    ↓ 主Q上投影
+64个query heads [64,512]
+
+选中的global条目 [512,512] ─┐
+                           ├→ 读取集合 [640,512]
+本层最近的SWA条目 [128,512] ┘
+
+Q @ 读取集合.T → 分数 [64,640]
+统一归一化，包含sink规则 → 权重 [64,640]
+权重 @ 读取集合 → 各head输出 [64,512]
+```
+
+所有query heads使用一组共享条目，每条512维向量兼作K和V。512维已包含位置处理使用的64维。输出每8个heads分成一组，每组从4096维投影到1024维；8组拼成8192维，再投影回5120维，交回主干。实际kernel可以直接按索引读缓存，以上形状不要求全部物化。
+
+| 部件 | 具体配置与作用 |
 | --- | --- |
-| **DeepSeekMoE** | 输入 `[M,5120]`，router输出 `[M,384]`，每token选6个routed experts。单专家的gate/up中间激活宽2304，再回到5120；另加1个shared expert |
-| **FP4 main KV** | 减少global主缓存存储字节；512维逻辑宽度不变，量化scales另计 |
-| **Single-Pass mHC** | 调整输入混合系数的依赖，使4条残差流的读写更容易融合 |
-| **Engram** | 额外196B参数；零基层号1、14，即第2、15层，使用2/3/4-gram查表与上下文融合。V4.1省略原Engram的短因果卷积 |
-| **DSpark** | 独立训练的draft模块，3个blocks，生成5个候选位置的草稿信息并验证；不是主干一次确认5个token |
-| **DeepSeek-ViT** | 视觉特征经projector变成5120维表示，与文本embedding共同进入语言主干 |
+| 语言主干 | 40层，hidden 5120；前20层encoder，后20层decoder |
+| 主attention与indexer | 64个主Q heads，每头512维；32个indexer Q heads，每头128维；top-512 |
+| MoE FFN | 384个routed experts，每token选6个，另有1个shared expert。输入输出均为5120维，单专家gate/up中间宽度2304 |
+| FP4 main KV | 减少global主缓存的存储字节；逻辑宽度仍为512，量化scales另计 |
+| Single-Pass mHC | 4条残差流；调整输入混合系数的依赖，使残差读写更容易融合 |
+| Engram | 额外196B参数；在第2、15层使用2/3/4-gram查表并按上下文融合。V4.1省略原Engram的短因果卷积 |
+| DSpark | 独立训练的draft模块，3个blocks，产生5个候选位置的草稿信息，再交给target验证 |
+| DeepSeek-ViT | 图像特征经过projector成为5120维表示，与文本embedding一起进入语言主干 |
 
-Global cache、各层局部cache、Engram参数表和运行时激活具有不同生命周期。报告的“890 bytes/token”是指定精度与部署口径的global缓存指标，不能直接当成整个请求的显存公式。[固定配置][ds41]、[官方模型卡][ds41-card]
+模型卡口径为552B主干，另有196B Engram；prefill激活8B，decode激活16B。报告中的“890 bytes/token”描述指定精度下的global缓存，不能当作整个请求的总显存。当前SWA缓存、临时激活、参数表和模型权重都要另外考虑。[固定配置][ds41]、[官方模型卡][ds41-card]
 
 ## 6. Kimi：MLA 主干、Kimi Linear 与 K3 的混合
 
