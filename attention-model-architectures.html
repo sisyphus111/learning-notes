@@ -859,15 +859,187 @@ y=\sum_{e\in\mathcal E_{\mathrm{shared}}}E_e(x)+\sum_{e\in\operatorname{TopK}(r(
 <p>K3 将 routed 分支先从 hidden 7168 投影到 latent 3584，再在 latent 空间执行专家、聚合、归一化和升维。shared 分支保留全宽。这可以减少 routed 分支的数据与参数成本，但增加相应投影及融合需求。</p>
 <p>它和 MLA 都使用 latent 一词，压缩对象却不同：MLA 面向 attention 的历史 KV 表示；LatentMoE 面向 routed FFN 的输入输出宽度。<a href="https://arxiv.org/html/2607.24653v1#S2.SS3">K3 Stable LatentMoE</a></p>
 <h2 id="9-深度方向的三类变化-mhc-attnres-与-gr">9. 深度方向的三类变化：mHC、AttnRes 与 GR</h2>
-<h3 id="mhc-扩展残差状态并约束混合">mHC：扩展残差状态并约束混合</h3>
-<p>普通残差保存一个 <code>[D]</code> 向量，执行 <code>x + F(x)</code>。Hyper-Connections 将残差扩成多个分支，先从分支中读出子层输入，再将子层结果写回，并混合原残差分支。</p>
-<p>mHC 对残差混合施加约束，使混合矩阵非负，并使每行与每列的和接近 1，以控制深层传播中的放大。它改变的是跨层信息流，不是从 token 历史里选 top-k。Single-Pass mHC 再调整执行组织以便融合，不代表 attention 只需做一遍乘法。<a href="https://arxiv.org/html/2606.19348v1#S2.SS2">DeepSeek-V4 mHC</a></p>
-<h3 id="attnres-对先前层或块的表示做-attention">AttnRes：对先前层或块的表示做 attention</h3>
-<p>普通残差对先前结果累加；AttnRes 让当前层为同一 token 的不同深度表示分配权重。其 attention 的候选轴是<strong>层/块</strong>，不是历史 token。</p>
-<p>K3 使用 Block AttnRes：块内保留累积表示，块间选择，降低保存所有中间层输出的成本。配置块大小为 12，93 层的最后一个块不满；这与时间序列上的 chunk size 不是同一个参数。</p>
-<h3 id="gated-residual-按特征读取-按分支写回">Gated Residual：按特征读取、按分支写回</h3>
-<p>Qwen3.8-Flash-Next 扩展到 4 个 residual branches。数据依赖的逐元素 read gate 决定子层读取什么，分支级 write gate 决定结果如何写回。它没有简单照搬 mHC 的完整分支混合算子，也不等于 AttnRes 在先前层输出之间做 softmax。<a href="https://arxiv.org/html/2607.24653v1#S2.SS2">AttnRes</a>、<a href="https://arxiv.org/html/2608.30320v1#S2.SS2">Gated Residual</a></p>
-<p>这些结构会改变 activation 大小、算子融合、pipeline stage 边界和训练反向保存策略。不能只统计 attention kernel 与 FFN kernel，就忽略残差路径的成本。</p>
+<p><strong>这三种方法都在改同一件事：前面算出的信息怎样保存，当前子层怎样读取，新结果又怎样交给后面的层。</strong> 要理解它们，先分清“子层负责计算”和“残差负责传递状态”这两件事。</p>
+<p>下文跟着同一个 token 往网络深处走，用 <code>D</code> 表示它的 hidden 宽度。一个 attention 或 FFN 称为一个<strong>子层</strong>；一个完整 Transformer 层通常包含这两个子层。残差读写按 token 分别执行，attention 子层内部仍会读取其他位置的信息。</p>
+<h3 id="9-1-普通残差-旧状态与新结果加在一起">9.1 普通残差：旧状态与新结果加在一起</h3>
+<p>假设这个 token 进入当前子层前的状态是 <code>x [D]</code>。子层计算一个新结果 <code>y [D]</code>，然后把它加到旧状态上：</p>
+<div class="codehilite text-diagram"><pre><span></span>x [D] ───────────────────────────┐
+  └→ 归一化 → attention 或 FFN → y [D]
+                                 ↓
+                       x_next = x + y [D]
+</pre></div>
+
+
+<p>这就是常见的 pre-norm residual。旧状态有一条直接传下去的路径，子层只需在这份状态上增加本次计算的结果。</p>
+<p>从 embedding <code>e</code> 出发，若前 3 个子层产生的输出分别是 <code>y1、y2、y3</code>，状态依次变成：</p>
+<div class="codehilite text-diagram"><pre><span></span>e → e + y1 → e + y1 + y2 → e + y1 + y2 + y3
+</pre></div>
+
+
+<p>每个 <code>y</code> 都根据当时的输入算出来，内容当然会变化。但在这条加法路径上，每份结果加入时的系数都是 1。后面的子层拿到一份合并后的 <code>[D]</code>，残差接口没有分别提供 <code>y1、y2、y3</code> 供它重新分配权重。</p>
+<p>mHC 和 GR 给这个 token 保留多份可更新的状态；AttnRes 则把不同深度产生的结果分别留下。下面分别看这些状态怎样使用。</p>
+<h3 id="9-2-mhc-保存多份状态-读出一份输入-再更新全部状态">9.2 mHC：保存多份状态，读出一份输入，再更新全部状态</h3>
+<p>Hyper-Connections（HC）把一个 token 的残差从 <code>[D]</code> 扩成 <code>[n,D]</code>。DeepSeek-V4 使用 <code>n=4</code>，可以把它看成四行：<code>x1、x2、x3、x4</code>，每行都是一个 D 维向量。这四行称为残差分支或 residual streams；它们随网络深度不断更新，没有预先指定的语义分工。</p>
+<p><strong>残差扩成四份，attention/FFN 的输入宽度仍然是 D。</strong> 一次子层计算分成三个动作：</p>
+<ol>
+<li><strong>读出输入。</strong> 给四份状态各一个标量系数，再加权相加，得到 <code>z [D]</code>。</li>
+<li><strong>执行子层。</strong> 用 <code>z</code> 算出一个新结果 <code>y [D]</code>。整个 attention 或 FFN 执行一次。</li>
+<li><strong>更新状态。</strong> 先把旧的四份状态互相混合，再把同一个 <code>y</code> 按不同幅度加入四个分支。</li>
+</ol>
+<p>把四份状态叠成矩阵 <code>X [4,D]</code>，这三个动作可以写成：</p>
+<div class="math display-math">\[
+z=AX,\qquad y=F(z),\qquad X_{\mathrm{next}}=BX+Cy.
+\]</div>
+
+<p>这里 <code>F</code> 包含子层所需的归一化。三个系数矩阵各有不同职责：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>系数</th>
+<th>shape</th>
+<th>具体做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>A</code></td>
+<td><code>[1,4]</code></td>
+<td>从四份旧状态加权读出一份 <code>[1,D]</code> 输入</td>
+</tr>
+<tr>
+<td><code>B</code></td>
+<td><code>[4,4]</code></td>
+<td>每一行规定一个新分支怎样混合四份旧状态</td>
+</tr>
+<tr>
+<td><code>C</code></td>
+<td><code>[4,1]</code></td>
+<td>每个分支一个系数，控制新结果 <code>y [1,D]</code> 加入多少</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>[1,D]</code> 和前文的 <code>[D]</code> 表示同一份向量，这里保留长度为 1 的轴以便看矩阵乘法。例如第一个分支更新为：</p>
+<div class="math display-math">\[
+x&#x27;_1=B_{11}x_1+B_{12}x_2+B_{13}x_3+B_{14}x_4+C_1y.
+\]</div>
+
+<p>这就把“混合”和“写回”区分开了：前四项在重新组合旧信息，最后一项加入本次子层的新结果。<code>A、B、C</code> 由当前状态和可学习参数共同生成，因此不同 token 可以使用不同系数。<a href="https://arxiv.org/html/2606.19348v1#S2.SS2">DeepSeek-V4 报告 §2.2</a></p>
+<p><strong>mHC 在 HC 的基础上约束 <code>B</code>，防止旧状态在反复混合中被任意放大。</strong> 例如，若允许每层都取 <code>B=2I</code>，即使不加入子层输出，旧状态经过 k 次混合也会放大到原来的 <code>2^k</code>。</p>
+<p>mHC 要求 <code>B</code> 的元素非负，每行和每列都为 1，称为<strong>双随机矩阵</strong>。行和为 1，使每个新分支成为旧分支的加权平均。列和为 1，使每个旧分支分配给所有新分支的系数总和也为 1。这里“随机”是矩阵的数学名称，执行时并不随机抽取分支。</p>
+<p>用两条分支的一个特征作教学示例：</p>
+<div class="codehilite text-diagram"><pre><span></span>旧值：10、2
+混合规则：第一行 [0.8, 0.2]，第二行 [0.2, 0.8]
+新值：8.4、3.6
+</pre></div>
+
+
+<p>两个新值都落在旧值的范围内，总和仍是 12。这个例子只展示 <code>BX</code>；加入 <code>Cy</code> 后，状态当然还会改变。理想双随机矩阵的连续乘积仍满足约束，但这不构成整个网络及其梯度永不失稳的保证。</p>
+<p>实现中，Sinkhorn–Knopp 算法对正矩阵交替做行归一化和列归一化，用有限轮迭代逼近上述约束。约束针对 <code>B</code>；读取系数 <code>A</code> 和写入系数 <code>C</code> 另用有界非负变换生成。<a href="https://arxiv.org/html/2512.24880v2#S4">mHC 原论文 §4</a></p>
+<p><strong>V4.1 的 Single-Pass mHC 还改了一处计算依赖。</strong> 原版必须先遍历 <code>X</code> 生成读取系数 <code>A</code>，再用 <code>A</code> 组合 <code>X</code>。V4.1 改用前一个 mHC 单元生成的读取系数：<code>z_l=A_{l-1}X_l</code>。读取系数提前就绪后，kernel 可以在遍历状态时完成输入组合，并计算留给后续单元的系数。配套的 Mega-mHC 将残差更新、输入组合和系数生成融合，减少中间状态读写。这个改动涉及系数的使用时序，因此不能把它只理解成对原公式做等价的 kernel 合并。<a href="https://arxiv.org/html/2609.19969v1#S2.SS4.SSS1">V4.1 报告 §2.4.1</a></p>
+<h3 id="9-3-attnres-分别留下不同深度的结果-让当前子层重新加权">9.3 AttnRes：分别留下不同深度的结果，让当前子层重新加权</h3>
+<p>Attention Residuals（AttnRes）从另一个角度改普通残差。前面的计算结果直接相加后难以分别读取，因此它把这些结果单独留下，让当前子层决定各读多少。</p>
+<p>Full AttnRes 保留此前每个子层的输出。Kimi K3 使用的 <strong>Block AttnRes</strong> 将连续若干层分成一个深度块，把同一块内部产生的子层输出相加，只保留一份块表示。这样可以减少候选数量，但后续子层只能对整个块分配权重，不能再分别选择块内每个子层的贡献。</p>
+<p>例如，当前执行到第三块，已经保存了：</p>
+<ul>
+<li><code>e [D]</code>：这个 token 的原始 embedding。</li>
+<li><code>b1 [D]</code>：第一块内各子层<strong>新输出的和</strong>。</li>
+<li><code>b2 [D]</code>：第二块内各子层<strong>新输出的和</strong>。</li>
+</ul>
+<p><code>b2</code> 的计算可以利用第一块的信息，但它保存的是第二块新产生的贡献。它不包含再次直接加上的 <code>e+b1</code>。这是区分“块输出”与“累计 hidden”的关键。</p>
+<p>第三块刚开始时，当前子层面前有三份候选。假设算出的权重是 <code>0.2、0.5、0.3</code>，读出的输入就是：</p>
+<div class="math display-math">\[
+z=0.2e+0.5b_1+0.3b_2,\qquad z\in\mathbb R^D.
+\]</div>
+
+<p>这些数只是教学示例。真实权重由当前子层自己的可学习向量 <code>q [D]</code> 打分得到。把 K 份候选记为 <code>v_i</code>，计算为：</p>
+<div class="math display-math">\[
+s_i=q^\top\operatorname{RMSNorm}(v_i),\qquad
+\alpha_i=\operatorname{softmax}(s)_i,\qquad
+z=\sum_{i=1}^{K}\alpha_i v_i.
+\]</div>
+
+<p><code>q</code> 在论文中称为 pseudo-query，是子层参数；候选内容随 token 变化，所以权重也随 token 变化。RMSNorm 只用于这里的打分，加权求和用原始 <code>v_i</code>。softmax 沿长度为 K 的<strong>深度候选轴</strong>计算，得到 <code>[K]</code> 权重，再将 <code>[K,D]</code> 合成 <code>[D]</code>。K3 随后还会执行该子层正常的输入归一化和 attention/FFN。</p>
+<p>第三块的第一个子层得到输出 <code>y</code> 后，将它作为本块的部分结果 <code>p</code>。下一子层就能读取 <code>e、b1、b2、p</code> 四份候选：</p>
+<div class="codehilite text-diagram"><pre><span></span>embedding e ────────┐
+第一块输出 b1 ──────┤
+第二块输出 b2 ──────┼→ 打分并加权 → z [D] → 当前子层 → y [D]
+当前块部分结果 p ───┘                                  │
+                                                     ↓
+                                               更新 p ← p + y
+</pre></div>
+
+
+<p>这里增加到 <code>p</code> 的是新输出 <code>y</code>。刚读出的 <code>z</code> 已经汇合旧块信息，不再一起加进 <code>p</code>。当前块完成后，<code>p</code> 成为固定的 <code>b3</code>；下一块开始累积自己的新贡献，此前的块继续保留。<a href="https://arxiv.org/html/2607.24653v1#S2.SS2">K3 报告 §2.2</a></p>
+<p>因此，对第 10 个 token 而言，AttnRes 在读取“第 10 个 token 在不同网络深度留下的结果”。普通 self-attention 则让它读取其他可见 token 位置的信息。两者的候选轴不同；AttnRes 的 softmax 加权会使用所有候选，并非 top-k 筛选。</p>
+<p>K3 的 <code>attn_res_block_size=12</code> 指 <strong>12 个完整 Transformer 层</strong>，每层里的 attention 和 FFN 都分别执行一次读取和累加。93 层分成 <code>7×12+9</code>，共 8 个深度块，embedding 另外保留。这种 block 沿网络深度划分。<a href="https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/config.json">K3 固定配置</a>、<a href="https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/modeling_kimi_linear.py#L973">官方实现中的分块与更新</a></p>
+<h3 id="9-4-gr-保留四份状态-逐特征控制读取-逐分支控制写入">9.4 GR：保留四份状态，逐特征控制读取，逐分支控制写入</h3>
+<p>Qwen3.8-Flash-Next 的 Gated Residual（GR）也为每个 token 保存四份状态 <code>X [4,D]</code>。它的区别在于：<strong>读取时，每个分支的每个特征都有独立系数；更新时，每个分支保留自己的旧状态，再加入本次子层输出。</strong></p>
+<p>先对四个分支分别做 RMSNorm，得到 <code>X_hat [4,D]</code>。一个可学习的小网络观察这些归一化状态，通过 sigmoid 生成读门 <code>G [4,D]</code>，每个元素介于 0 和 1。当前子层的输入是：</p>
+<div class="math display-math">\[
+z=\frac{1}{4}\sum_{j=1}^{4}G_j\odot\hat x_j,\qquad z\in\mathbb R^D.
+\]</div>
+
+<p><code>⊙</code> 表示逐元素乘法。例如，某个分支的第一个特征可以乘 <code>0.9</code>，第二个特征乘 <code>0.1</code>。因此同一个分支里的不同特征也能被分别调节；mHC 的 <code>A_j</code> 则用一个标量缩放该分支的整个向量。</p>
+<p>这里的 sigmoid 分别计算各个门值，没有对四个分支做 softmax。四份结果加起来后乘 <code>1/4</code>，得到一份 <code>[D]</code> 输入。GR 的读操作已经包含归一化，替代普通子层的 pre-norm，不再额外重复一次。</p>
+<p>子层计算 <code>y=F(z) [D]</code>，此处 <code>F</code> 只表示 attention/FFN，归一化已在读取时完成。另一路投影使用<strong>子层计算前的归一化状态</strong>生成写门 <code>c [4]</code>，通过 <code>2×sigmoid</code> 将各系数限制在 0 到 2 之间。每个分支按下面的方式更新：</p>
+<div class="math display-math">\[
+x&#x27;_j=x_j+c_jy.
+\]</div>
+
+<p>例如 <code>c1=0.1、c2=1.5</code>，同一个 <code>y</code> 对第二个分支的更新幅度就更大。一个分支里的 D 个特征共用这个写入系数，但它们仍分别接收 <code>y</code> 对应位置的值。写回的底数是原始 <code>x_j</code>，用于读操作的归一化副本不会覆盖它。</p>
+<div class="codehilite text-diagram"><pre><span></span>四份旧状态 X [4,D]
+  │
+  ├→ 分支归一化 → X_hat [4,D]
+  │                  ├→ 生成读门 G → 门控并求平均 → z → 子层 → y [D]
+  │                  └→ 生成写门 c [4]                       │
+  │                             │                           │
+  │                             └────→ 按分支缩放 c_j y ←───┘
+  │                                          │
+  └────────────────────────────→ 与旧状态相加：x'_j = x_j + c_j y
+</pre></div>
+
+
+<p>读门和写门共享归一化后的状态，都随输入变化；生成门值的网络参数通过训练学习。GR 的旧状态路径直接保留 <code>x_j</code>，没有 mHC 中 <code>BX</code> 那一步跨分支混合。分支之间仍可通过共同读出 <code>z</code>、再写入 <code>y</code> 交换信息。<a href="https://arxiv.org/html/2608.30320v1#S2.SS2">Qwen3.8-Flash-Next 报告 §2.2</a></p>
+<h3 id="9-5-比较时看保存内容-读取方式和更新位置">9.5 比较时看保存内容、读取方式和更新位置</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>为一个 token 保存什么</th>
+<th>当前子层怎样读</th>
+<th>新结果怎样保存</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>普通残差</td>
+<td>一份累计状态 <code>[D]</code></td>
+<td>读取当前状态</td>
+<td>新结果直接加回</td>
+</tr>
+<tr>
+<td>V4 mHC</td>
+<td>四份持续更新的状态 <code>[4,D]</code></td>
+<td>每个分支一个标量，组合为 <code>[D]</code></td>
+<td>混合旧分支，再按分支系数加入新结果</td>
+</tr>
+<tr>
+<td>K3 Block AttnRes</td>
+<td>embedding、已完成块、当前块部分结果 <code>[K,D]</code></td>
+<td>对深度候选打分，softmax 加权</td>
+<td>只把新结果加进当前块；旧块保留</td>
+</tr>
+<tr>
+<td>Flash-Next GR</td>
+<td>四份持续更新的状态 <code>[4,D]</code></td>
+<td>每个分支、每个特征都有读门，组合为 <code>[D]</code></td>
+<td>各分支保留自身旧状态，按写门加入新结果</td>
+</tr>
+</tbody>
+</table></div>
+<p>批量处理 M 个 token 时，mHC/GR 的残差为 <code>[M,4,D]</code>，Block AttnRes 的候选为 <code>[M,K,D]</code>。这些方法都让子层接收一份 <code>[M,D]</code> 输入，但为了形成这份输入，需要额外读取状态、计算系数并做加权归约。</p>
+<p>这些额外状态会影响系统实现。如果在两个子层之间划分 pipeline stage，下一个 stage 需要继续使用的状态就必须被传过去：mHC/GR 要传多分支状态，Block AttnRes 要保留或传递后续会读取的深度候选。训练 backward 还需要相应激活，通常要在保存和重算之间取舍。把相邻读写融合到一个 kernel，则可以减少中间张量的显存往返。</p>
+<p>这里统计的是残差路径增加的存储、访存和通信，不能据此把整个模型的显存或耗时直接乘四。这些状态服务于本次前向的跨层计算；正常 decode 无需像 KV cache 那样，为未来 token 保留所有历史 token 的残差分支或深度候选。更多 GR 和 Block AttnRes 的逐步说明见<a href="attention-residual-experts-memory.html">残差结构详解</a>。</p>
 <h2 id="10-其他注意力与位置编码话题怎样放进来">10. 其他注意力与位置编码话题怎样放进来</h2>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
