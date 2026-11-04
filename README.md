@@ -60,7 +60,7 @@ learning-notes/
 
 ## 维护方式
 
-编辑 `content/` 目录下的 Markdown 文件，然后运行构建脚本生成网站。根目录的 HTML 文件和 `assets/search-index.json` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。
+编辑 `content/` 目录下的 Markdown 文件，然后运行构建脚本生成网站。根目录的 HTML 文件、`assets/search-index.json` 与 `assets/code.css` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。构建会重新渲染全部页面，仅写入内容变化的产物，确保模板、导航、资源版本和站内锚点同步更新。
 
 构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
 

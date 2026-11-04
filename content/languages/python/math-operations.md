@@ -176,7 +176,7 @@ min([], default=0)              # 0：指定空输入的默认值
 # max([])                       # ValueError：空输入且没有 default
 ```
 
-`sum`、`min`、`max` 的生成器写法与 `key=` 用法见[可迭代对象与常用函数](python-iterables-and-functions.html#sum-求和与计数)。
+`sum`、`min`、`max` 的生成器写法与 `key=` 用法见[可迭代对象与常用函数](iterables-and-functions.md#sum-求和与计数)。
 
 ## float：近似比较与无穷大
 

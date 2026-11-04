@@ -759,10 +759,10 @@ collect(2)                       # [2]：两次调用各自创建 list
 
 ## 查题解时对应到哪里
 
-- [数组](../数组/fuck数组.md)：dict 查位置、set 去重、Counter 做滑窗计数。
-- [图](../图/fuck图.md)：deque 做 BFS，heapq 做最短路。
-- [回溯](../回溯/fuck回溯.md)：用 list 维护路径，保存答案时 `path.copy()`。
-- [动态规划](../动态规划/fuck动态规划.md)：独立创建二维列表，明确初始化与遍历顺序。
+- [数组](../../algorithms/arrays.md)：dict 查位置、set 去重、Counter 做滑窗计数。
+- [图](../../algorithms/graphs.md)：deque 做 BFS，heapq 做最短路。
+- [回溯](../../algorithms/backtracking.md)：用 list 维护路径，保存答案时 `path.copy()`。
+- [动态规划](../../algorithms/dynamic-programming.md)：独立创建二维列表，明确初始化与遍历顺序。
 
 ## 官方资料
 

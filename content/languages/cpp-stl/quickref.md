@@ -13,10 +13,10 @@ STL 不只是一组可以背诵的函数。容器的底层结构决定了它怎�
 
 ## 板块导航
 
-[STL 01对象语义、构造与传参值语义、所有权、copy/move、引用、const 与返回值。](stl-value-semantics.md)
-[STL 02序列容器的底层行为array、vector、string、deque、list 的存储与失效规则。](stl-sequence-containers.md)
-[STL 03树容器与哈希容器map/set 与 unordered 系列的查找、插入和引用稳定性。](stl-associative-containers.md)
-[STL 04适配器、迭代器与算法stack、queue、priority_queue、范围语义与算法修改行为。](stl-adapters-iterators.md)
+[STL 01对象语义、构造与传参值语义、所有权、copy/move、引用、const 与返回值。](value-semantics.md)
+[STL 02序列容器的底层行为array、vector、string、deque、list 的存储与失效规则。](sequence-containers.md)
+[STL 03树容器与哈希容器map/set 与 unordered 系列的查找、插入和引用稳定性。](associative-containers.md)
+[STL 04适配器、迭代器与算法stack、queue、priority_queue、范围语义与算法修改行为。](adapters-iterators.md)
 
 ## lambda 匿名函数
 

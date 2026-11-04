@@ -34,7 +34,7 @@ updated: 2026-11-04
 
 这张表同时描述了权重布局与典型 token 布局，两者并非永远绑定。第 7 节会统一输入输出边界，再比较通信。[TensorRT-LLM MoE 并行定义][trt-guide]
 
-基础材料：[dense FFN 的 row/column TP](qwen3-h100-tp-case.md)、[GEMM 分块](../CUDA/gemm.md)、[Ring / Tree AllReduce](../GPU/communication-and-allreduce.md)。
+基础材料：[dense FFN 的 row/column TP](qwen3-h100-tp-case.md)、[GEMM 分块](../cuda/gemm.md)、[Ring / Tree AllReduce](../gpu/communication-and-allreduce.md)。
 
 ## 2. MoE FFN 的计算与权重存储
 

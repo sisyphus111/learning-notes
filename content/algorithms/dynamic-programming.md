@@ -2021,7 +2021,7 @@ class Solution:
 
 ### 解法2：前缀和
 
-如果看了 [fuck数组.md](../数组/fuck数组.md#前缀和) 的前缀和章节的话，在求子数组和问题上，也能考虑使用前缀和。子数组和等于两个前缀和的差，最大子数组和，就是在前缀和数组中找到两个元素，后减前的差值最大，这不就是[121.买卖股票的最佳时机](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock)这道题吗？在遍历过程中不断记录最小值，然后不断更新当前值减去最小值得到的差值。
+如果看了 [fuck数组.md](arrays.md#前缀和) 的前缀和章节的话，在求子数组和问题上，也能考虑使用前缀和。子数组和等于两个前缀和的差，最大子数组和，就是在前缀和数组中找到两个元素，后减前的差值最大，这不就是[121.买卖股票的最佳时机](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock)这道题吗？在遍历过程中不断记录最小值，然后不断更新当前值减去最小值得到的差值。
 
 小细节：`res`不能初始化成`0`，因为`pre_sum - min_pre_sum`有可能为负数，例如`nums=[-1]`；`min_pre_sum`也必须在更新完`res`后更新，不然有可能`pre_sum`和`min_pre_sum`是相等的。
 
@@ -2129,7 +2129,7 @@ class Solution:
 
 ### 思路
 
-<img src="./figures/918-analysis.png" width="50%">
+<img src="../../动态规划/figures/918-analysis.png" width="50%">
 
 ### 解法
 
@@ -2706,7 +2706,7 @@ class Solution:
 
 **股票交易求最值**，要想到使用状态机DP。
 
-<img src="./figures/122-analysis.png" width="60%">
+<img src="../../动态规划/figures/122-analysis.png" width="60%">
 
 递归边界：
 
@@ -2895,7 +2895,7 @@ class Solution:
 
 **股票交易求最值**，要想到使用状态机DP。与[122.买卖股票的最佳时机](#122.买卖股票的最佳时机 II[中等])不同的是，这题引入了**交易次数限制**，这个交易次数限制其实就很像背包问题的背包容量了，所以我们要给dp数组增加一个维度来记录当前至多完成的交易数。
 
-<img src="./figures/188-analysis.png" width="80%">
+<img src="../../动态规划/figures/188-analysis.png" width="80%">
 
 这一题还有值得思考的地方，买入卖出算一次交易，为什么在我们的递推式中只在买入的时候增加一次交易次数，可不可以在卖出的时候增加交易次数呢？
 
@@ -3214,7 +3214,7 @@ class Solution:
 
 这个题属于典型的**区间划分**类题目，要想到区间DP。
 
-<img src="./figures/1039-analysis-1.png" width="35%"><img src="./figures/1039-analysis-2.png" width="50%">
+<img src="../../动态规划/figures/1039-analysis-1.png" width="35%"><img src="../../动态规划/figures/1039-analysis-2.png" width="50%">
 $$
 dfs(i,j)=\min_{k={i+1}}^{j-1} (dfs(i,k) + dfs(k,j) + v[i] \cdot v[j] \cdot v[k])
 $$

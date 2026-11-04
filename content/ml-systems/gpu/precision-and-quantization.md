@@ -9,7 +9,7 @@ updated: 2026-11-04
 
 FP32、FP16、BF16 描述数值格式；TF32 描述常见的矩阵乘法计算精度；E4M3、E5M2 明确指数与小数部分的位数。**E8M0 在 MX 格式中通常保存共享缩放因子，不是带正负号和零的普通 FP8 数据格式。**
 
-一次矩阵计算还要分别说明输入存储、乘法精度、累加类型、输出存储和量化比例。Tensor Core 与软件选择实现的关系见 [GPU 软件栈与工具](software-stack.md)，程序怎样变成设备指令见 [PTX、SASS 与编译流程](../CUDA/compilation-and-instructions.md)。
+一次矩阵计算还要分别说明输入存储、乘法精度、累加类型、输出存储和量化比例。Tensor Core 与软件选择实现的关系见 [GPU 软件栈与工具](software-stack.md)，程序怎样变成设备指令见 [PTX、SASS 与编译流程](../cuda/compilation-and-instructions.md)。
 
 ## 1. float、FP16、BF16 这些名字指什么
 
@@ -52,7 +52,7 @@ $$
 
 在 FP16 中，S=0，指数编码为 `2+15=17`，小数部分编码为 `0110100000`。规格化数的开头 `1` 不需要显式存储，因此 10 个小数部分 bit 提供 11 个有效二进制位。
 
-![FP32、BF16、FP16、TF32、FP8 与 E8M0 的位分配](../assets/gpu-floating-point-formats.svg)
+![FP32、BF16、FP16、TF32、FP8 与 E8M0 的位分配](../../../assets/gpu-floating-point-formats.svg)
 
 指数决定量级，小数部分决定同一量级中能细分多少个位置。这里把 F 字段称为“小数部分”。资料中的 mantissa bits 往往也指这个存储字段，完整有效数还包括规格化数的隐含首位。
 

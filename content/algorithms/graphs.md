@@ -318,7 +318,7 @@ class Solution:
 
 如果使用两个同时进行的广搜可以有效地减少搜索空间。一边从 beginWord 开始，另一边从 endWord 开始。我们每次从两边各扩展一层节点，当发现某一时刻两边都访问过同一顶点时就停止搜索。这就是双向广度优先搜索，它可以可观地减少搜索空间大小，从而提高代码运行效率。
 
-<img src="./figures/127-analysis.png" width="40%">
+<img src="../../图/figures/127-analysis.png" width="40%">
 
 ### 解法：双向BFS
 

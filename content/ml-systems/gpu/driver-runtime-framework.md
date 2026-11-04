@@ -9,7 +9,7 @@ updated: 2026-11-04
 
 H100 是执行计算的设备。CPU 上的应用、计算库和驱动组织工作，把 GPU 程序和数据交给设备；GPU 再执行指令。**CUDA Runtime、用户态 CUDA Driver 和 Linux 内核驱动是三个不同的软件部分。**
 
-本页以 Linux / x86 主机使用 H100 为例。Windows、虚拟机直通和 Grace Hopper 的部分边界不同。各计算库的用途见 [GPU 软件栈与工具](software-stack.md)，设备代码怎样生成见 [PTX、SASS 与编译流程](../CUDA/compilation-and-instructions.md)。
+本页以 Linux / x86 主机使用 H100 为例。Windows、虚拟机直通和 Grace Hopper 的部分边界不同。各计算库的用途见 [GPU 软件栈与工具](software-stack.md)，设备代码怎样生成见 [PTX、SASS 与编译流程](../cuda/compilation-and-instructions.md)。
 
 ## 1. 先把执行位置分开
 
@@ -21,7 +21,7 @@ H100 是执行计算的设备。CPU 上的应用、计算库和驱动组织工�
 
 用户态与内核态是 CPU 侧的权限边界。host 与 device 是主机与 GPU 的执行位置边界。不能因为一个库叫 Driver，就认定它在 Linux 内核中运行。
 
-![Linux 上从 PyTorch 到 H100 的软件层与执行边界](../assets/gpu-driver-runtime-framework.svg)
+![Linux 上从 PyTorch 到 H100 的软件层与执行边界](../../../assets/gpu-driver-runtime-framework.svg)
 
 图表示主要依赖关系。框架按算子选择实现，也可以直接调用 Driver API。箭头不代表每次 API 调用都经过所有矩形，更不代表每次提交都发生一次系统调用。图中计算库矩形表示 CPU 调用侧，库还可以携带供 GPU 执行的代码。
 
@@ -226,7 +226,7 @@ Python 表达 x @ w
 | 加载 | Runtime / Driver 的模块管理 | 为本次执行准备设备函数 |
 | 执行 | stream、graph、设备函数启动接口 | 提交工作并管理依赖 |
 
-编译可以提前完成，也可以在首次使用时完成。已有 cubin 可以加载执行；兼容的 PTX 也可以在运行时针对目标 GPU 编译。编译不是每次算子调用都必经的一次完整流程。详细路径见 [PTX、SASS 与编译流程](../CUDA/compilation-and-instructions.md)。
+编译可以提前完成，也可以在首次使用时完成。已有 cubin 可以加载执行；兼容的 PTX 也可以在运行时针对目标 GPU 编译。编译不是每次算子调用都必经的一次完整流程。详细路径见 [PTX、SASS 与编译流程](../cuda/compilation-and-instructions.md)。
 
 不同文件也有不同含义：
 
@@ -289,6 +289,6 @@ H100
 | 驱动与设备执行环境 | 设备资源与上下文的管理、共享及运行支持 |
 | GPU block / warp 调度 | 已提交工作怎样驻留并使用执行资源 |
 
-CPU 侧的框架不会为每次标量运算决定使用哪一个 CUDA Core。H100 负责执行提交的设备程序，具体线程组织见 [CUDA 执行层级与硬件映射](../CUDA/execution-hierarchy.md)。
+CPU 侧的框架不会为每次标量运算决定使用哪一个 CUDA Core。H100 负责执行提交的设备程序，具体线程组织见 [CUDA 执行层级与硬件映射](../cuda/execution-hierarchy.md)。
 
 本页核对了官方接口文档和所标版本的源码。图示表达职责与边界，未抓取某台 H100 的实际调用跟踪；CUDA 示例未运行。

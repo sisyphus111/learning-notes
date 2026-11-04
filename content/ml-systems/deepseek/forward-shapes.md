@@ -665,7 +665,7 @@ N_e 随路由变化。多个 token 被放在同一个 GEMM 中，不表示 FFN �
 
 **历史 hidden 不需要为了下一个 token 的 FFN 而永久保留。** 第 j 个历史 token 已经完成各层 FFN；当前 token 经过某层时，读取该层 cache，再只计算自己的 FFN。因果模型里追加未来 token 不会改变历史位置已经算出的输出。
 
-CUDA Graph 保留某块 activation buffer 的地址，不代表里面永久保存全序列历史 hidden。训练反向、返回 hidden states、EAGLE 类草稿模型或特定服务接口可能额外保留 activation，那是另一份状态契约。[MLA 与 hidden 生命周期](../Attention/model-architectures.md#4-mla压缩每个-token-的表示不压缩-token-数)
+CUDA Graph 保留某块 activation buffer 的地址，不代表里面永久保存全序列历史 hidden。训练反向、返回 hidden states、EAGLE 类草稿模型或特定服务接口可能额外保留 activation，那是另一份状态契约。[MLA 与 hidden 生命周期](../attention/model-architectures.md#4-mla压缩每个-token-的表示不压缩-token-数)
 
 ## 17. 权重、cache、activation 与执行路径对照
 
@@ -684,7 +684,7 @@ CUDA Graph 保留某块 activation buffer 的地址，不代表里面永久保�
 
 ## 18. 官方来源与配置快照
 
-- [完整配置快照](../assets/deepseek-configs.json)：V2、V3、V3.2、V4-Flash、V4-Pro 的固定 revision 与原始配置。
+- [完整配置快照](../../../assets/deepseek-configs.json)：V2、V3、V3.2、V4-Flash、V4-Pro 的固定 revision 与原始配置。
 - [V3 配置][v3-config]、[V3 参考代码][v3-code]、[V3 技术报告](https://arxiv.org/html/2412.19437v1)。
 - [V3.2 配置][v32-config]、[V3.2 参考代码][v32-code]、[DSA 技术报告](https://arxiv.org/html/2512.02556v1)。
 - [V4-Pro 配置][v4-config]、[V4-Pro 参考代码][v4-code]、[V4 技术报告](https://arxiv.org/html/2606.19348v1)。

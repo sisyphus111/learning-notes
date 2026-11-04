@@ -406,7 +406,7 @@ $$
 
 Row-parallel 缩短 K 后，也可能增加流水线启动、排空和 epilogue 的相对占比。通信还有固定延迟、数据搬运、同步等待及资源竞争。只有不在关键路径上、被独立工作覆盖的通信时间，才可能隐藏。
 
-分析 TP 时需同时列出每卡 GEMM shape、tile 数、K 循环长度、权重字节和通信 payload，不能只把 FLOPs 除以 p。具体硬件推导见 [Qwen3-32B / H100 TP 案例](../Attention/qwen3-h100-tp-case.md)，MoE 的不同专家 batch 与数据路由见 [EP 与 TP](../Attention/moe-ep-tp.md)。
+分析 TP 时需同时列出每卡 GEMM shape、tile 数、K 循环长度、权重字节和通信 payload，不能只把 FLOPs 除以 p。具体硬件推导见 [Qwen3-32B / H100 TP 案例](../attention/qwen3-h100-tp-case.md)，MoE 的不同专家 batch 与数据路由见 [EP 与 TP](../attention/moe-ep-tp.md)。
 
 ## 7. 宏观与微观的对应表
 
@@ -438,8 +438,8 @@ Row-parallel 缩短 K 后，也可能增加流水线启动、排空和 epilogue 
 
 - [GEMM 计算与优化](gemm.md)：CTA/register tiling、布局、异步流水线、Split-K 与融合。
 - [CUDA 执行层级与硬件映射](execution-hierarchy.md)：grid、CTA、warp、SM 与驻留资源。
-- [Qwen3-32B / H100 TP 案例](../Attention/qwen3-h100-tp-case.md)：把方法用于模型 shape、硬件预算与通信。
-- [MoE FFN：EP 与 TP](../Attention/moe-ep-tp.md)：专家 token 数、grouped GEMM 和数据路由。
+- [Qwen3-32B / H100 TP 案例](../attention/qwen3-h100-tp-case.md)：把方法用于模型 shape、硬件预算与通信。
+- [MoE FFN：EP 与 TP](../attention/moe-ep-tp.md)：专家 token 数、grouped GEMM 和数据路由。
 - [NVIDIA GPU Performance Background](https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/)：吞吐、带宽与延迟约束。
 - [NVIDIA Matrix Multiplication Background](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html)：矩阵形状、算术强度和 tile/wave quantization。
 - [CUTLASS Efficient GEMM](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html)：分层并行、片上复用、软件流水线和并行归约。

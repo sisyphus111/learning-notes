@@ -36,7 +36,7 @@ def f(a, b):
 
 假设 a/b 是同形状、连续的 CUDA 浮点 Tensor。普通 eager 路径通常逐个提交加法、乘法和 ReLU。输出依赖前一步，因此不能只因为画成图就把三个操作同时执行。
 
-![算子图编译与 CUDA Graph 重放的职责](../assets/gpu-compilation-and-replay.svg)
+![算子图编译与 CUDA Graph 重放的职责](../../../assets/gpu-compilation-and-replay.svg)
 
 图中上半部分改变计算实现，下半部分复用提交安排。两者能够组合：先编译得到 kernel，再记录这些 kernel 的执行图。
 
@@ -432,7 +432,7 @@ pool 可以复用已有空闲块，也可以在捕获准备和分配过程中增
 
 CUDA 原生支持把分配和释放作为图节点。它们表达一段内存的 **GPU 有效使用期**，因此可以和固定虚拟地址同时成立。
 
-![PyTorch private pool 与 CUDA 原生内存节点的时间线](../assets/cuda-graph-memory-lifetimes.svg)
+![PyTorch private pool 与 CUDA 原生内存节点的时间线](../../../assets/cuda-graph-memory-lifetimes.svg)
 
 上图比较 native allocator 的典型路径与 CUDA 原生内存节点。若 PyTorch 使用 `cudaMallocAsync` backend，底层行为可能涉及内存节点，不能沿用“只有固定 buffer、没有分配节点”的假设。具体行为取决于 allocator backend 和版本。
 

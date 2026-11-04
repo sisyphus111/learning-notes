@@ -27,9 +27,9 @@ V4 HCA：    T 个 token → 约 T/128 条摘要 → 全部摘要参与主 atten
                                CSA/HCA 都另外读取近期原始条目
 ```
 
-本文聚焦已讨论的 V2、V3、V3.2 和原版 V4。V4.1 的其他结构见[模型家族对照](../Attention/model-architectures.md)，不把它的配置混入 V4。下一页[一次前向与全部形状](forward-shapes.md)把本页机制代入 V3、V3.2、V4-Pro 的真实尺寸。
+本文聚焦已讨论的 V2、V3、V3.2 和原版 V4。V4.1 的其他结构见[模型家族对照](../attention/model-architectures.md)，不把它的配置混入 V4。下一页[一次前向与全部形状](forward-shapes.md)把本页机制代入 V3、V3.2、V4-Pro 的真实尺寸。
 
-资料核对日期：2026-10-29。配置来自固定 revision 的官方文件，保存在[配置快照](../assets/deepseek-configs.json)。本文的形状、算术和复杂度属于静态推导；未运行模型或测量 GPU 性能。
+资料核对日期：2026-10-29。配置来自固定 revision 的官方文件，保存在[配置快照](../../../assets/deepseek-configs.json)。本文的形状、算术和复杂度属于静态推导；未运行模型或测量 GPU 性能。
 
 ## 2. 配置与参数规模
 
@@ -131,7 +131,7 @@ k_R：[64]，已施加 RoPE 的位置 key
 
 这里的 `kv_lora_rank` 是架构里的低秩宽度，不表示额外挂了 PEFT LoRA adapter。吸收也不能任意跨越 RMSNorm、softmax 或其他非线性操作。
 
-[V2 报告][v2-paper]给出 MLA 与 DeepSeekMoE 的设计；更详细的 decode 和 hidden 生命周期推导见[现有 MLA 教学](../Attention/model-architectures.md#4-mla压缩每个-token-的表示不压缩-token-数)。
+[V2 报告][v2-paper]给出 MLA 与 DeepSeekMoE 的设计；更详细的 decode 和 hidden 生命周期推导见[现有 MLA 教学](../attention/model-architectures.md#4-mla压缩每个-token-的表示不压缩-token-数)。
 
 ## 4. V3：MLA 不变，把训练与 MoE 扩展到更大规模
 
@@ -451,9 +451,9 @@ V4 不再要求先定义各 head 的内容 K/V 展开，再靠吸收避免展开
 
 ## 11. 阅读顺序与来源
 
-先把[前向与形状](forward-shapes.md)中的 V3 路径走通，再看 V3.2 增加的 indexer，最后把 V4 的 cache、输出投影与 residual 替换进去。遇到通用概念，可回到 [Transformer 运行全过程](../Attention/transformer-runtime.md)、[浮点格式与量化](../GPU/precision-and-quantization.md)和[MoE 所需的通信基础](../GPU/communication-and-allreduce.md)。
+先把[前向与形状](forward-shapes.md)中的 V3 路径走通，再看 V3.2 增加的 indexer，最后把 V4 的 cache、输出投影与 residual 替换进去。遇到通用概念，可回到 [Transformer 运行全过程](../attention/transformer-runtime.md)、[浮点格式与量化](../gpu/precision-and-quantization.md)和[MoE 所需的通信基础](../gpu/communication-and-allreduce.md)。
 
-本文配置固定在下列 revision，完整 JSON 位于[配置快照](../assets/deepseek-configs.json)。固定配置用于复核尺寸，不代表已执行这些模型。
+本文配置固定在下列 revision，完整 JSON 位于[配置快照](../../../assets/deepseek-configs.json)。固定配置用于复核尺寸，不代表已执行这些模型。
 
 | 模型 | 固定配置 |
 | --- | --- |

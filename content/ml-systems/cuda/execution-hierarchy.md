@@ -20,7 +20,7 @@ CUDA 中要分别看两套层级：一套描述程序怎样分工，一套描述
 
 GPC 是 Graphics Processing Cluster，硬件上包含一组 SM。它与软件中的 thread block cluster 是两个不同对象。CUDA Core、Tensor Core 等位于 SM 内，是执行指令的硬件；线程没有永久独占某一个 Core。
 
-![CUDA 逻辑分组与硬件映射：一个 cluster 的两个 blocks 分别完整放入同一 GPC 内的 SM](../assets/cuda-execution-hierarchy.svg)
+![CUDA 逻辑分组与硬件映射：一个 cluster 的两个 blocks 分别完整放入同一 GPC 内的 SM](../../../assets/cuda-execution-hierarchy.svg)
 
 图中只展开一个含两个 blocks 的 cluster，箭头表示一种可能的放置方式。每个 block 有 256 个线程，即 8 个 warps；cluster 内的 blocks 可以位于不同 SM，但仍受同一 GPC 的位置约束。图中每个 SM 只画一个 block，不代表 SM 只能驻留一个 block。
 
@@ -284,4 +284,4 @@ Hopper 的 Tensor Memory Accelerator（TMA）适合这种分工：producer 中�
 
 来源：[NVIDIA SIMT 与硬件多线程](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html#simt-execution-model)、[CUDA 异步执行](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html)。
 
-本文的数量例子和放置图用于推导关系，不表示某个 GPU 型号的实测调度。CUDA 片段未做编译或实机验证；架构相关上限以目标设备和 NVIDIA 文档为准。Tensor 的 shape、stride 与存储关系可继续对照 [Tensor 与 GPU 内存](../PyTorch/tensors.md)。
+本文的数量例子和放置图用于推导关系，不表示某个 GPU 型号的实测调度。CUDA 片段未做编译或实机验证；架构相关上限以目标设备和 NVIDIA 文档为准。Tensor 的 shape、stride 与存储关系可继续对照 [Tensor 与 GPU 内存](../pytorch/tensors.md)。

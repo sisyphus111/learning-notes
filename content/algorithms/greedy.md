@@ -29,7 +29,7 @@ updated: 2026-11-04
 
 ### 解法1：动态规划
 
-如果看过 [fuck动态规划.md](../动态规划/fuck动态规划.md) ，那么这道题可以很容易想出动态规划的解法，就是线性dp，`dp[i]`就表示是否可以到达`nums[i]`。但是如果内层循环写`for (int j = 0; j < i; ++j)`的话会超时。
+如果看过 [fuck动态规划.md](dynamic-programming.md) ，那么这道题可以很容易想出动态规划的解法，就是线性dp，`dp[i]`就表示是否可以到达`nums[i]`。但是如果内层循环写`for (int j = 0; j < i; ++j)`的话会超时。
 
 ```cpp
 class Solution {

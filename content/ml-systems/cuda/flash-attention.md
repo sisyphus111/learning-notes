@@ -25,7 +25,7 @@ $$
 
 单个 head 中，`Q/K/V` 可以是 `[N,d]`，中间的 `S/P` 却是 `[N,N]`。例如 N=8192，**一张 FP32 分数矩阵就占 256 MiB**。把整张 S、P 反复写入显存，再读回来，会产生很高的搬运成本。
 
-FlashAttention 的核心目标仍是 dense softmax attention。它调整计算和数据流；[Flash Linear Attention](../Attention/flash-linear-attention.md) 则涉及另一类状态递推结构。稠密 FlashAttention 的主要计算量仍为 $O(N^2d)$，并没有变成线性计算量。
+FlashAttention 的核心目标仍是 dense softmax attention。它调整计算和数据流；[Flash Linear Attention](../attention/flash-linear-attention.md) 则涉及另一类状态递推结构。稠密 FlashAttention 的主要计算量仍为 $O(N^2d)$，并没有变成线性计算量。
 
 ## 2. FA1：小块算完就用掉，少往返 HBM
 
@@ -35,7 +35,7 @@ FA1 改为：读取 Q/K/V 小块，算出当前分数小块，随即处理 softm
 
 <div id="fa-io" class="fa-demo">
 <p><strong>看数据放在哪里：</strong>朴素路线保存完整 N×N 的 S/P；分块路线只保留当前 score tile 和输出状态。</p>
-<img src="../assets/flash-attention-dataflow.svg" alt="完整中间矩阵写入 HBM 与片上分块递推的对比">
+<img src="../../../assets/flash-attention-dataflow.svg" alt="完整中间矩阵写入 HBM 与片上分块递推的对比">
 </div>
 
 这里的片上空间包括 shared memory 和寄存器。图中的小块只说明计算组织，不能将 score 大小之比当成总显存节省或实际加速比。
@@ -91,7 +91,7 @@ FA3 将线程分成角色：producer 准备数据，consumer 使用就绪数据�
 
 <div id="fa-pipeline" class="fa-demo">
 <p><strong>依赖不变：</strong>同一工作块始终是加载 → QK → softmax → PV。不同工作块可以在不同执行资源上重叠。</p>
-<img src="../assets/flash-attention-pipeline.svg" alt="Hopper 和 Blackwell 的矩阵计算、softmax 及存储路径">
+<img src="../../../assets/flash-attention-pipeline.svg" alt="Hopper 和 Blackwell 的矩阵计算、softmax 及存储路径">
 </div>
 
 只看同一个 tile，必须先算出分数，才能得到 P，再用 P 做 PV。图里能重叠的，是不同 tile 已经就绪的阶段。时间轴只表示依赖和一种可能的排布，不是 H100 的实测时间，也不对应所有实际指令调度。

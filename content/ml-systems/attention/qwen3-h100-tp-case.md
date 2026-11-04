@@ -15,7 +15,7 @@ updated: 2026-11-04
 
 模型和硬件尺寸来自官方资料。流量、FLOPs 与时间来自公式推导。CTA/warp/register 配置是可核算的教学设计。未执行 H100 benchmark，也没有确认 cuBLAS、SGLang 或其他后端为这些 shape 实际选择的 kernel。
 
-基础材料：[Transformer 运行全过程](transformer-runtime.md)、[GEMM 分块与流水线](../CUDA/gemm.md)、[通信与 AllReduce](../GPU/communication-and-allreduce.md)。
+基础材料：[Transformer 运行全过程](transformer-runtime.md)、[GEMM 分块与流水线](../cuda/gemm.md)、[通信与 AllReduce](../gpu/communication-and-allreduce.md)。
 
 将 FFN 扩展为多个 routed experts 后，比较专家分布、A2A 与矩阵分片，见 [MoE FFN：EP 与 TP](moe-ep-tp.md)。
 
@@ -366,7 +366,7 @@ consumer：读取就绪槽，完成本轮 MMA
 producer：允许覆盖旧槽
 ```
 
-TMA 可以由选出的线程发起，搬运绕开普通数据寄存器中转。buffer 复用必须等待 consumer 使用完；只确认 TMA 完成还不够。bank conflict、swizzle 和多级缓冲的基础见 [GEMM 笔记](../CUDA/gemm.md)。
+TMA 可以由选出的线程发起，搬运绕开普通数据寄存器中转。buffer 复用必须等待 consumer 使用完；只确认 TMA 完成还不够。bank conflict、swizzle 和多级缓冲的基础见 [GEMM 笔记](../cuda/gemm.md)。
 
 ## 9. warpgroup 与每个 thread 的 accumulator
 
@@ -498,7 +498,7 @@ TP8 的 up 权重分片约 32.8 MB，小于 H100 的 50 MB L2。反复测同一�
 - [Hopper 架构][hopper-architecture]与[Tuning Guide][hopper-tuning]：SM、register file、shared memory 与异步机制。
 - [NVIDIA GEMM 性能背景][gemm-performance]：FLOPs、算术强度、tiling 与性能边界。
 - [CUTLASS Efficient GEMM][cutlass]与[WGMMA 指南][wgmma]：CTA/warpgroup 分层、存储路径。
-- [Megatron TP][megatron]与[NCCL collective 语义][nccl]：列/行切分组合和输出归约。Ring 流量推导见本仓库的[通信笔记](../GPU/communication-and-allreduce.md)。
+- [Megatron TP][megatron]与[NCCL collective 语义][nccl]：列/行切分组合和输出归约。Ring 流量推导见本仓库的[通信笔记](../gpu/communication-and-allreduce.md)。
 
 [model]: https://huggingface.co/Qwen/Qwen3-32B
 [config]: https://huggingface.co/Qwen/Qwen3-32B/blob/main/config.json

@@ -241,7 +241,7 @@ scores / probs：[B,Hq,S,T]
 每个 head 的结果：[B,Hq,S,d]
 ```
 
-这些是逻辑形状。FlashAttention 可以直接分块计算输出，不必在显存里生成完整 score/probability 矩阵，详见 [FlashAttention 1–4](../CUDA/flash-attention.md)。
+这些是逻辑形状。FlashAttention 可以直接分块计算输出，不必在显存里生成完整 score/probability 矩阵，详见 [FlashAttention 1–4](../cuda/flash-attention.md)。
 
 ## 9. 合并 heads、输出投影、第一次残差
 
@@ -292,7 +292,7 @@ up/gate/down 都是学习到的线性变换，SiLU 提供非线性。中间结�
 
 这里 $\operatorname{SiLU}(x)=x\,\sigma(x)$，$\sigma(x)=1/(1+e^{-x})$，$\odot$ 表示对应元素相乘。gate 不只是一个 0/1 开关，它产生连续的逐特征调节值。
 
-FFN 在每个位置独立执行，同一层的不同 token 共用 FFN 权重。它本身不直接读取其他 token 的行，但其输入已经由 attention 混入上下文。**attention 混合位置，FFN 变换每个位置的特征。** 具体公式和组件实现可参见 [常见计算与组件](../PyTorch/operations-and-components.md)。
+FFN 在每个位置独立执行，同一层的不同 token 共用 FFN 权重。它本身不直接读取其他 token 的行，但其输入已经由 attention 混入上下文。**attention 混合位置，FFN 变换每个位置的特征。** 具体公式和组件实现可参见 [常见计算与组件](../pytorch/operations-and-components.md)。
 
 ## 11. 堆叠 L 层后，怎样得到下一个 token
 
@@ -446,7 +446,7 @@ $$
 
 例如“causal GQA + paged KV + FlashAttention”可以同时成立：三个词分别描述可见性、head 关系与执行/存储方式。
 
-落实到 GPU，一次 block 通常涉及 RMSNorm、QKV GEMM、RoPE/cache 写入、attention kernel、输出 GEMM、残差、FFN GEMM 和逐元素运算。实现可以融合相邻步骤，所以数学步骤数不等于 kernel 数。[GEMM 教程](../CUDA/gemm.md) 解释矩阵工作，[FlashAttention 1–4](../CUDA/flash-attention.md) 解释 softmax attention 的数据流，[Flash Linear Attention](flash-linear-attention.md) 解释矩阵状态递推与分块计算，[CUDA Graph](../GPU/graphs-and-compilation.md) 则解释如何复用提交安排。
+落实到 GPU，一次 block 通常涉及 RMSNorm、QKV GEMM、RoPE/cache 写入、attention kernel、输出 GEMM、残差、FFN GEMM 和逐元素运算。实现可以融合相邻步骤，所以数学步骤数不等于 kernel 数。[GEMM 教程](../cuda/gemm.md) 解释矩阵工作，[FlashAttention 1–4](../cuda/flash-attention.md) 解释 softmax attention 的数据流，[Flash Linear Attention](flash-linear-attention.md) 解释矩阵状态递推与分块计算，[CUDA Graph](../gpu/graphs-and-compilation.md) 则解释如何复用提交安排。
 
 ## 17. 把一次生成的控制流连起来
 

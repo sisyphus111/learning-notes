@@ -655,7 +655,7 @@ $$
 
 ## 19. 从 AllReduce 成本回到 TP / EP
 
-并行方案先决定权重和 token 的分布，再决定本地 GEMM shape 与通信张量。比较 TP / EP 时，必须固定全局工作量，并追踪哪些布局转换位于关键路径。GEMM 内部的 tiling、register tiling 和 split-K 见 [GEMM 计算与优化](../CUDA/gemm.md)，这里专门计算通信。
+并行方案先决定权重和 token 的分布，再决定本地 GEMM shape 与通信张量。比较 TP / EP 时，必须固定全局工作量，并追踪哪些布局转换位于关键路径。GEMM 内部的 tiling、register tiling 和 split-K 见 [GEMM 计算与优化](../cuda/gemm.md)，这里专门计算通信。
 
 ### TP：每卡计算减少，但输出部分和的大小不随 P 等比例下降
 

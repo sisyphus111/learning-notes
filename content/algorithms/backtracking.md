@@ -623,7 +623,7 @@ class Solution:
 
 其实**子集也是一种组合问题**，因为它的集合是无序的。**那么既然是无序，取过的元素不会重复取，写回溯算法的时候，for就要从`start_index`开始，而不是从0开始！**（求排列问题的时候，就要从0开始，因为集合是有序的）
 
-<img src="./figures/78-analysis.png" width="80%">
+<img src="../../回溯/figures/78-analysis.png" width="80%">
 
 ```cpp
 class Solution {

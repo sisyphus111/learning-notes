@@ -27,7 +27,7 @@ Flash Linear Attention（FLA）把可递推的序列计算组织成适合 GPU �
 
 FlashAttention 保持 softmax attention 的数学目标。linear attention 通常更换相似度函数或状态更新规则。直接替换一个训练好的 softmax 模型中的算子，不能保证输出等价。是否能转换、蒸馏或重新训练，是模型层面的工作。[GLA 论文](https://arxiv.org/abs/2312.06635)、[FLA 官方项目](https://github.com/fla-org/flash-linear-attention)
 
-本页接在 [FlashAttention 1–4](../CUDA/flash-attention.md) 后阅读。先推导不带 gate 的形式，再加入遗忘与 delta update，最后对应到库接口和 GPU 执行。
+本页接在 [FlashAttention 1–4](../cuda/flash-attention.md) 后阅读。先推导不带 gate 的形式，再加入遗忘与 delta update，最后对应到库接口和 GPU 执行。
 
 ## 2. 从 softmax 权重到可结合的矩阵乘法
 
@@ -171,7 +171,7 @@ $$
 
 最后将 Uc 的每一行除以 dc 对应元素。只使用整个序列最终的 S、z 去计算全部 causal 输出会泄漏未来信息；chunk 必须拿到自己的入站状态。
 
-![线性注意力的 token 递推与 chunkwise 数据流](../assets/linear-attention-state-chunk.svg)
+![线性注意力的 token 递推与 chunkwise 数据流](../../../assets/linear-attention-state-chunk.svg)
 
 ### 有 L×L 计算，为什么仍称为线性
 

@@ -9,7 +9,7 @@ updated: 2026-11-04
 
 快速查找“哪个模型用了什么技术”：见[模型技术总表](model-technology-map.md)。
 
-DeepSeek 的逐代推导已独立整理为[架构演进](../DeepSeek/evolution.md)和[一次前向与张量形状](../DeepSeek/forward-shapes.md)。本页继续保留不同模型家族的横向对照。
+DeepSeek 的逐代推导已独立整理为[架构演进](../deepseek/evolution.md)和[一次前向与张量形状](../deepseek/forward-shapes.md)。本页继续保留不同模型家族的横向对照。
 
 ## 1. 按版本看结构，按计算角色理解名词
 
@@ -28,7 +28,7 @@ DeepSeek 的逐代推导已独立整理为[架构演进](../DeepSeek/evolution.m
 
 **MoE 不规定 attention 用什么公式；dense 也不等于每一层都使用 full attention。** Qwen3.5-27B 就可以同时是 dense FFN 和 GDN/full-attention 混合模型。
 
-![三个系列的代表性结构变化](../assets/model-architecture-routes.svg)
+![三个系列的代表性结构变化](../../../assets/model-architecture-routes.svg)
 
 图中按家族分组，框内描述不同计算角色。这些机制不都属于同一个 attention kernel；同系列也可以并存多条结构路线。
 
@@ -805,7 +805,7 @@ Thinking、Instruct、RL、distillation 主要描述训练或生成行为，可�
 
 同样叫“3B active”的模型，也可能在上下文读取、state 容量、router 与专家宽度上有不同成本。比较延迟或吞吐时，需要固定模型版本、精度、batch、上下文长度、TP/EP/PP 配置与缓存命中状态。结构分析不能替代测量。
 
-相关基础页：[Transformer 运行全过程](transformer-runtime.md)、[GEMM](../CUDA/gemm.md)、[FlashAttention](../CUDA/flash-attention.md)、[FLA](flash-linear-attention.md)、[通信操作](../GPU/communication-and-allreduce.md)、[CUDA Graph](../GPU/graphs-and-compilation.md)、[精度与量化](../GPU/precision-and-quantization.md)。
+相关基础页：[Transformer 运行全过程](transformer-runtime.md)、[GEMM](../cuda/gemm.md)、[FlashAttention](../cuda/flash-attention.md)、[FLA](flash-linear-attention.md)、[通信操作](../gpu/communication-and-allreduce.md)、[CUDA Graph](../gpu/graphs-and-compilation.md)、[精度与量化](../gpu/precision-and-quantization.md)。
 
 ## 14. 固定配置来源与阅读方法
 

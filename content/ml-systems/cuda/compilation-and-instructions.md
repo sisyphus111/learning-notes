@@ -9,7 +9,7 @@ updated: 2026-11-04
 
 CUDA C++、Triton 和 CuTe DSL 可以表达 GPU kernel。它们采用不同的编译流程，但常见的 NVIDIA 后端都会生成 PTX，再生成目标 GPU 的机器码。**PTX 是虚拟指令表示，SASS 是原生机器指令的汇编表示；GPU 执行的是机器码。**
 
-线程怎样组织、工作怎样放入 SM，见 [执行层级与硬件映射](execution-hierarchy.md)。本页解释这些线程执行的代码怎样生成。计算库、kernel 工具与模型框架的关系见 [GPU 软件栈与工具](../GPU/software-stack.md)。
+线程怎样组织、工作怎样放入 SM，见 [执行层级与硬件映射](execution-hierarchy.md)。本页解释这些线程执行的代码怎样生成。计算库、kernel 工具与模型框架的关系见 [GPU 软件栈与工具](../gpu/software-stack.md)。
 
 ## 1. 源代码、IR、PTX 与机器码
 

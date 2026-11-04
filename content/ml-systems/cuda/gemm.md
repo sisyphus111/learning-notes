@@ -9,7 +9,7 @@ updated: 2026-11-04
 
 attention 怎样把两次 GEMM 与 softmax 接起来，并随 GPU 架构改变流水线，见 [FlashAttention 1–4](flash-attention.md)。
 
-将这些机制用于具体模型与硬件的算量、流量和 TP 分析，见 [Qwen3-32B / H100 案例](../Attention/qwen3-h100-tp-case.md)。
+将这些机制用于具体模型与硬件的算量、流量和 TP 分析，见 [Qwen3-32B / H100 案例](../attention/qwen3-h100-tp-case.md)。
 
 怎样把这些优化组织成一套分析方法，见 [GEMM 性能分析方法](gemm-performance-analysis.md)：连接宏观约束与微观执行，并用 GEMV/GEMM、流水线和 TP 的具体形状推导性能边界。
 
@@ -96,7 +96,7 @@ acc：                           形状 [BM, BN]
 acc += A_tile @ B_tile
 ```
 
-![同一输出 tile 沿 K 累加多组 A/B tile](../assets/gemm-tiling.svg)
+![同一输出 tile 沿 K 累加多组 A/B tile](../../../assets/gemm-tiling.svg)
 
 不同 K 段都更新同一块输出。其他 M/N 输出 tile 可以由别的 blocks 独立计算；这些 blocks 的启动先后顺序不由图示规定。
 
@@ -420,7 +420,7 @@ warp 的地址 → 合并访问与缓存查询
 
 双缓冲分配两个输入缓冲槽。计算 K tile 0 时，把 K tile 1 搬到另一槽；用完 tile 0 后，再让 tile 2 复用它的槽。
 
-![串行加载计算与双缓冲重叠，以及 K tile 与缓冲槽的对应](../assets/gemm-pipeline.svg)
+![串行加载计算与双缓冲重叠，以及 K tile 与缓冲槽的对应](../../../assets/gemm-pipeline.svg)
 
 图中时间长度仅用于说明依赖，不表示某台 GPU 的实测耗时。`ready` 表示加载完成；`released` 表示计算已不再读取该槽。异步矩阵指令发出后，输入未必已经读完，所以不能只以“指令已发出”作为释放缓冲区的依据。
 
@@ -905,7 +905,7 @@ $$
 
 取 `M=4`、`K=384`，`SA` 的逻辑形状是 `[4,3]`。若每轮 K 处理 128 个元素，第 0 轮需要 `SA[0,0]` 到 `SA[3,0]`，第 1 轮需要第 1 列，以此类推。
 
-![同一 K 分组的 scale 在重排后连续存储](../assets/gemm-scale-layout.svg)
+![同一 K 分组的 scale 在重排后连续存储](../../../assets/gemm-scale-layout.svg)
 
 ```text
 逻辑矩阵不变：
@@ -966,9 +966,9 @@ Roofline 的第一步是比较计算时间下界 `FLOPs / 算力` 和传输时�
 
 - [CUDA 执行层级与硬件映射](execution-hierarchy.md)：block、warp、SM、资源驻留。
 - [PTX、SASS 与编译流程](compilation-and-instructions.md)：kernel 如何变成矩阵与搬运指令。
-- [浮点格式、混合精度与量化](../GPU/precision-and-quantization.md)：输入精度、累加精度、E8M0 和分组 scale。
-- [GPU 软件栈与工具](../GPU/software-stack.md)：cuBLAS、CUTLASS、CuTe DSL、Triton、DeepGEMM 的层次。
-- [计算图、编译与 CUDA Graph](../GPU/graphs-and-compilation.md)：编译优化与执行重放的边界。
+- [浮点格式、混合精度与量化](../gpu/precision-and-quantization.md)：输入精度、累加精度、E8M0 和分组 scale。
+- [GPU 软件栈与工具](../gpu/software-stack.md)：cuBLAS、CUTLASS、CuTe DSL、Triton、DeepGEMM 的层次。
+- [计算图、编译与 CUDA Graph](../gpu/graphs-and-compilation.md)：编译优化与执行重放的边界。
 - [NVIDIA 矩阵乘法性能背景](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html)：算术强度、tile/wave quantization。
 - [CUTLASS Efficient GEMM](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html)：分层结构、pipeline 与并行归约。
 - [Triton 矩阵乘法教程](https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html)：可对应阅读的 blocked matmul、L2 顺序和调参代码。

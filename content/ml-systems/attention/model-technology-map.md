@@ -55,7 +55,7 @@ updated: 2026-11-04
 
 GDN/KDA 的递推状态在形状上不随历史长度增长，但混合模型还有 full attention 或 MLA 层，所以不能说整个模型的缓存都是常量。HCA 虽然压缩历史，压缩条目仍随序列增长，也不能归入固定状态的 linear attention。
 
-详细解释：[MLA 与各类稀疏/混合 attention](model-architectures.md)、[DeepSeek V2–V4 演进](../DeepSeek/evolution.md)。
+详细解释：[MLA 与各类稀疏/混合 attention](model-architectures.md)、[DeepSeek V2–V4 演进](../deepseek/evolution.md)。
 
 ## 3. 条件记忆、MTP 与视觉：放在主干旁边单独看
 
@@ -115,13 +115,13 @@ V3 的“辅助损失自由”主要指专家负载用选择偏置调节，它�
 | --- | --- | --- |
 | 多个 query heads 怎样共享历史表示 | GQA、MQA、MLA | [模型结构与注意力变体](model-architectures.md) |
 | 当前 token 选哪些历史读取 | DSA、QSA | [模型结构与注意力变体](model-architectures.md) |
-| 历史怎样合并成更少的条目 | CSA、HCA | [DeepSeek 演进](../DeepSeek/evolution.md) |
+| 历史怎样合并成更少的条目 | CSA、HCA | [DeepSeek 演进](../deepseek/evolution.md) |
 | 历史怎样累积成递推状态 | GDN、KDA | [线性注意力](flash-linear-attention.md) |
 | 哪些 FFN 专家执行，专家在多宽空间工作 | MoE、shared/routed experts、LatentMoE | [专家与条件记忆详解](residual-experts-memory.md) |
-| 前面层的结果怎样交给后面层 | 普通 residual、mHC、Block AttnRes、GR | [mHC](../DeepSeek/evolution.md#8-mhc-同一个-token-的多条残差流)、[GR 与 Block AttnRes](residual-experts-memory.md) |
+| 前面层的结果怎样交给后面层 | 普通 residual、mHC、Block AttnRes、GR | [mHC](../deepseek/evolution.md#8-mhc-同一个-token-的多条残差流)、[GR 与 Block AttnRes](residual-experts-memory.md) |
 | 局部 token 组合怎样查训练得到的记忆 | n-gram embedding、Engram | [条件记忆详解](residual-experts-memory.md) |
 | 怎样训练额外预测、提出多个候选 token | MTP、speculative decoding | [多模态与生成路径](model-architectures.md#12-多模态-mtp-与训练方法属于哪些层次) |
-| 权重怎样更新、训练怎样跑得动 | AdamW、Muon、FP8、DualPipe | [Muon](../DeepSeek/evolution.md#9-muon-训练时变换更新矩阵)、[精度与量化](../GPU/precision-and-quantization.md) |
+| 权重怎样更新、训练怎样跑得动 | AdamW、Muon、FP8、DualPipe | [Muon](../deepseek/evolution.md#9-muon-训练时变换更新矩阵)、[精度与量化](../gpu/precision-and-quantization.md) |
 
 这里的各列可以组合：**一个模型可以同时用 MLA、MoE 和普通 residual，也可以同时用 KDA/MLA、LatentMoE 和 Block AttnRes。** 学新名词时先确定它改变哪部分，再回到对应模型行查看组合。
 
@@ -131,10 +131,10 @@ V3 的“辅助损失自由”主要指专家负载用选择偏置调节，它�
 
 | 模型/主题 | 官方来源 | 本站进一步阅读 |
 | --- | --- | --- |
-| DeepSeek-V2 | [报告](https://arxiv.org/html/2405.04434v5)、[固定配置](https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/config.json) | [V2–V4 演进](../DeepSeek/evolution.md) |
-| DeepSeek-V3 | [报告](https://arxiv.org/html/2412.19437v2) | [V3 的 MLA、MoE 与训练](../DeepSeek/evolution.md#4-v3-mla-不变-把训练与-moe-扩展到更大规模) |
-| DeepSeek-V3.2 | [报告](https://arxiv.org/html/2512.02556v1)、[固定配置](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/config.json) | [DSA](../DeepSeek/evolution.md#5-v3-2-dsa-indexer-选择位置-主-mla-计算结果) |
-| DeepSeek-V4 | [报告](https://arxiv.org/html/2606.19348v1)、[Flash 配置](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/config.json)、[Pro 配置](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json) | [CSA/HCA 与 mHC](../DeepSeek/evolution.md) |
+| DeepSeek-V2 | [报告](https://arxiv.org/html/2405.04434v5)、[固定配置](https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/config.json) | [V2–V4 演进](../deepseek/evolution.md) |
+| DeepSeek-V3 | [报告](https://arxiv.org/html/2412.19437v2) | [V3 的 MLA、MoE 与训练](../deepseek/evolution.md#4-v3-mla-不变-把训练与-moe-扩展到更大规模) |
+| DeepSeek-V3.2 | [报告](https://arxiv.org/html/2512.02556v1)、[固定配置](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/config.json) | [DSA](../deepseek/evolution.md#5-v3-2-dsa-indexer-选择位置-主-mla-计算结果) |
+| DeepSeek-V4 | [报告](https://arxiv.org/html/2606.19348v1)、[Flash 配置](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/config.json)、[Pro 配置](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json) | [CSA/HCA 与 mHC](../deepseek/evolution.md) |
 | Kimi K3 | [报告](https://arxiv.org/html/2607.24653v1)、[模型卡](https://huggingface.co/moonshotai/Kimi-K3)、[固定配置](https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/config.json) | [Block AttnRes 与 LatentMoE](residual-experts-memory.md) |
 | Qwen3.8-27B | [模型卡](https://huggingface.co/Qwen/Qwen3.8-27B)、[固定配置](https://huggingface.co/Qwen/Qwen3.8-27B/blob/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/config.json) | [Qwen 各分支](model-architectures.md#7-qwen-dense-moe-与-attention-路线是独立选择) |
 | Qwen3.8-2.4T-A95B | [模型卡](https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B)、[固定配置](https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B/blob/207bd685a7e3696cfaff12ded7c6a7ea0f88c996/config.json) | [Qwen 各分支](model-architectures.md#7-qwen-dense-moe-与-attention-路线是独立选择) |
@@ -365,7 +365,7 @@ latent [3584]                                              │
 
 ## 12. 本轮固定配置来源
 
-下面保存 **2026-11-02** 重新获取的checkpoint revision。原有的2026-10-28快照保留，新增[完整配置快照](../assets/model-catalog-configs.json)供查字段。未下载模型权重、未跑CUDA或测量性能。
+下面保存 **2026-11-02** 重新获取的checkpoint revision。原有的2026-10-28快照保留，新增[完整配置快照](../../../assets/model-catalog-configs.json)供查字段。未下载模型权重、未跑CUDA或测量性能。
 
 | 官方 checkpoint | 固定revision | 配置 / 模型卡 |
 | --- | --- | --- |
@@ -393,4 +393,4 @@ latent [3584]                                              │
 | Qwen/Qwen3.8-2.4T-A95B | `207bd685a7` | [config](https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B/blob/207bd685a7e3696cfaff12ded7c6a7ea0f88c996/config.json) / [card](https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B/blob/207bd685a7e3696cfaff12ded7c6a7ea0f88c996/README.md) |
 | Qwen/Qwen3.8-Flash-Next | `de4b8e4d43` | [config](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/de4b8e4d43b917e7706784d8bb445c9af86a3540/config.json) / [card](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/de4b8e4d43b917e7706784d8bb445c9af86a3540/README.md) |
 
-K3.1以[官方发布公告](https://www.kimi.com/en/blog/kimi-k3-1-pro)为来源，不虚构checkpoint revision。机制推导继续看[模型结构详解](model-architectures.md)、[GR/AttnRes/Engram详解](residual-experts-memory.md)与[DeepSeek逐代演进](../DeepSeek/evolution.md)。
+K3.1以[官方发布公告](https://www.kimi.com/en/blog/kimi-k3-1-pro)为来源，不虚构checkpoint revision。机制推导继续看[模型结构详解](model-architectures.md)、[GR/AttnRes/Engram详解](residual-experts-memory.md)与[DeepSeek逐代演进](../deepseek/evolution.md)。

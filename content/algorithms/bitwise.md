@@ -127,7 +127,7 @@ class Solution:
 
 这启发我们**统计每个比特位上有多少个** 1。下图比较了 [136. 只出现一次的数字](https://leetcode.cn/problems/single-number/) 与本题的异同：
 
-<img src="./figures/137-analysis.png" width="50%">
+<img src="../../位运算/figures/137-analysis.png" width="50%">
 
 位运算本质是模2加法，所以这道题不能直接把所有元素异或在一起，但如果是模3加法的话其实是可以的，所以要手动实现一个模3加法。
 

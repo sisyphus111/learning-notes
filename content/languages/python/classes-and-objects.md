@@ -344,4 +344,4 @@ assert repr(lin) == "Student(name='Lin', scores=[80])"
 | `AttributeError` | 属性是否实际创建；拼写是否正确；property 是否支持赋值 |
 | 定义了类，却没有运行方法 | 创建实例并调用方法；类定义不会自动执行方法体 |
 
-理解类和实例后，可以继续读 [模块、包与运行方式](modules-and-packages.md)了解类怎样跨文件使用，或读 [PyTorch 神经网络基础](../PyTorch/neural-networks.md)理解 `nn.Module` 子类。
+理解类和实例后，可以继续读 [模块、包与运行方式](modules-and-packages.md)了解类怎样跨文件使用，或读 [PyTorch 神经网络基础](../../ml-systems/pytorch/neural-networks.md)理解 `nn.Module` 子类。

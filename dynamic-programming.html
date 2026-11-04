@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>动态规划</title><meta name="description" content="背包 · 线性 DP · 区间 DP · 树形 DP">
+<title>动态规划 · 求知录</title><meta name="description" content="背包 · 线性 DP · 区间 DP · 树形 DP">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v=f1d89bddbd"><link rel="stylesheet" href="assets/code.css">
@@ -13,7 +13,8 @@
 <aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html" aria-current="page">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-gemm-performance-analysis.html">GEMM 性能分析方法</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a><a href="cuda-flash-attention.html">FlashAttention 1–4</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-technology-map.html">模型技术总表</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-residual-experts-memory.html">残差、LatentMoE 与条件记忆</a><a href="attention-qwen3-h100-tp-case.html">案例：Qwen3 / H100 的 TP 性能</a><a href="attention-moe-ep-tp.html">MoE FFN：EP 与 TP</a></nav><p class="nav-label">DeepSeek</p><nav aria-label="DeepSeek"><a href="deepseek-evolution.html">V2–V4 架构演进</a><a href="deepseek-forward-shapes.html">一次前向与张量形状</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 AllReduce 算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
 <a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
-<div class="reading-layout"><aside class="toc"><nav><a href="#焚诀">焚诀</a><a href="#从记忆化搜索到递推">从记忆化搜索到递推</a><a href="#509-斐波那契数-简单">509.斐波那契数[简单]</a><a href="#198-打家劫舍-中等">198.打家劫舍[中等]*</a><a href="#213-打家劫舍-ii-中等">213.打家劫舍 II[中等]</a><a href="#网格dp">网格DP</a><a href="#焚诀_1">焚诀</a><a href="#62-不同路径-中等">62.不同路径[中等]</a><a href="#63-不同路径-ii-中等">63.不同路径 II[中等]</a><a href="#64-最小路径和-中等">64.最小路径和[中等]</a><a href="#0-1-背包">0-1 背包</a><a href="#问题原型">问题原型</a><a href="#问题变形及经验总结">问题变形及经验总结</a><a href="#494-目标和-中等">494.目标和[中等]*</a><a href="#416-分割等和子集-中等">416.分割等和子集[中等]</a><a href="#2915-和为目标值的最长子序列的长度-中等">2915.和为目标值的最长子序列的长度[中等]</a><a href="#474-一和零-中等">474.一和零[中等]</a><a href="#完全背包">完全背包</a><a href="#问题原型_1">问题原型</a><a href="#322-零钱兑换-中等">322.零钱兑换[中等]*</a><a href="#279-完全平方数-中等">279.完全平方数[中等]</a><a href="#518-零钱兑换-ii-中等">518.零钱兑换 II[中等]</a><a href="#线性dp">线性DP</a><a href="#焚诀_2">焚诀</a><a href="#1143-最长公共子序列-中等">1143.最长公共子序列[中等]*</a><a href="#72-编辑距离-中等">72.编辑距离[中等]*</a><a href="#300-最长递增子序列-中等">300.最长递增子序列[中等]*</a><a href="#53-最大子数组和-中等">53.最大子数组和[中等]</a><a href="#152-乘积最大子数组-中等">152.乘积最大子数组[中等]</a><a href="#918-环形子数组的最大和-中等">918.环形子数组的最大和[中等]</a><a href="#139-单词拆分-中等">139.单词拆分[中等]</a><a href="#32-最长有效括号-困难">32.最长有效括号[困难]</a><a href="#97-交错字符串-中等">97.交错字符串[中等]</a><a href="#3290-最高乘法得分-中等">3290.最高乘法得分[中等]</a><a href="#115-不同的子序列-困难">115.不同的子序列[困难]</a><a href="#状态机dp">状态机DP</a><a href="#焚诀_3">焚诀</a><a href="#122-买卖股票的最佳时机-ii-中等">122.买卖股票的最佳时机 II[中等]*</a><a href="#309-最佳买卖股票时机含冷冻期-中等">309.最佳买卖股票时机含冷冻期[中等]*</a><a href="#188-买卖股票的最佳时机-iv-困难">188.买卖股票的最佳时机 IV[困难]*</a><a href="#区间dp">区间DP</a><a href="#焚诀_4">焚诀</a><a href="#516-最长回文子序列-中等">516.最长回文子序列[中等]*</a><a href="#1039-多边形三角剖分的最低得分-中等">1039.多边形三角剖分的最低得分[中等]*</a><a href="#5-最长回文子串-中等">5.最长回文子串[中等]</a><a href="#312-戳气球-困难">312.戳气球[困难]</a><a href="#1000-合并石头的最低成本-困难">1000.合并石头的最低成本[困难]</a><a href="#877-石子游戏-中等">877.石子游戏[中等]</a><a href="#树形dp">树形DP</a><a href="#焚诀_5">焚诀</a><a href="#543-二叉树的直径-简单">543.二叉树的直径[简单]*</a><a href="#124-二叉树中的最大路径和-困难">124.二叉树中的最大路径和[困难]*</a><a href="#2246-相邻字符不同的最长路径-困难">2246.相邻字符不同的最长路径[困难]*</a><a href="#337-打家劫舍-iii-中等">337.打家劫舍 III[中等]*</a><a href="#968-监控二叉树-困难">968.监控二叉树[困难]*</a><a href="#数位dp">数位DP</a><a href="#链接_38">链接</a></nav></aside><main id="main"><h1>动态规划</h1><p class="subtitle">背包 · 线性 DP · 区间 DP · 树形 DP</p><article><h1 id="焚诀">焚诀</h1>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">算法与题目</p><h1>动态规划</h1><p class="subtitle">背包 · 线性 DP · 区间 DP · 树形 DP</p></div>
+<article><p class="reference-links">写法参考：<a href="cpp-stl.html">STL 速查</a> · <a href="stl-value-semantics.html">对象与传参</a> · <a href="stl-adapters-iterators.html">迭代器与算法</a> · <a href="python-data-structures.html">Python 数据结构</a></p><details class="code-conventions"><summary>代码示例约定</summary><p>使用 C++ / Python 标签切换同一解法。C++ 采用 C++17，省略标准库头文件与 <code>using namespace std;</code>；Python 采用 3.10+，包含所需标准库导入。LeetCode 提供 <code>ListNode</code>、<code>TreeNode</code> 等题目类型。输入、输出、框架及局部片段按所在小节的上下文使用。</p></details><h1 id="焚诀">焚诀</h1>
 <p>什么时候我们要联想到使用动态规划呢？</p>
 <ul>
 <li>当问题可以通过<strong>拆分成子问题</strong>、并且<strong>存在重叠计算</strong>、并且<strong>子问题之间存在最优选择</strong>时，就应该想到动态规划。</li>
@@ -280,7 +281,7 @@ F(n) = F(n - 1) + F(n - 2)，其中 n &gt; 1
 <li><a href="https://leetcode.cn/problems/house-robber-ii/description/">213. 打家劫舍 II - 力扣（LeetCode）</a></li>
 </ul>
 <h3 id="题目_2">题目</h3>
-<p>与 <a href="#198.打家劫舍[中等]">198.打家劫舍</a> 基本一致，不过数组是环形的。</p>
+<p>与 <a href="dynamic-programming.html#198-打家劫舍-中等">198.打家劫舍</a> 基本一致，不过数组是环形的。</p>
 <h3 id="思路_2">思路</h3>
 <p>不要想太复杂，①如果偷了第一家，那么最后一家就不能偷；②如果不偷第一家，那么最后一家就能偷。分成这两种情况分别偷，然后取max即可。</p>
 <h3 id="解法">解法</h3>
@@ -779,10 +780,10 @@ C_{n}^k=\frac{n\times(n-1)\times\ldots\times(n-1+k)}{1\times2\times\ldots\times 
 <p>0-1背包和完全背包的问题原型都属于至多装，求最大价值和的问题，所以我们看到初始化全设为<code>0</code>，不过由于物品的价值都是正数，因此在<code>dp[0]</code> 到 <code>dp[c]</code>中取最大值其实就等价于取<code>dp[c]</code>了。</p>
 <ul>
 <li>
-<p><a href="#494.目标和[中等]">494.目标和</a>属于恰好装，求方案数的问题，因此初始化时<code>dp[0]</code>为<code>1</code>，<code>dp[j&gt;0]</code>为<code>0</code></p>
+<p><a href="dynamic-programming.html#494-目标和-中等">494.目标和</a>属于恰好装，求方案数的问题，因此初始化时<code>dp[0]</code>为<code>1</code>，<code>dp[j&gt;0]</code>为<code>0</code></p>
 </li>
 <li>
-<p><a href="#零钱兑换[中等]">322.零钱兑换</a>属于恰好装，求最小价值和的问题，因此初始化时<code>dp[0]</code>为<code>0</code>，<code>dp[j&gt;0]</code>为<code>inf</code></p>
+<p><a href="dynamic-programming.html#322-零钱兑换-中等">322.零钱兑换</a>属于恰好装，求最小价值和的问题，因此初始化时<code>dp[0]</code>为<code>0</code>，<code>dp[j&gt;0]</code>为<code>inf</code></p>
 </li>
 </ul>
 <hr />
@@ -803,7 +804,7 @@ C_{n}^k=\frac{n\times(n-1)\times\ldots\times(n-1+k)}{1\times2\times\ldots\times 
 <p>返回可以通过上述方法构造的、运算结果等于 <code>target</code> 的不同 <strong>表达式</strong> 的数目。</p>
 <h3 id="思路_6">思路</h3>
 <p>看到这个题目第一眼应该可以想到，将其转换成对某个位置选<code>+</code>或选<code>-</code>的问题，而结果又是求表达式的数目而非所有可能的表达式，那么就要想到使用动态规划。</p>
-<p>根据 <a href="#焚诀">焚诀</a> 的经验，能转换成选或不选的问题就能用回溯做，虽然性能差劲，但由于是第一道实战题，所以这里就做一下吧。</p>
+<p>根据 <a href="dynamic-programming.html#焚诀">焚诀</a> 的经验，能转换成选或不选的问题就能用回溯做，虽然性能差劲，但由于是第一道实战题，所以这里就做一下吧。</p>
 <h3 id="解法1-回溯">解法1：回溯</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-19-cpp-tab" aria-controls="example-19-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-19-python-tab" aria-controls="example-19-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-19-cpp" aria-labelledby="example-19-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -978,7 +979,7 @@ dp[0][j] = \begin{cases}1&amp; j = 0 \\ 0&amp; j \ge 1 \end{cases}
 </div></div>
 
 <h3 id="优化_4">优化</h3>
-<p>上面是根据<a href="#问题变形及经验总结">问题变形及经验总结</a>的标准做法，其实还可以做一些优化。我们在遍历物品的过程中，可以用前缀和<code>s2</code>记录前<code>i</code>个数的和，由于子序列和不可能超过<code>s2</code>，所以倒序遍历背包时可以从<code>s2</code>和<code>s</code>中较小的那个数开始。</p>
+<p>上面是根据<a href="dynamic-programming.html#问题变形及经验总结">问题变形及经验总结</a>的标准做法，其实还可以做一些优化。我们在遍历物品的过程中，可以用前缀和<code>s2</code>记录前<code>i</code>个数的和，由于子序列和不可能超过<code>s2</code>，所以倒序遍历背包时可以从<code>s2</code>和<code>s</code>中较小的那个数开始。</p>
 <p>此外，在循环中提前判断<code>dp[s]</code>是否为<code>true</code>，是就直接返回。</p>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-23-cpp-tab" aria-controls="example-23-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-23-python-tab" aria-controls="example-23-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-23-cpp" aria-labelledby="example-23-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -1277,7 +1278,7 @@ dp[0][j] = \begin{cases}1&amp; j = 0 \\ 0&amp; j \ge 1 \end{cases}
 <p>给你一个整数 <code>n</code> ，返回 <em>和为 <code>n</code> 的完全平方数的最少数量</em> 。</p>
 <p><strong>完全平方数</strong> 是一个整数，其值等于另一个整数的平方；换句话说，其值等于一个整数自乘的积。例如，<code>1</code>、<code>4</code>、<code>9</code> 和 <code>16</code> 都是完全平方数，而 <code>3</code> 和 <code>11</code> 不是。</p>
 <h3 id="思路_12">思路</h3>
-<p>比较典型的<strong>完全背包问题</strong>，物品就是比<code>n</code>小的完全平方数，容量就是<code>n</code>。按照<a href="#问题变形及经验总结">问题变形及经验总结</a>来做，对于<strong>恰好装</strong>的问题，dp数组初始化<code>dp[0]</code>合法，<code>dp[j&gt;0]</code>非法（最小价值问题为<code>inf</code>）；完全背包正序遍历保证物品可以重复取。因为肯定能够做到恰好装满，因此直接返回<code>dp[n]</code>。</p>
+<p>比较典型的<strong>完全背包问题</strong>，物品就是比<code>n</code>小的完全平方数，容量就是<code>n</code>。按照<a href="dynamic-programming.html#问题变形及经验总结">问题变形及经验总结</a>来做，对于<strong>恰好装</strong>的问题，dp数组初始化<code>dp[0]</code>合法，<code>dp[j&gt;0]</code>非法（最小价值问题为<code>inf</code>）；完全背包正序遍历保证物品可以重复取。因为肯定能够做到恰好装满，因此直接返回<code>dp[n]</code>。</p>
 <h3 id="解法_8">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-30-cpp-tab" aria-controls="example-30-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-30-python-tab" aria-controls="example-30-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-30-cpp" aria-labelledby="example-30-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -1507,7 +1508,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)+1&amp;s[i]=t[j] \\
 
 <h3 id="优化_6">优化</h3>
 <p>若要极致的优化，我们也可以状压成一维数组（实际做题时感觉没必要，不利于理解）。</p>
-<p>从递推式中我们可以看到，当前元素的值取决于上一行前面的元素，和当前行前面的元素，与<a href="#优化：滚动数组">这里</a>记录的规律都不相符，所以不能直接正序遍历，否则当前行前面的元素就被覆盖了，因此需要临时变量来记录。</p>
+<p>从递推式中我们可以看到，当前元素的值取决于上一行前面的元素，和当前行前面的元素，与<a href="dynamic-programming.html#优化-滚动数组">这里</a>记录的规律都不相符，所以不能直接正序遍历，否则当前行前面的元素就被覆盖了，因此需要临时变量来记录。</p>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-35-cpp-tab" aria-controls="example-35-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-35-python-tab" aria-controls="example-35-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-35-cpp" aria-labelledby="example-35-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">longestCommonSubsequence</span><span class="p">(</span><span class="n">string</span><span class="w"> </span><span class="n">text1</span><span class="p">,</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">text2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -1556,7 +1557,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)+1&amp;s[i]=t[j] \\
 </ul>
 <h3 id="思路_15">思路</h3>
 <p>首先不难把问题简化为只对一个字符串进行操作（例如对<code>s</code>删除一个字符其实就相当于对<code>t</code>插入一个字符，例如当单词 <code>s</code> 为 doge，单词 <code>t</code> 为 dog 时，我们既可以删除单词 <code>s</code> 的最后一个字符 e，得到相同的 dog，也可以在单词 <code>t</code> 末尾添加一个字符 e，得到相同的 doge）。</p>
-<p>如果只对一个字符串进行操作，属于<strong>选或不选问题，求最值，处理对象是序列</strong>，因此要想到使用线性DP。思路和<a href="#1143.最长公共子序列[中等]">1143.最长公共子序列</a>类似。(我觉得用递归从后往前看更加易于理解)</p>
+<p>如果只对一个字符串进行操作，属于<strong>选或不选问题，求最值，处理对象是序列</strong>，因此要想到使用线性DP。思路和<a href="dynamic-programming.html#1143-最长公共子序列-中等">1143.最长公共子序列</a>类似。(我觉得用递归从后往前看更加易于理解)</p>
 <div class="math display-math">\[
 dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 	\min(dfs(i-1,j),dfs(i,j-1), dfs(i-1,j-1))+1&amp;s[i] \neq t[j]
@@ -1665,7 +1666,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>给你一个整数数组 <code>nums</code> ，找到其中最长严格递增子序列的长度。</p>
 <p><strong>子序列</strong> 是由数组派生而来的序列，删除（或不删除）数组中的元素而不改变其余元素的顺序。例如，<code>[3,6,2,7]</code> 是数组 <code>[0,3,1,6,2,2,7]</code> 的子序列。</p>
 <h3 id="思路_16">思路</h3>
-<p>求<strong>子序列的最值问题</strong>，要想到线性DP。不同于<a href="#1143.最长公共子序列[中等]">1143.最长公共子序列</a>有两个字符串，所以用了二维dp数组，这道题只有一个字符串，所以使用一维数组即可。</p>
+<p>求<strong>子序列的最值问题</strong>，要想到线性DP。不同于<a href="dynamic-programming.html#1143-最长公共子序列-中等">1143.最长公共子序列</a>有两个字符串，所以用了二维dp数组，这道题只有一个字符串，所以使用一维数组即可。</p>
 <p>如果采用经典的“选或不选”的思路，那么如果选了一个数字的话，我们必须知道上一个选的数字，因此我们就不能只使用一维数组啦！得这么定义<code>dp[i][j]</code>表示使用前<code>i</code>个元素，前一个选中元素索引为<code>j</code>时的LIS长度。但使用这种方法做，首先空间复杂度就变成<span class="math">\(O(N^2)\)</span>了，其次递推公式也变得更加难以理解。我也没有看到比较官方的使用这种方法的解法，虽然AI给了我确实能够运行的代码，但是我觉得太丑了，确实没必要去强行弄清楚这种方法。</p>
 <p>如果采用“<strong>枚举选哪个</strong>”的思路，题目就会简单很多，定义<strong><code>dp[i]</code>表示以<code>nums[i]</code>结尾的LIS长度</strong>（dp数组下标从0开始），那么我们在枚举<code>j(j &lt; i)</code>时，每一个<code>dp[j]</code>其实都代表一个以<code>nums[j]</code>为结尾的LIS，那么就可以直接比较<code>nums[i]</code>和<code>nums[j]</code>的大小来看是否满足条件了。</p>
 <p>不难得到递推式为<span class="math">\(dp[i] = \max(dp[j]) + 1, j&lt; i且nums[j]&lt;nums[i]\)</span></p>
@@ -1747,7 +1748,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <li>空间复杂度：<span class="math">\(O(N)\)</span>，当然可以优化成<span class="math">\(O(1)\)</span>了</li>
 </ul>
 <h3 id="解法2-前缀和">解法2：前缀和</h3>
-<p>如果看了 <a href="../数组/fuck数组.md#前缀和">fuck数组.md</a> 的前缀和章节的话，在求子数组和问题上，也能考虑使用前缀和。子数组和等于两个前缀和的差，最大子数组和，就是在前缀和数组中找到两个元素，后减前的差值最大，这不就是<a href="https://leetcode.cn/problems/best-time-to-buy-and-sell-stock">121.买卖股票的最佳时机</a>这道题吗？在遍历过程中不断记录最小值，然后不断更新当前值减去最小值得到的差值。</p>
+<p>如果看了 <a href="arrays.html#前缀和">fuck数组.md</a> 的前缀和章节的话，在求子数组和问题上，也能考虑使用前缀和。子数组和等于两个前缀和的差，最大子数组和，就是在前缀和数组中找到两个元素，后减前的差值最大，这不就是<a href="https://leetcode.cn/problems/best-time-to-buy-and-sell-stock">121.买卖股票的最佳时机</a>这道题吗？在遍历过程中不断记录最小值，然后不断更新当前值减去最小值得到的差值。</p>
 <p>小细节：<code>res</code>不能初始化成<code>0</code>，因为<code>pre_sum - min_pre_sum</code>有可能为负数，例如<code>nums=[-1]</code>；<code>min_pre_sum</code>也必须在更新完<code>res</code>后更新，不然有可能<code>pre_sum</code>和<code>min_pre_sum</code>是相等的。</p>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-40-cpp-tab" aria-controls="example-40-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-40-python-tab" aria-controls="example-40-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-40-cpp" aria-labelledby="example-40-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -1792,7 +1793,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>测试用例的答案是一个 <strong>32-位</strong> 整数。</p>
 <p><strong>请注意</strong>，一个只包含一个元素的数组的乘积是这个元素的值。</p>
 <h3 id="思路_18">思路</h3>
-<p><a href="#最大子数组和[中等]">最大子数组和</a>的乘法版本，思路基本一致。差别在于对于负数的处理，假设当前元素为负数，我们要让添加了这个元素的子数组的乘积最大，那么我们使用的前缀子数组的乘积就应该是最小的，所以要有两个dp数组。</p>
+<p><a href="dynamic-programming.html#53-最大子数组和-中等">最大子数组和</a>的乘法版本，思路基本一致。差别在于对于负数的处理，假设当前元素为负数，我们要让添加了这个元素的子数组的乘积最大，那么我们使用的前缀子数组的乘积就应该是最小的，所以要有两个dp数组。</p>
 <p>这道题感觉不是很适合用前缀积的思路，虽然前缀积可以方便地求出所有子数组的乘积，但是要用到除法，那么就要避免除数为0，还是有点麻烦的。</p>
 <h3 id="解法_12">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-41-cpp-tab" aria-controls="example-41-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-41-python-tab" aria-controls="example-41-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-41-cpp" aria-labelledby="example-41-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
@@ -1835,7 +1836,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p><strong>环形数组</strong> 意味着数组的末端将会与开头相连呈环状。形式上， <code>nums[i]</code> 的下一个元素是 <code>nums[(i + 1) % n]</code> ， <code>nums[i]</code> 的前一个元素是 <code>nums[(i - 1 + n) % n]</code> 。</p>
 <p><strong>子数组</strong> 最多只能包含固定缓冲区 <code>nums</code> 中的每个元素一次。形式上，对于子数组 <code>nums[i], nums[i + 1], ..., nums[j]</code> ，不存在 <code>i &lt;= k1, k2 &lt;= j</code> 其中 <code>k1 % n == k2 % n</code> 。</p>
 <h3 id="思路_19">思路</h3>
-<p><img src="./figures/918-analysis.png" width="50%"></p>
+<p><img src="%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/figures/918-analysis.png" loading="lazy" width="50%"></p>
 <h3 id="解法_13">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-42-cpp-tab" aria-controls="example-42-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-42-python-tab" aria-controls="example-42-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-42-cpp" aria-labelledby="example-42-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -2089,7 +2090,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 
 <h3 id="解法-动态规划_5">解法：动态规划</h3>
 <p>这里有两个序列（<code>s3</code>依赖于<code>s1</code>和<code>s2</code>），所以我们定义<code>dp[i][j]</code>表示 <code>s1</code> 前 <code>i</code> 个字符和 <code>s2</code> 前 <code>j</code> 个字符能否组成 <code>s3</code> 前 <code>i+j</code> 个字符。</p>
-<p>这道题和 <a href="#1143.最长公共子序列[中等]">1143.最长公共子序列</a> 在处理索引上略有不同，虽然dp数组的定义是差不多的。但是在这里我们可以只使用一个字符串中的字符，而不使用另一个字符串的字符，所以<code>dp[0][1]</code>和<code>dp[1][0]</code>都需要在for循环中处理（<code>i</code>、<code>j</code>从0开始遍历）；而LCS那道题，必须同时从两个字符串取字符，所以<code>dp[0][0]</code>、<code>dp[0][1]</code>、<code>dp[1][0]</code>都可以理解为初始状态。</p>
+<p>这道题和 <a href="dynamic-programming.html#1143-最长公共子序列-中等">1143.最长公共子序列</a> 在处理索引上略有不同，虽然dp数组的定义是差不多的。但是在这里我们可以只使用一个字符串中的字符，而不使用另一个字符串的字符，所以<code>dp[0][1]</code>和<code>dp[1][0]</code>都需要在for循环中处理（<code>i</code>、<code>j</code>从0开始遍历）；而LCS那道题，必须同时从两个字符串取字符，所以<code>dp[0][0]</code>、<code>dp[0][1]</code>、<code>dp[1][0]</code>都可以理解为初始状态。</p>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-47-cpp-tab" aria-controls="example-47-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-47-python-tab" aria-controls="example-47-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-47-cpp" aria-labelledby="example-47-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">isInterleave</span><span class="p">(</span><span class="n">string</span><span class="w"> </span><span class="n">s1</span><span class="p">,</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">s2</span><span class="p">,</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">s3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -2155,7 +2156,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p><strong>子序列相关的最值问题</strong>，要想到线性DP，并且是相邻无关子序列问题。定义<code>dp[i][j]</code>为使用<code>a</code>的前<code>i</code>个元素，<code>b</code>的前<code>j</code>个元素能构成的最高乘法得分，dp数组索引从1开始，<code>b</code>的第<code>j</code>个元素，也就是<code>b[j-1]</code>，如果使用，那么这一组的得分就是<code>dp[j-1]*a[i-1]</code>，然后加上<code>dp[i-1][j-1]</code>；如果不用它，那么继承<code>dp[i][j-1]</code>，所以递推式就是<code>dp[i][j] = max(dp[i][j-1], dp[i-1][j-1] + b[j-1] * a[i-1])</code>。</p>
 <p>这里唯一值得注意的就是这个初始化，因为<code>dp[i][j]</code>的状态转移方程中有<code>dp[i][j-1]</code>，所以只有初始状态是合法值0，dp数组中其他元素必须是非法值<code>-inf</code>。注意到求<code>dp[1][j]</code>并且使用<code>b[j-1]</code>时需要用到<code>dp[0][j-1]</code>，所以<code>dp[0][:]</code>这一行必须全初始化成0，否则永远更新不了使用第一组得分的情况。</p>
 <p>从题意的角度理解，不使用<code>a</code>中的元素，无论<code>b</code>怎么选，最大得分就是0，这是一个合法的状态。而使用<code>a</code>中的元素，就必须用<code>b</code>中的元素，所以<code>dp[i&gt;0][0]</code>都是非法的。所以下面两种写法都是可以的。</p>
-<p>而比如 <a href="#97.交错字符串[中等]">97.交错字符串</a> 这道题，只有两个字符串都不取<code>dp[0][0]</code>是合法的，而在不验证<code>s1</code>和<code>s3</code>前缀是否相等的情况下显然不能把<code>dp[i&gt;0][0]</code>也认为是合法。</p>
+<p>而比如 <a href="dynamic-programming.html#97-交错字符串-中等">97.交错字符串</a> 这道题，只有两个字符串都不取<code>dp[0][0]</code>是合法的，而在不验证<code>s1</code>和<code>s3</code>前缀是否相等的情况下显然不能把<code>dp[i&gt;0][0]</code>也认为是合法。</p>
 <p>再次强调：<strong>在线性DP中，多维数组初始化时并不是简单地把<code>dp[0][0]</code>设为合法值就完事了，而要根据边界条件和题意，有可能需要初始化一行或一列的值</strong></p>
 <h3 id="解法_16">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-49-cpp-tab" aria-controls="example-49-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-49-python-tab" aria-controls="example-49-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-49-cpp" aria-labelledby="example-49-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
@@ -2312,7 +2313,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>返回 <em>你能获得的 </em><em>最大</em><em> 利润</em> 。</p>
 <h3 id="思路_25">思路</h3>
 <p><strong>股票交易求最值</strong>，要想到使用状态机DP。</p>
-<p><img src="./figures/122-analysis.png" width="60%"></p>
+<p><img src="%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/figures/122-analysis.png" loading="lazy" width="60%"></p>
 <p>递归边界：</p>
 <ul>
 <li><span class="math">\(dfs(-1, 0)=0\)</span>，第0天开始没有股票，利润为0</li>
@@ -2383,7 +2384,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 </pre></div>
 </div></div>
 
-<p>此时此刻，有没有想起彼时彼刻呢？没座！我们发现上面的代码和<a href="#198.打家劫舍[中等]">198.打家劫舍</a>非常相似，其实打家劫舍也能看成是状态机DP的问题，每一天我们有偷和不偷两种状态。</p>
+<p>此时此刻，有没有想起彼时彼刻呢？没座！我们发现上面的代码和<a href="dynamic-programming.html#198-打家劫舍-中等">198.打家劫舍</a>非常相似，其实打家劫舍也能看成是状态机DP的问题，每一天我们有偷和不偷两种状态。</p>
 <h3 id="打家劫舍另解">打家劫舍另解</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-55-cpp-tab" aria-controls="example-55-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-55-python-tab" aria-controls="example-55-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-55-cpp" aria-labelledby="example-55-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -2426,7 +2427,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 </ul>
 <p><strong>注意：</strong>你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。</p>
 <h3 id="思路_26">思路</h3>
-<p><strong>股票交易求最值</strong>，要想到使用状态机DP。与<a href="#122.买卖股票的最佳时机 II[中等]">上一题</a>不同的是，这一题引入了<strong>冷冻期</strong>。与<a href="#198.打家劫舍[中等]">198.打家劫舍</a>类似，如果当天要买股票，那么就得看前两天没买股票的利润。为了保证<code>dp[i-2]</code>的索引为非负数，那么<code>i&gt;=2</code>，而实际上<code>i=2</code>对应于第二天，因此我们要额外处理一下第一天的情况。</p>
+<p><strong>股票交易求最值</strong>，要想到使用状态机DP。与<a href="dynamic-programming.html#122-买卖股票的最佳时机-ii-中等">上一题</a>不同的是，这一题引入了<strong>冷冻期</strong>。与<a href="dynamic-programming.html#198-打家劫舍-中等">198.打家劫舍</a>类似，如果当天要买股票，那么就得看前两天没买股票的利润。为了保证<code>dp[i-2]</code>的索引为非负数，那么<code>i&gt;=2</code>，而实际上<code>i=2</code>对应于第二天，因此我们要额外处理一下第一天的情况。</p>
 <h3 id="解法_19">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-56-cpp-tab" aria-controls="example-56-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-56-python-tab" aria-controls="example-56-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-56-cpp" aria-labelledby="example-56-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -2470,8 +2471,8 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>设计一个算法来计算你所能获取的最大利润。你最多可以完成 <code>k</code> 笔交易。也就是说，你最多可以买 <code>k</code> 次，卖 <code>k</code> 次。</p>
 <p><strong>注意：</strong>你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。</p>
 <h3 id="思路_27">思路</h3>
-<p><strong>股票交易求最值</strong>，要想到使用状态机DP。与<a href="#122.买卖股票的最佳时机 II[中等]">122.买卖股票的最佳时机</a>不同的是，这题引入了<strong>交易次数限制</strong>，这个交易次数限制其实就很像背包问题的背包容量了，所以我们要给dp数组增加一个维度来记录当前至多完成的交易数。</p>
-<p><img src="./figures/188-analysis.png" width="80%"></p>
+<p><strong>股票交易求最值</strong>，要想到使用状态机DP。与<a href="dynamic-programming.html#122-买卖股票的最佳时机-ii-中等">122.买卖股票的最佳时机</a>不同的是，这题引入了<strong>交易次数限制</strong>，这个交易次数限制其实就很像背包问题的背包容量了，所以我们要给dp数组增加一个维度来记录当前至多完成的交易数。</p>
+<p><img src="%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/figures/188-analysis.png" loading="lazy" width="80%"></p>
 <p>这一题还有值得思考的地方，买入卖出算一次交易，为什么在我们的递推式中只在买入的时候增加一次交易次数，可不可以在卖出的时候增加交易次数呢？</p>
 <p>对于<code>dp[i][j][0] = max(dp[i - 1][j][0], dp[i - 1][j - 1][1] + prices[i - 1])</code>，当<code>i</code>和<code>j</code>都为1时，<code>dp[1][1][0]=max(dp[0][1][0], dp[0][0][1] + prices[0])</code>，也就是说在第1天我们没有股票的情况下增加了一次交易次数！而<code>dp[0][0][1]</code>表示的第0天不可能持有股票，值为<code>-inf</code>，我们做了一次不可能发生的卖出操作，这是显然不对的。因此，对于有交易次数限制的股票问题，要记住<strong>只在买入时增加交易次数</strong>。</p>
 <h3 id="解法_20">解法</h3>
@@ -2512,7 +2513,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 
 <h3 id="思考题-todo">思考题(TODO)</h3>
 <p>如果改成「恰好」完成 <em>k</em> 笔交易要怎么做？</p>
-<p>这个问题其实和我在0-1背包章节总结的<a href="#问题变形及经验总结">问题变形及经验总结</a>是一样的，简言之</p>
+<p>这个问题其实和我在0-1背包章节总结的<a href="dynamic-programming.html#问题变形及经验总结">问题变形及经验总结</a>是一样的，简言之</p>
 <ul>
 <li>如果是至多，那么全初始化成合法值</li>
 <li>如果是恰好/至少，那么<code>dp[0]</code>为合法值，其余为非法值</li>
@@ -2556,7 +2557,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>注意，上面的代码如果把<code>j</code>往左挪一位给挪回来，代码逻辑就不对了，需要额外的判断，总之很绕，TODO：不知道有没有具体的题目来弄清楚</p>
 </blockquote>
 <p>如果改成「至少」完成 <em>k</em> 笔交易要怎么做？</p>
-<p>递归到「至少 0 次」时，它等价于「交易次数没有限制」，那么这个状态的计算方式和 <a href="#122.买卖股票的最佳时机 II[中等]">122. 买卖股票的最佳时机 II</a> 是一样的。</p>
+<p>递归到「至少 0 次」时，它等价于「交易次数没有限制」，那么这个状态的计算方式和 <a href="dynamic-programming.html#122-买卖股票的最佳时机-ii-中等">122. 买卖股票的最佳时机 II</a> 是一样的。</p>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-59-cpp-tab" aria-controls="example-59-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-59-python-tab" aria-controls="example-59-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-59-cpp" aria-labelledby="example-59-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">maxProfit</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">prices</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -2651,7 +2652,7 @@ dfs(i, j) = \begin{cases} dfs(i-1,j-1)&amp;s[i]=t[j] \\
 <p>现在看到子序列相关的最值问题，应该要条件反射地想到使用动态规划了，如果之前不了解区间DP，那么仅凭<strong>子序列</strong>和<strong>最值</strong>两个特征可能会想到用线性DP去，但用线性DP做会感觉很奇怪，因为线性DP我们都是从前往后或从后往前去递推，这题显然不能这么做吧。而这道题有个很重要的<strong>区间回文</strong>特征不容忽视，说明这道题应该是使用区间DP的。</p>
 <h3 id="解法1">解法1</h3>
 <p>骗你的，也能用线性DP做，不过得有惊人的注意力才行。</p>
-<p>第一个思路，是把现有的问题转换成已有的问题。注意到回文子序列正着读和反着读没区别，那么我们把原来的字符串反转，只有里面的最长回文子序列保持不变，那么我们直接求<code>s</code>和反转后<code>s</code>的LCS（<a href="#1143.最长公共子序列[中等]">1143.最长公共子序列</a>）就是最长回文子序列了。</p>
+<p>第一个思路，是把现有的问题转换成已有的问题。注意到回文子序列正着读和反着读没区别，那么我们把原来的字符串反转，只有里面的最长回文子序列保持不变，那么我们直接求<code>s</code>和反转后<code>s</code>的LCS（<a href="dynamic-programming.html#1143-最长公共子序列-中等">1143.最长公共子序列</a>）就是最长回文子序列了。</p>
 <h3 id="记忆化搜索_5">记忆化搜索</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-60-cpp-tab" aria-controls="example-60-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-60-python-tab" aria-controls="example-60-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-60-cpp" aria-labelledby="example-60-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
@@ -2752,7 +2753,7 @@ dp[i][j] = \begin{cases} 0&amp;i&gt;j \\ 1&amp;i=j \\
 <p>返回 <em>多边形进行三角剖分后可以得到的最低分</em> 。</p>
 <h3 id="思路_29">思路</h3>
 <p>这个题属于典型的<strong>区间划分</strong>类题目，要想到区间DP。</p>
-<p><img src="./figures/1039-analysis-1.png" width="35%"><img src="./figures/1039-analysis-2.png" width="50%"></p>
+<p><img src="%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/figures/1039-analysis-1.png" loading="lazy" width="35%"><img src="%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/figures/1039-analysis-2.png" loading="lazy" width="50%"></p>
 <div class="math display-math">\[
 dfs(i,j)=\min_{k={i+1}}^{j-1} (dfs(i,k) + dfs(k,j) + v[i] \cdot v[j] \cdot v[k])
 \]</div>
@@ -2842,7 +2843,7 @@ dp[i][j]=\min_{k={i+1}}^{j-1} (dp[i][k] + dp[k][j] + v[i] \cdot v[j] \cdot v[k])
 <h3 id="题目_31">题目</h3>
 <p>给你一个字符串 <code>s</code>，找到 <code>s</code> 中最长的 回文 子串。</p>
 <h3 id="思路_30">思路</h3>
-<p><strong>区间回文类</strong>问题，要想到区间DP。大致思路与 <a href="#516.最长回文子序列[中等]">516.最长回文子序列</a> 是一样的，不过子串要求连续，所以一旦<code>s[i]!=s[j]</code>，那么区间<code>[i,j]</code>肯定就不是回文串了，所以少一个分支判断。这道题要求这个子串，不是求长度，所以<code>dp[i][j]</code>定义为区间<code>[i,j]</code>是否为回文子串，然后在更新dp数组的过程中记录结果。当<code>s[i]s[i+1]</code>时，<code>dp[i][i+1]</code>会去看<code>dp[i+1][i]</code>，在求回文串长度时会初始化为0，但是因为<code>s[i]s[i+1]</code>是合法的，所以算出来的<code>dp[i][i+1]=0+2=2</code>没问题，但是dp数组的值表示是否为回文串，那么<code>i&gt;j</code>显然不是一个合法的子串，我们初始化成了false，那么<code>dp[i][i+1]=dp[i+1][i]=false</code>，这就有问题了，这明明是一个长为2的合法回文串，所以对于<code>j==i+1</code>的情况要特判一下。</p>
+<p><strong>区间回文类</strong>问题，要想到区间DP。大致思路与 <a href="dynamic-programming.html#516-最长回文子序列-中等">516.最长回文子序列</a> 是一样的，不过子串要求连续，所以一旦<code>s[i]!=s[j]</code>，那么区间<code>[i,j]</code>肯定就不是回文串了，所以少一个分支判断。这道题要求这个子串，不是求长度，所以<code>dp[i][j]</code>定义为区间<code>[i,j]</code>是否为回文子串，然后在更新dp数组的过程中记录结果。当<code>s[i]s[i+1]</code>时，<code>dp[i][i+1]</code>会去看<code>dp[i+1][i]</code>，在求回文串长度时会初始化为0，但是因为<code>s[i]s[i+1]</code>是合法的，所以算出来的<code>dp[i][i+1]=0+2=2</code>没问题，但是dp数组的值表示是否为回文串，那么<code>i&gt;j</code>显然不是一个合法的子串，我们初始化成了false，那么<code>dp[i][i+1]=dp[i+1][i]=false</code>，这就有问题了，这明明是一个长为2的合法回文串，所以对于<code>j==i+1</code>的情况要特判一下。</p>
 <h3 id="解法_21">解法</h3>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-64-cpp-tab" aria-controls="example-64-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-64-python-tab" aria-controls="example-64-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-64-cpp" aria-labelledby="example-64-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
@@ -2996,7 +2997,7 @@ dp[i][j]=\min_{k={i+1}}^{j-1} (dp[i][k] + dp[k][j] + v[i] \cdot v[j] \cdot v[k])
 <p>每次 <strong>移动</strong> 需要将 <strong>连续的</strong> <code>k</code> 堆石头合并为一堆，而这次移动的成本为这 <code>k</code> 堆中石头的总数。</p>
 <p>返回把所有石头合并成一堆的最低成本。如果无法合并成一堆，返回 <code>-1</code> 。</p>
 <h3 id="思路_32">思路</h3>
-<p>经典的<strong>区间合并类</strong>题目，在接触过 <a href="#312.戳气球[困难]">312.戳气球</a> 之后，这道题我们不难照猫画虎写出思路。也是倒过来想，假设<strong>闭区间</strong> <code>i...p|p+1...j</code>,<strong>最后一次合并是</strong>区间<code>[i, p]</code>和<code>[p+1, j]</code>合并，并且<code>[i, p]</code>和<code>[p+1, j]</code>这两个子区间已经合并好了。定义<code>dp[i][j]</code>表示合并闭区间<code>[i, j]</code>内所有石子的最小成本，那么最终的总成本就是<code>dp[i][j]=dp[i][p] + dp[p][j] + get_sum(i, j)</code>，显然我们并不清楚这一个区间最后在哪个位置合并最优，所以枚举所有可能的分割点。</p>
+<p>经典的<strong>区间合并类</strong>题目，在接触过 <a href="dynamic-programming.html#312-戳气球-困难">312.戳气球</a> 之后，这道题我们不难照猫画虎写出思路。也是倒过来想，假设<strong>闭区间</strong> <code>i...p|p+1...j</code>,<strong>最后一次合并是</strong>区间<code>[i, p]</code>和<code>[p+1, j]</code>合并，并且<code>[i, p]</code>和<code>[p+1, j]</code>这两个子区间已经合并好了。定义<code>dp[i][j]</code>表示合并闭区间<code>[i, j]</code>内所有石子的最小成本，那么最终的总成本就是<code>dp[i][j]=dp[i][p] + dp[p][j] + get_sum(i, j)</code>，显然我们并不清楚这一个区间最后在哪个位置合并最优，所以枚举所有可能的分割点。</p>
 <div class="code-example"><div class="code-tabs" role="tablist" aria-label="代码语言"><button type="button" role="tab" id="example-67-cpp-tab" aria-controls="example-67-cpp" aria-selected="true" tabindex="0">C++</button><button type="button" role="tab" id="example-67-python-tab" aria-controls="example-67-python" aria-selected="false" tabindex="-1">Python</button></div><div role="tabpanel" id="example-67-cpp" aria-labelledby="example-67-cpp-tab" data-language="cpp" tabindex="0"><div class="codehilite"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Solution</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">public</span><span class="o">:</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">mergeStones</span><span class="p">(</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stones</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -3176,7 +3177,7 @@ dp[i][j]=\min_{k={i+1}}^{j-1} (dp[i][k] + dp[k][j] + v[i] \cdot v[j] \cdot v[k])
 <h1 id="树形dp">树形DP</h1>
 <h2 id="焚诀_5">焚诀</h2>
 <p>树形DP，即在树上进行的DP。由于树固有的递归性质，树形DP一般都是递归进行的。树结构天然也有着原问题和子问题的关系，原问题就是整棵树，子问题就是左子树、右子树等。</p>
-<p>树形DP和其他DP思路一样，都是<strong>自底向上</strong>遍历的，也就是都是<strong>后序遍历</strong>的写法，并且不会重复访问同一个节点（即没有重叠子问题）。像<a href="#从记忆化搜索到递推">从记忆化搜索到递推</a>中求<code>fib(n)</code>，那么就要求<code>fib(n-1)</code>和<code>fib(n-2)</code>，求<code>fib(n-1)</code>又要求<code>fib(n-2)</code>和<code>fib(n-3)</code>，是有重叠子问题的，这种算作<strong>自顶向下</strong>的递归（需要记忆化搜索）。或者这么说，</p>
+<p>树形DP和其他DP思路一样，都是<strong>自底向上</strong>遍历的，也就是都是<strong>后序遍历</strong>的写法，并且不会重复访问同一个节点（即没有重叠子问题）。像<a href="dynamic-programming.html#从记忆化搜索到递推">从记忆化搜索到递推</a>中求<code>fib(n)</code>，那么就要求<code>fib(n-1)</code>和<code>fib(n-2)</code>，求<code>fib(n-1)</code>又要求<code>fib(n-2)</code>和<code>fib(n-3)</code>，是有重叠子问题的，这种算作<strong>自顶向下</strong>的递归（需要记忆化搜索）。或者这么说，</p>
 <ul>
 <li>
 <p><strong>自顶向下</strong>的递归问题从根节点开始，将问题<strong>分解</strong>成若干个子问题，通过递归调用子问题求解，<strong>一般子问题有重叠</strong>。</p>
@@ -3295,7 +3296,7 @@ dp[i][j]=\min_{k={i+1}}^{j-1} (dp[i][k] + dp[k][j] + v[i] \cdot v[j] \cdot v[k])
 <p>另给你一个字符串 <code>s</code> ，长度也是 <code>n</code> ，其中 <code>s[i]</code> 表示分配给节点 <code>i</code> 的字符。</p>
 <p>请你找出路径上任意一对相邻节点都没有分配到相同字符的 <strong>最长路径</strong> ，并返回该路径的长度。</p>
 <h3 id="思路_36">思路</h3>
-<p>题目说人话，就是找一条最长路径，路径上所有相邻字符都不一样。既然要找最长路径，那么可以参考前面的 <a href="#543.二叉树的直径[简单]">543.二叉树的直径</a>，不过注意这道题不是二叉树。假设根节点为x，那么我们就要遍历x的所有子树（记作y），找到最长和次长的子树。</p>
+<p>题目说人话，就是找一条最长路径，路径上所有相邻字符都不一样。既然要找最长路径，那么可以参考前面的 <a href="dynamic-programming.html#543-二叉树的直径-简单">543.二叉树的直径</a>，不过注意这道题不是二叉树。假设根节点为x，那么我们就要遍历x的所有子树（记作y），找到最长和次长的子树。</p>
 <p>如何一次遍历找到最长+次长呢？</p>
 <p>遍历时维护最长长度，并且用<code>max</code>记录当前子树和记录的最长长度的子树的长度和。如果最长在前面，次长在后面，遍历到次长时最长长度不会改变，但算出了最长+次长，也不会有其他值能覆盖他们了；如果次长在前面，最长在后面，那么遍历到最长时会更新最长长度，同时算出了最长+次长，也不会有其他值能覆盖他们了。</p>
 <p>依旧是定义<code>dfs(x)</code>表示以<code>x</code>为根的子树中的最长路径。</p>
@@ -3505,7 +3506,7 @@ dp[i][j]=\min_{k={i+1}}^{j-1} (dp[i][k] + dp[k][j] + v[i] \cdot v[j] \cdot v[k])
 <li>
 <p><a href="https://www.bilibili.com/video/BV1Fg4y1Q7wv">数位 DP 通用模板 v2.0【力扣双周赛 121】</a></p>
 </li>
-</ul></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。</footer></main></div>
+</ul></article><footer>基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-1" href="#焚诀">焚诀</a><a class="level-1" href="#从记忆化搜索到递推">从记忆化搜索到递推</a><a class="level-2" href="#509-斐波那契数-简单">509.斐波那契数[简单]</a><a class="level-2" href="#198-打家劫舍-中等">198.打家劫舍[中等]*</a><a class="level-2" href="#213-打家劫舍-ii-中等">213.打家劫舍 II[中等]</a><a class="level-1" href="#网格dp">网格DP</a><a class="level-2" href="#焚诀_1">焚诀</a><a class="level-2" href="#62-不同路径-中等">62.不同路径[中等]</a><a class="level-2" href="#63-不同路径-ii-中等">63.不同路径 II[中等]</a><a class="level-2" href="#64-最小路径和-中等">64.最小路径和[中等]</a><a class="level-1" href="#0-1-背包">0-1 背包</a><a class="level-2" href="#问题原型">问题原型</a><a class="level-2" href="#问题变形及经验总结">问题变形及经验总结</a><a class="level-2" href="#494-目标和-中等">494.目标和[中等]*</a><a class="level-2" href="#416-分割等和子集-中等">416.分割等和子集[中等]</a><a class="level-2" href="#2915-和为目标值的最长子序列的长度-中等">2915.和为目标值的最长子序列的长度[中等]</a><a class="level-2" href="#474-一和零-中等">474.一和零[中等]</a><a class="level-1" href="#完全背包">完全背包</a><a class="level-2" href="#问题原型_1">问题原型</a><a class="level-2" href="#322-零钱兑换-中等">322.零钱兑换[中等]*</a><a class="level-2" href="#279-完全平方数-中等">279.完全平方数[中等]</a><a class="level-2" href="#518-零钱兑换-ii-中等">518.零钱兑换 II[中等]</a><a class="level-1" href="#线性dp">线性DP</a><a class="level-2" href="#焚诀_2">焚诀</a><a class="level-2" href="#1143-最长公共子序列-中等">1143.最长公共子序列[中等]*</a><a class="level-2" href="#72-编辑距离-中等">72.编辑距离[中等]*</a><a class="level-2" href="#300-最长递增子序列-中等">300.最长递增子序列[中等]*</a><a class="level-2" href="#53-最大子数组和-中等">53.最大子数组和[中等]</a><a class="level-2" href="#152-乘积最大子数组-中等">152.乘积最大子数组[中等]</a><a class="level-2" href="#918-环形子数组的最大和-中等">918.环形子数组的最大和[中等]</a><a class="level-2" href="#139-单词拆分-中等">139.单词拆分[中等]</a><a class="level-2" href="#32-最长有效括号-困难">32.最长有效括号[困难]</a><a class="level-2" href="#97-交错字符串-中等">97.交错字符串[中等]</a><a class="level-2" href="#3290-最高乘法得分-中等">3290.最高乘法得分[中等]</a><a class="level-2" href="#115-不同的子序列-困难">115.不同的子序列[困难]</a><a class="level-1" href="#状态机dp">状态机DP</a><a class="level-2" href="#焚诀_3">焚诀</a><a class="level-2" href="#122-买卖股票的最佳时机-ii-中等">122.买卖股票的最佳时机 II[中等]*</a><a class="level-2" href="#309-最佳买卖股票时机含冷冻期-中等">309.最佳买卖股票时机含冷冻期[中等]*</a><a class="level-2" href="#188-买卖股票的最佳时机-iv-困难">188.买卖股票的最佳时机 IV[困难]*</a><a class="level-1" href="#区间dp">区间DP</a><a class="level-2" href="#焚诀_4">焚诀</a><a class="level-2" href="#516-最长回文子序列-中等">516.最长回文子序列[中等]*</a><a class="level-2" href="#1039-多边形三角剖分的最低得分-中等">1039.多边形三角剖分的最低得分[中等]*</a><a class="level-2" href="#5-最长回文子串-中等">5.最长回文子串[中等]</a><a class="level-2" href="#312-戳气球-困难">312.戳气球[困难]</a><a class="level-2" href="#1000-合并石头的最低成本-困难">1000.合并石头的最低成本[困难]</a><a class="level-2" href="#877-石子游戏-中等">877.石子游戏[中等]</a><a class="level-1" href="#树形dp">树形DP</a><a class="level-2" href="#焚诀_5">焚诀</a><a class="level-2" href="#543-二叉树的直径-简单">543.二叉树的直径[简单]*</a><a class="level-2" href="#124-二叉树中的最大路径和-困难">124.二叉树中的最大路径和[困难]*</a><a class="level-2" href="#2246-相邻字符不同的最长路径-困难">2246.相邻字符不同的最长路径[困难]*</a><a class="level-2" href="#337-打家劫舍-iii-中等">337.打家劫舍 III[中等]*</a><a class="level-2" href="#968-监控二叉树-困难">968.监控二叉树[困难]*</a><a class="level-1" href="#数位dp">数位DP</a><a class="level-2" href="#链接_38">链接</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>

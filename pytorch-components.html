@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>常见计算与组件</title><meta name="description" content="Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention">
+<title>常见计算与组件 · 求知录</title><meta name="description" content="Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v=f1d89bddbd"><link rel="stylesheet" href="assets/code.css">
@@ -13,8 +13,8 @@
 <aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html" aria-current="page">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-gemm-performance-analysis.html">GEMM 性能分析方法</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a><a href="cuda-flash-attention.html">FlashAttention 1–4</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-technology-map.html">模型技术总表</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-residual-experts-memory.html">残差、LatentMoE 与条件记忆</a><a href="attention-qwen3-h100-tp-case.html">案例：Qwen3 / H100 的 TP 性能</a><a href="attention-moe-ep-tp.html">MoE FFN：EP 与 TP</a></nav><p class="nav-label">DeepSeek</p><nav aria-label="DeepSeek"><a href="deepseek-evolution.html">V2–V4 架构演进</a><a href="deepseek-forward-shapes.html">一次前向与张量形状</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 AllReduce 算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
 <a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
-<div class="reading-layout"><aside class="toc"><nav><a href="#常见计算与组件的-torch-实现">常见计算与组件的 Torch 实现</a><a href="#nn-embedding-按整数-id-查表">nn.Embedding：按整数 ID 查表</a><a href="#1-linear-线性层">1. Linear：线性层</a><a href="#2-stable-softmax-归一化为权重">2. Stable softmax：归一化为权重</a><a href="#norm-normalize-和归一化层分别做什么">Norm、normalize 和归一化层分别做什么</a><a href="#3-layernorm-沿特征轴减均值-除标准差">3. LayerNorm：沿特征轴减均值、除标准差</a><a href="#4-rmsnorm-按均方根缩放">4. RMSNorm：按均方根缩放</a><a href="#5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</a><a href="#6-scaled-dot-product-attention-分数-mask-与加权求和">6. Scaled dot-product attention：分数、mask 与加权求和</a><a href="#运行约定与验证范围">运行约定与验证范围</a></nav></aside><main id="main"><h1>常见计算与组件</h1><p class="subtitle">Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention</p><article><h1 id="常见计算与组件的-torch-实现">常见计算与组件的 Torch 实现</h1>
-<p>本页用 Tensor 运算展开常见组件的计算过程。函数、层对象、模型与参数管理先看 <a href="neural-networks.md">神经网络基础</a>；shape、广播和存储布局查 <a href="tensors.md">Tensor 与 GPU 内存</a>。</p>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">PyTorch 教学</p><h1>常见计算与组件</h1><p class="subtitle">Linear · softmax · LayerNorm · RMSNorm · SwiGLU · attention</p></div>
+<article><p>本页用 Tensor 运算展开常见组件的计算过程。函数、层对象、模型与参数管理先看 <a href="pytorch-neural-networks.html">神经网络基础</a>；shape、广播和存储布局查 <a href="pytorch-tensors.html">Tensor 与 GPU 内存</a>。</p>
 <h2 id="nn-embedding-按整数-id-查表">nn.Embedding：按整数 ID 查表</h2>
 <p><code>nn.Embedding(num_embeddings=V, embedding_dim=D)</code> 持有一张 <code>[V,D]</code> 的可学习表。输入里的 ID 指定行号，每个位置读取该行的 D 个浮点值。用于 token embedding 时，V 是词表大小，D 通常是模型的 hidden width。</p>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
@@ -85,7 +85,7 @@ Y_{b,s,d}=W_{I_{b,s},d}.
 
 
 <p>上面的三种写法在这组默认参数下表达同一次查表。<code>nn.Embedding</code> 注册并持有 <code>weight</code> 参数，没有 bias；<code>F.embedding</code> 使用调用方传入的权重。手写函数只展示基础索引，不实现 <code>padding_idx</code>、<code>max_norm</code> 或梯度频次缩放的全部行为。本例未设置 <code>padding_idx</code>，第 0 行虽然手动填了零向量，仍可学习。</p>
-<p>查表结果有自己的数值存储，修改输出不会直接修改权重表。训练通过梯度更新参数，存储与梯度的区别见 <a href="tensors.md#存储独立与梯度关系是两件事">存储独立与梯度关系</a>。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.embedding.html">functional.embedding 接口</a></p>
+<p>查表结果有自己的数值存储，修改输出不会直接修改权重表。训练通过梯度更新参数，存储与梯度的区别见 <a href="pytorch-tensors.html#存储独立与梯度关系是两件事">存储独立与梯度关系</a>。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.embedding.html">functional.embedding 接口</a></p>
 <h3 id="梯度回到权重表-重复-id-的贡献相加">梯度回到权重表，重复 ID 的贡献相加</h3>
 <p>整数 ID 不参与求导，梯度流向选中的权重行。若同一个 ID 出现两次，两处输出对这一行的梯度会累加。以下使用默认的 <code>scale_grad_by_freq=False</code>、<code>sparse=False</code>：</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -102,7 +102,7 @@ Y_{b,s,d}=W_{I_{b,s},d}.
 </pre></div>
 
 
-<p>这里的 loss 对每个输出元素的导数为 1，所以梯度数值只取决于 ID 出现次数。<code>backward()</code> 写入 <code>.grad</code>，优化器的 <code>step()</code> 才更新参数；训练流程见 <a href="neural-networks.md#7-一次训练更新-谁计算-谁改参数">一次训练更新</a>。</p>
+<p>这里的 loss 对每个输出元素的导数为 1，所以梯度数值只取决于 ID 出现次数。<code>backward()</code> 写入 <code>.grad</code>，优化器的 <code>step()</code> 才更新参数；训练流程见 <a href="pytorch-neural-networks.html#7-一次训练更新-谁计算-谁改参数">一次训练更新</a>。</p>
 <h3 id="padding-范数限制与稀疏梯度">padding、范数限制与稀疏梯度</h3>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
 <thead>
@@ -165,7 +165,7 @@ Y_{b,s,d}=W_{I_{b,s},d}.
 <p>设置 <code>max_norm</code> 后，forward 会原地修改相应权重行。若同一计算图还直接使用 <code>embedding.weight</code>，需要按官方说明处理克隆与调用顺序。<code>sparse=True</code> 则要求优化器支持稀疏梯度，例如 <code>torch.optim.SparseAdam</code>。<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.Embedding.html">Embedding 参数与限制</a></p>
 <h3 id="加载已有向量表-以及与-lm-head-的关系">加载已有向量表，以及与 LM head 的关系</h3>
 <p>已有 <code>vectors: [V,D]</code> 时，可以使用 <code>nn.Embedding.from_pretrained(vectors, freeze=False)</code>。它从表的 shape 推断 V 和 D；默认 <code>freeze=True</code> 会关闭权重求导，继续训练时显式指定 <code>freeze=False</code>。输入表应是已准备好的浮点向量表。</p>
-<p>部分语言模型把 embedding 与 LM head 绑定为同一份参数。输入端用 ID 查行，输出端用 <code>hidden @ embedding.weight.T</code> 计算整个词表的 logits，得到 <code>[B,S,V]</code>。两者共享权重时，来自输入与输出两条路径的梯度都会汇总到这份参数。运行位置可对照 <a href="../Attention/transformer-runtime.md">Transformer 运行全过程</a>。</p>
+<p>部分语言模型把 embedding 与 LM head 绑定为同一份参数。输入端用 ID 查行，输出端用 <code>hidden @ embedding.weight.T</code> 计算整个词表的 logits，得到 <code>[B,S,V]</code>。两者共享权重时，来自输入与输出两条路径的梯度都会汇总到这份参数。运行位置可对照 <a href="attention-transformer-runtime.html">Transformer 运行全过程</a>。</p>
 <h2 id="1-linear-线性层">1. Linear：线性层</h2>
 <p><code>x: [..., in_features]</code>、<code>weight: [out_features, in_features]</code>、<code>bias: [out_features]</code>，返回 <code>[..., out_features]</code>。权重按 PyTorch Linear 的方向存放：<code>y = x @ weight.T + bias</code>。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -190,7 +190,7 @@ Y_{b,s,d}=W_{I_{b,s},d}.
 </pre></div>
 
 
-<p><code>x</code> 可以从 <code>[B, D]</code> 扩展成 <code>[B, S, D]</code>，不需要循环逐 token 计算。输入、权重与偏置使用相同的 GPU 和 dtype；这里是前向函数，层对象如何持有参数见 <a href="neural-networks.md#2-linear-同一个计算的两种用法">F.linear 与 nn.Linear</a>。</p>
+<p><code>x</code> 可以从 <code>[B, D]</code> 扩展成 <code>[B, S, D]</code>，不需要循环逐 token 计算。输入、权重与偏置使用相同的 GPU 和 dtype；这里是前向函数，层对象如何持有参数见 <a href="pytorch-neural-networks.html#2-linear-同一个计算的两种用法">F.linear 与 nn.Linear</a>。</p>
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.Linear.html">torch.nn.Linear</a>。</p>
 <h2 id="2-stable-softmax-归一化为权重">2. Stable softmax：归一化为权重</h2>
 <p>沿 <code>dim</code> 做 <code>exp(x - max(x)) / sum(exp(x - max(x)))</code>。输入为有限 FP16 / BF16 / FP32 数值，输出 shape 与输入相同；先转 FP32 计算，再返回原 dtype。</p>
@@ -431,7 +431,7 @@ y_i=\frac{x_i}{\sqrt{r^2+\epsilon}}\gamma_i.
 </pre></div>
 
 
-<p>官方 LayerNorm 和 RMSNorm 都可用 <code>elementwise_affine=False</code> 关闭可学习的逐元素变换。两者在训练和推理时都使用当前输入的统计量，不维护 BatchNorm 式的 running statistics。实际模型中可以放在 attention / FFN 分支之前，位置关系见 <a href="../Attention/transformer-runtime.md#5-一个-transformer-block-的完整顺序">Transformer 运行全过程</a>。</p>
+<p>官方 LayerNorm 和 RMSNorm 都可用 <code>elementwise_affine=False</code> 关闭可学习的逐元素变换。两者在训练和推理时都使用当前输入的统计量，不维护 BatchNorm 式的 running statistics。实际模型中可以放在 attention / FFN 分支之前，位置关系见 <a href="attention-transformer-runtime.html#5-一个-transformer-block-的完整顺序">Transformer 运行全过程</a>。</p>
 <h3 id="用同一个向量比较三种归一化">用同一个向量比较三种归一化</h3>
 <p>以下均忽略 eps；Norm 层的 weight 全为 1，LayerNorm 的 bias 全为 0：</p>
 <div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
@@ -466,7 +466,7 @@ y_i=\frac{x_i}{\sqrt{r^2+\epsilon}}\gamma_i.
 </table></div>
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.RMSNorm.html">RMSNorm</a>。</p>
 <h2 id="5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</h2>
-<p>ReLU、SiLU、GELU 的现成接口，以及 SwiGLU 与普通 GLU 的区别，见 <a href="neural-networks.md#激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控</a>。</p>
+<p>ReLU、SiLU、GELU 的现成接口，以及 SwiGLU 与普通 GLU 的区别，见 <a href="pytorch-neural-networks.html#激活函数与门控-relu-silu-gelu-与-swiglu">激活函数与门控</a>。</p>
 <p><code>x: [..., D]</code>，<code>w_gate / w_up: [F, D]</code>，<code>w_down: [D, F]</code>，返回 <code>[..., D]</code>。F 是中间特征数；gate 与 up 都从同一个 x 产生。</p>
 <div class="codehilite"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
@@ -556,7 +556,7 @@ y_i=\frac{x_i}{\sqrt{r^2+\epsilon}}\gamma_i.
 <p>官方接口：<a href="https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.scaled_dot_product_attention.html">functional.scaled_dot_product_attention</a>。</p>
 <h2 id="运行约定与验证范围">运行约定与验证范围</h2>
 <p>上述代码块各自包含导入，GPU 调用使用 <code>device='cuda'</code>；需要支持 CUDA 的 PyTorch 和可用的 NVIDIA GPU。函数自身跟随输入的 device；没有 CPU fallback 或自动设备迁移。</p>
-<p>标出的数值和 shape 是推导预期，<code>reference</code> 用来说明对应的官方接口，不表示已执行对照。只做 Python 语法、网站构建和链接检查，未执行 GPU 实机验证，也没有性能测量结果。回查基础写法见 <a href="tensors.md">Tensor 与 GPU 内存</a>。</p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main></div>
+<p>标出的数值和 shape 是推导预期，<code>reference</code> 用来说明对应的官方接口，不表示已执行对照。只做 Python 语法、网站构建和链接检查，未执行 GPU 实机验证，也没有性能测量结果。回查基础写法见 <a href="pytorch-tensors.html">Tensor 与 GPU 内存</a>。</p></article><footer>以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。</footer></main><aside class="toc"><p>本页目录</p><nav aria-label="本页目录"><a class="level-2" href="#nn-embedding-按整数-id-查表">nn.Embedding：按整数 ID 查表</a><a class="level-2" href="#1-linear-线性层">1. Linear：线性层</a><a class="level-2" href="#2-stable-softmax-归一化为权重">2. Stable softmax：归一化为权重</a><a class="level-2" href="#norm-normalize-和归一化层分别做什么">Norm、normalize 和归一化层分别做什么</a><a class="level-2" href="#3-layernorm-沿特征轴减均值-除标准差">3. LayerNorm：沿特征轴减均值、除标准差</a><a class="level-2" href="#4-rmsnorm-按均方根缩放">4. RMSNorm：按均方根缩放</a><a class="level-2" href="#5-swiglu-ffn-门控前馈组件">5. SwiGLU FFN：门控前馈组件</a><a class="level-2" href="#6-scaled-dot-product-attention-分数-mask-与加权求和">6. Scaled dot-product attention：分数、mask 与加权求和</a><a class="level-2" href="#运行约定与验证范围">运行约定与验证范围</a></nav></aside></div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
 <input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>

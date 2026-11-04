@@ -122,7 +122,7 @@ y = embedding(token_ids)             # [1,3,3]
 
 已有 `vectors: [V,D]` 时，可以使用 `nn.Embedding.from_pretrained(vectors, freeze=False)`。它从表的 shape 推断 V 和 D；默认 `freeze=True` 会关闭权重求导，继续训练时显式指定 `freeze=False`。输入表应是已准备好的浮点向量表。
 
-部分语言模型把 embedding 与 LM head 绑定为同一份参数。输入端用 ID 查行，输出端用 `hidden @ embedding.weight.T` 计算整个词表的 logits，得到 `[B,S,V]`。两者共享权重时，来自输入与输出两条路径的梯度都会汇总到这份参数。运行位置可对照 [Transformer 运行全过程](../Attention/transformer-runtime.md)。
+部分语言模型把 embedding 与 LM head 绑定为同一份参数。输入端用 ID 查行，输出端用 `hidden @ embedding.weight.T` 计算整个词表的 logits，得到 `[B,S,V]`。两者共享权重时，来自输入与输出两条路径的梯度都会汇总到这份参数。运行位置可对照 [Transformer 运行全过程](../attention/transformer-runtime.md)。
 
 ## 1. Linear：线性层
 
@@ -383,7 +383,7 @@ y = norm(x)                             # [2,4,8]
 reference = F.rms_norm(x, (8,), norm.weight, eps=1e-6)
 ```
 
-官方 LayerNorm 和 RMSNorm 都可用 `elementwise_affine=False` 关闭可学习的逐元素变换。两者在训练和推理时都使用当前输入的统计量，不维护 BatchNorm 式的 running statistics。实际模型中可以放在 attention / FFN 分支之前，位置关系见 [Transformer 运行全过程](../Attention/transformer-runtime.md#5-一个-transformer-block-的完整顺序)。
+官方 LayerNorm 和 RMSNorm 都可用 `elementwise_affine=False` 关闭可学习的逐元素变换。两者在训练和推理时都使用当前输入的统计量，不维护 BatchNorm 式的 running statistics。实际模型中可以放在 attention / FFN 分支之前，位置关系见 [Transformer 运行全过程](../attention/transformer-runtime.md#5-一个-transformer-block-的完整顺序)。
 
 ### 用同一个向量比较三种归一化
 
