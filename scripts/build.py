@@ -78,6 +78,8 @@ ATTENTION_REFERENCES = [
      '分块省显存 · warp 分工 · 异步流水线 · A100 / H100 / B200'),
     ('Attention/flash-linear-attention.md', 'attention-flash-linear-attention.html', 'Flash Linear Attention',
      '状态递推 · chunkwise · GLA · DeltaNet / Gated DeltaNet · FLA 接口'),
+    ('Attention/model-technology-map.md', 'attention-model-technology-map.html', '模型技术总表',
+     '按模型查 attention · FFN / MoE · residual · 条件记忆 · MTP · 训练技术'),
     ('Attention/model-architectures.md', 'attention-model-architectures.html', 'DeepSeek、Kimi 与 Qwen 架构',
      'MLA / GQA · DSA / CSA / QSA · KDA / GDN · MoE · 残差与缓存'),
     ('Attention/residual-experts-memory.md', 'attention-residual-experts-memory.html', '残差、LatentMoE 与条件记忆',

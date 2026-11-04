@@ -42,9 +42,11 @@ struct Node {int val; Node *next=nullptr,*random=nullptr; explicit Node(int v):v
 """
 
 def examples():
-    for path in sorted(ROOT.glob('*/*.md')):
-        if path.parent.name == 'STL':
-            continue  # API references deliberately contain independent fragments.
+    # 搜索 content/ 目录下的所有 Markdown 文件
+    for path in sorted((ROOT / 'content').glob('**/*.md')):
+        # STL 和 Python 参考文档包含独立片段，跳过
+        if 'cpp-stl' in str(path) or 'python' in str(path):
+            continue
         text = path.read_text()
         for index, match in enumerate(re.finditer(r'^```cpp\n(.*?)^```', text, re.M | re.S)):
             code = match[1]

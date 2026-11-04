@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型技术总表</title><meta name="description" content="按模型查 attention · FFN / MoE · residual · 条件记忆 · MTP · 训练技术">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
+<link rel="stylesheet" href="assets/style.css?v=f1d89bddbd"><link rel="stylesheet" href="assets/code.css">
+<script>(()=>{let saved;try{saved=localStorage.getItem('notes-theme')}catch(e){}const manual=saved==='light'||saved==='dark';document.documentElement.dataset.theme=manual?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.themeSource=manual?'manual':'system'})();</script>
+<script defer src="assets/site.js?v=791aca5848"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+</head><body>
+<a class="skip-link" href="#main">跳到正文</a>
+<aside class="sidebar" id="sidebar"><a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a><p class="nav-label">算法与题目</p><nav aria-label="算法与题目"><a href="arrays.html">数组</a><a href="linked-lists.html">链表</a><a href="trees.html">二叉树</a><a href="graphs.html">图</a><a href="dynamic-programming.html">动态规划</a><a href="backtracking.html">回溯</a><a href="greedy.html">贪心</a><a href="bitwise.html">位运算</a><a href="data-structures.html">数据结构</a><a href="design.html">设计</a></nav><p class="nav-label">STL 参考</p><nav aria-label="STL 参考"><a href="cpp-stl.html">STL 速查</a><a href="stl-value-semantics.html">对象语义</a><a href="stl-sequence-containers.html">序列容器</a><a href="stl-associative-containers.html">关联容器</a><a href="stl-adapters-iterators.html">适配器与算法</a></nav><p class="nav-label">Python 参考</p><nav aria-label="Python 参考"><a href="python-data-structures.html">Python 数据结构速查</a><a href="python-math.html">数学运算速查</a><a href="python-iterables-and-functions.html">可迭代对象与常用函数</a><a href="python-classes-and-objects.html">类与对象</a><a href="python-modules-and-packages.html">模块、包与运行方式</a><a href="python-native-interop.html">Python 与其他语言互操作</a></nav><p class="nav-label">PyTorch 教学</p><nav aria-label="PyTorch 教学"><a href="pytorch-tensors.html">Tensor 与 GPU 内存</a><a href="pytorch-neural-networks.html">神经网络基础</a><a href="pytorch-components.html">常见计算与组件</a></nav><p class="nav-label">CUDA 教学</p><nav aria-label="CUDA 教学"><a href="cuda-execution-hierarchy.html">执行层级与硬件映射</a><a href="cuda-gemm.html">GEMM 计算与优化</a><a href="cuda-gemm-performance-analysis.html">GEMM 性能分析方法</a><a href="cuda-compilation-and-instructions.html">PTX、SASS 与编译流程</a><a href="cuda-flash-attention.html">FlashAttention 1–4</a></nav><p class="nav-label">Attention 与 Transformer</p><nav aria-label="Attention 与 Transformer"><a href="attention-transformer-runtime.html">Transformer 运行全过程</a><a href="attention-flash-linear-attention.html">Flash Linear Attention</a><a href="attention-model-technology-map.html" aria-current="page">模型技术总表</a><a href="attention-model-architectures.html">DeepSeek、Kimi 与 Qwen 架构</a><a href="attention-residual-experts-memory.html">残差、LatentMoE 与条件记忆</a><a href="attention-qwen3-h100-tp-case.html">案例：Qwen3 / H100 的 TP 性能</a><a href="attention-moe-ep-tp.html">MoE FFN：EP 与 TP</a></nav><p class="nav-label">DeepSeek</p><nav aria-label="DeepSeek"><a href="deepseek-evolution.html">V2–V4 架构演进</a><a href="deepseek-forward-shapes.html">一次前向与张量形状</a></nav><p class="nav-label">GPU 软件栈</p><nav aria-label="GPU 软件栈"><a href="gpu-driver-runtime-framework.html">驱动、运行时与框架</a><a href="gpu-software-stack.html">GPU 软件栈与工具</a><a href="gpu-graphs-and-compilation.html">计算图、编译与 CUDA Graph</a><a href="gpu-precision-and-quantization.html">浮点格式、混合精度与量化</a><a href="gpu-communication-and-allreduce.html">MPI 与 AllReduce 算法</a></nav><a class="source-link" href="https://github.com/sisyphus111/learning-notes">GitHub ↗</a></aside>
+<div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
+<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><aside class="toc"><nav><a href="#模型技术地图-deepseek-kimi-k3-与-qwen3-8">模型技术地图：DeepSeek、Kimi K3 与 Qwen3.8</a><a href="#1-主干总表-先看-attention-ffn-和-residual">1. 主干总表：先看 attention、FFN 和 residual</a><a href="#2-attention-对照-到底压缩了什么-选择了什么">2. Attention 对照：到底压缩了什么，选择了什么</a><a href="#3-条件记忆-mtp-与视觉-放在主干旁边单独看">3. 条件记忆、MTP 与视觉：放在主干旁边单独看</a><a href="#4-训练与数值技术-不要放进-attention-那一列">4. 训练与数值技术：不要放进 attention 那一列</a><a href="#5-不熟悉的名词-按它负责的事情找">5. 不熟悉的名词，按它负责的事情找</a><a href="#6-来源与详细阅读入口">6. 来源与详细阅读入口</a><a href="#7-deepseek-主系列-谱系与尺寸">7. DeepSeek 主系列：谱系与尺寸</a><a href="#8-deepseek-v4-1-flash-这次改变的是执行路径与跨层复用">8. DeepSeek-V4.1-Flash：这次改变的是执行路径与跨层复用</a><a href="#9-qwen3-8-同一品牌下的三种组合">9. Qwen3.8：同一品牌下的三种组合</a><a href="#10-kimi-k3-与-k3-1-哪些已经有配置-哪些仍以公告为准">10. Kimi K3 与 K3.1：哪些已经有配置，哪些仍以公告为准</a><a href="#11-特殊技术放在什么位置-避免同名误认">11. 特殊技术放在什么位置：避免同名误认</a><a href="#12-本轮固定配置来源">12. 本轮固定配置来源</a></nav></aside><main id="main"><h1>模型技术总表</h1><p class="subtitle">按模型查 attention · FFN / MoE · residual · 条件记忆 · MTP · 训练技术</p><article><h1 id="模型技术地图-deepseek-kimi-k3-与-qwen3-8">模型技术地图：DeepSeek、Kimi K3 与 Qwen3.8</h1>
+<p>本页于 <strong>2026-11-02</strong> 扩充。先看前半页的技术归属；<a href="#7-deepseek-主系列谱系与尺寸">第 7 节起</a>列出各代尺寸、头数与专家配置，再分别解释 V4.1、Qwen3.8 和 K3/K3.1。配置来自当天重新核验的官方文件。</p>
+<h2 id="1-主干总表-先看-attention-ffn-和-residual">1. 主干总表：先看 attention、FFN 和 residual</h2>
+<p>这三列分别回答：<strong>怎样读取历史、怎样变换当前 token 的特征、怎样把表示交给后面的层。</strong> 同一行是一个具体模型；同一列才是作用相近、适合放在一起对照的技术。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>Attention：历史怎样读取</th>
+<th>FFN：当前 token 怎样变换</th>
+<th>Residual：不同深度怎样传递</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DeepSeek-V2</strong></td>
+<td><strong>MLA</strong>：每个 token 保存压缩的 K/V 表示，读取全部因果历史</td>
+<td><strong>DeepSeekMoE</strong>：细粒度 routed experts + shared experts；首层 dense</td>
+<td>普通单流残差加法</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V3</strong></td>
+<td><strong>MLA</strong>：延续 V2 的核心路线</td>
+<td><strong>DeepSeekMoE</strong>；前三层 dense，后续使用专家</td>
+<td>普通单流残差加法</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V3.2</strong></td>
+<td><strong>MLA + DSA</strong>：先选历史 token，再读取对应 latent</td>
+<td>延续 V3 系列的 DeepSeekMoE</td>
+<td>普通单流残差加法</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4-Flash</strong></td>
+<td><strong>CSA / HCA + SWA</strong>：压缩历史条目，另保留近期窗口；底层采用 shared K=V 的 MQA</td>
+<td><strong>MoE</strong>；前三层采用 hash routing</td>
+<td><strong>mHC</strong>：4 条残差流，约束分支之间的混合</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4-Pro</strong></td>
+<td>同属 <strong>CSA / HCA + SWA</strong> 路线；具体层布局和规模不同于 Flash</td>
+<td><strong>MoE</strong>；前三层采用 hash routing，专家池更大</td>
+<td><strong>mHC</strong>：4 条残差流</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4.1-Flash</strong></td>
+<td><strong>CED + CSA2 + SWA</strong>：因果编码器/解码器，跨层复用主 KV 与索引</td>
+<td>MoE：384 routed 选 6，另有 shared expert</td>
+<td><strong>Single-Pass mHC</strong>，4 条残差流</td>
+</tr>
+<tr>
+<td><strong>Kimi K3.1 Pro</strong></td>
+<td>官方确认是 K3 后训练版；独立配置待核验</td>
+<td>以 K3 为结构参照，避免把参照尺寸当作已发布配置</td>
+<td>K3 的 Block AttnRes 为结构参照</td>
+</tr>
+<tr>
+<td><strong>Kimi K3</strong></td>
+<td><strong>KDA + gated MLA</strong>：递推状态层与历史读取层混合</td>
+<td>首层 dense；后续 <strong>Stable LatentMoE</strong>：routed experts 用较窄空间，shared experts 保持主干宽度</td>
+<td><strong>Block AttnRes</strong>：按权重读取同一 token 的不同深度块</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-27B</strong></td>
+<td><strong>GDN + gated full attention</strong>，full-attention 层使用 GQA</td>
+<td><strong>Dense FFN</strong>：每个 token 经过同一套 FFN</td>
+<td>普通单流残差加法</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-2.4T-A95B</strong></td>
+<td><strong>GDN + gated full attention</strong>，full-attention 层使用 GQA</td>
+<td><strong>MoE</strong>：routed experts + shared expert</td>
+<td>普通单流残差加法</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-Flash-Next</strong></td>
+<td><strong>GDN + QSA</strong>：递推状态层与稀疏历史读取层混合</td>
+<td><strong>MoE</strong>：routed experts + shared expert</td>
+<td><strong>GR</strong>：4 个残差分支，控制读取和写入</td>
+</tr>
+</tbody>
+</table></div>
+<p>这里把“Qwen3.8”拆成 27B dense、2.4T-A95B MoE 两个代表配置，再单列 Flash-Next。<strong>Qwen3.8 不是一种唯一的结构。</strong> V4 也拆成 Flash 和 Pro，避免把二者的层布局与规模混为一谈。</p>
+<p>机制来源见<a href="#6-来源与详细阅读入口">第 6 节</a>，本轮固定配置见第 12 节。已有长篇解释保持独立：本页用于定位技术，再按链接阅读机制，不需要在这里记住参数量或计算公式。</p>
+<h2 id="2-attention-对照-到底压缩了什么-选择了什么">2. Attention 对照：到底压缩了什么，选择了什么</h2>
+<p>不同名称可以组合，因为它们改变的对象不同。比如 <strong>MLA</strong> 决定历史怎样表示，<strong>DSA</strong> 决定当前读哪些历史；因此 V3.2 可以同时使用二者。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>技术</th>
+<th>改变的对象</th>
+<th>当前 query 读取什么</th>
+<th>本页中的模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MLA</strong></td>
+<td>压缩每个 token 的 K/V 特征宽度</td>
+<td>普通 MLA 读取各历史 token 的 latent；可与稀疏选择组合</td>
+<td>V2、V3、V3.2；K3 的 MLA 层</td>
+</tr>
+<tr>
+<td><strong>DSA</strong></td>
+<td>选择原始历史 token 的位置</td>
+<td>indexer 选中的 token 对应的 MLA 条目</td>
+<td>V3.2</td>
+</tr>
+<tr>
+<td><strong>CSA</strong></td>
+<td>将相邻 token 合成压缩条目，再选择条目</td>
+<td>选中的压缩条目，另有近期窗口</td>
+<td>V4-Flash / Pro</td>
+</tr>
+<tr>
+<td><strong>HCA</strong></td>
+<td>将更长的 token 片段合成粗粒度条目</td>
+<td>全部因果可见的粗条目，另有近期窗口</td>
+<td>V4-Flash / Pro</td>
+</tr>
+<tr>
+<td><strong>SWA</strong></td>
+<td>限制局部读取窗口</td>
+<td>最近一段历史的条目</td>
+<td>V4 的局部分支</td>
+</tr>
+<tr>
+<td><strong>GQA / MQA</strong></td>
+<td>让多个 query heads 共享 K/V heads</td>
+<td>读取范围另由 full attention、窗口或稀疏规则决定</td>
+<td>Qwen 的 full-attention / QSA 层；V4 的 MQA</td>
+</tr>
+<tr>
+<td><strong>GDN</strong></td>
+<td>将历史持续写进固定形状的递推状态</td>
+<td>当前状态；其他混合层仍可以读取历史 KV</td>
+<td>Qwen3.8 的三个代表分支</td>
+</tr>
+<tr>
+<td><strong>KDA</strong></td>
+<td>通过带门控的 delta 更新维护历史状态</td>
+<td>当前状态；K3 的 MLA 层另存历史缓存</td>
+<td>Kimi K3</td>
+</tr>
+<tr>
+<td><strong>QSA</strong></td>
+<td>用 micro-block 索引筛选一组历史 token</td>
+<td><strong>选中块内原始 token 的 K/V</strong></td>
+<td>Qwen3.8-Flash-Next</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>最容易混的三组关系：</strong></p>
+<ul>
+<li><strong>MLA 与 CSA/HCA</strong>：MLA 缩窄每条历史记录；CSA/HCA 把多个 token 合成更少的记录。</li>
+<li><strong>DSA 与 QSA</strong>：DSA 按 token 选择，QSA 按 micro-block 选择；二者主 attention 仍读取选中 token 的表示。</li>
+<li><strong>QSA 与 CSA</strong>：QSA 的主 attention 读取原始 token K/V；CSA 的主 attention 读取压缩条目。两者名字相近，读取对象不同。</li>
+</ul>
+<p>GDN/KDA 的递推状态在形状上不随历史长度增长，但混合模型还有 full attention 或 MLA 层，所以不能说整个模型的缓存都是常量。HCA 虽然压缩历史，压缩条目仍随序列增长，也不能归入固定状态的 linear attention。</p>
+<p>详细解释：<a href="model-architectures.md">MLA 与各类稀疏/混合 attention</a>、<a href="../DeepSeek/evolution.md">DeepSeek V2–V4 演进</a>。</p>
+<h2 id="3-条件记忆-mtp-与视觉-放在主干旁边单独看">3. 条件记忆、MTP 与视觉：放在主干旁边单独看</h2>
+<p><strong>条件记忆</strong>是额外的参数查表路径；<strong>MTP</strong>是额外预测目标与辅助模块；<strong>视觉编码器</strong>把图像转换成模型能处理的表示。它们与第一张表的三个主干部件作用不同。</p>
+<p>下表中的“未列”表示所核对的报告/发布配置未列出该专用模块，不代表模型没有训练得到的知识，也不是对所有后续衍生实现的判断。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>专用条件记忆</th>
+<th>MTP / 草稿生成</th>
+<th>公开模型的视觉路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DeepSeek-V2</strong></td>
+<td>未列</td>
+<td>原始报告未列 MTP</td>
+<td>文本主干</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V3</strong></td>
+<td>未列</td>
+<td><strong>MTP</strong>，可用于推测生成</td>
+<td>文本主干</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V3.2</strong></td>
+<td>未列</td>
+<td>发布配置保留 <strong>MTP</strong></td>
+<td>文本主干</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4-Flash</strong></td>
+<td>未列；hash routing 属于专家路由</td>
+<td><strong>MTP</strong></td>
+<td>文本主干</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4-Pro</strong></td>
+<td>未列；hash routing 属于专家路由</td>
+<td><strong>MTP</strong></td>
+<td>文本主干</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4.1-Flash</strong></td>
+<td><strong>Engram</strong>，额外196B参数</td>
+<td><strong>DSpark</strong>，独立训练draft</td>
+<td>DeepSeek-ViT + projector</td>
+</tr>
+<tr>
+<td><strong>Kimi K3.1 Pro</strong></td>
+<td>独立配置待核验</td>
+<td>官方确认后训练升级；draft配置待核验</td>
+<td>官方确认原生视觉</td>
+</tr>
+<tr>
+<td><strong>Kimi K3</strong></td>
+<td>未列 n-gram / Engram</td>
+<td>预训练 <strong>MTP</strong>；后续微调为 <strong>EAGLE-3-style draft</strong></td>
+<td><strong>MoonViT-V2 + projector</strong>，图像/视频</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-27B</strong></td>
+<td>未列 n-gram / Engram</td>
+<td><strong>MTP</strong>，多步训练</td>
+<td>公开 checkpoint 带视觉编码器</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-2.4T-A95B</strong></td>
+<td>未列 n-gram / Engram</td>
+<td><strong>MTP</strong>，多步训练</td>
+<td><strong>公开 checkpoint 为纯文本</strong>；勿混同带视觉的托管 Qwen3.8-Max</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-Flash-Next</strong></td>
+<td><strong>N-gram embedding</strong>：bigram/trigram + 上下文门控</td>
+<td><strong>MTP</strong>，多步训练</td>
+<td>公开 checkpoint 带视觉编码器</td>
+</tr>
+</tbody>
+</table></div>
+<p>K3 报告讨论了 MTP 到 draft 的训练路径，但发布主干配置中的 <code>num_nextn_predict_layers=0</code>，不能据报告就认为主干包自带可直接运行的 MTP 层。</p>
+<p>MTP 的“训练采用”和“这个发布包能直接用于草稿生成”要分开。服务框架还需实际支持并启用草稿与验证路径，才能讨论推理加速。</p>
+<h3 id="engram-应该放到哪里">Engram 应该放到哪里</h3>
+<p><strong>DeepSeek-V4.1-Flash 采用 Engram，原版 V4 的那一行不要填 Engram。</strong> V4.1 的 CED、CSA2、Single-Pass mHC、DSpark 也应放在 V4.1 自己的版本条目里。V4.1 的具体尺寸和复用路径见第 8 节。</p>
+<p><strong>Qwen3.8-Flash-Next 使用自己的 n-gram embedding 模块。</strong> 它与 Engram 都包含“局部 token 组合查表、按上下文融合”的思路，但不能把 DeepSeek 原论文的每个细节都直接套到 Qwen。</p>
+<p><strong>DeepSeek V4 的 hash routing 是选择专家。</strong> 它根据 token ID 确定 expert IDs，随后仍需执行专家网络。n-gram embedding 则根据局部 token 组合读取参数向量。虽然都有查地址这一步，最终拿到的对象不同。</p>
+<p>详细解释：<a href="residual-experts-memory.md">n-gram embedding、Engram 与 MTP</a>。</p>
+<h2 id="4-训练与数值技术-不要放进-attention-那一列">4. 训练与数值技术：不要放进 attention 那一列</h2>
+<p>这些名称描述训练权重、平衡专家负载或组织设备执行的方法。本表只列帮助识别各代设计的代表项，不是完整训练配方。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>代表技术</th>
+<th>它负责什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DeepSeek-V2</strong></td>
+<td>AdamW；专家/设备/通信均衡辅助损失</td>
+<td>更新参数，控制 MoE 路由的负载分布</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V3</strong></td>
+<td>辅助损失自由的负载均衡；<strong>FP8 混合精度训练、DualPipe</strong></td>
+<td>平衡专家、降低矩阵计算成本、重叠流水线计算与通信</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V3.2</strong></td>
+<td><strong>DSA indexer 的 warm-up 与稀疏训练</strong>；低精度 indexer</td>
+<td>让选择器学会找重要 token，而非随机截断历史</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-V4-Flash / Pro</strong></td>
+<td><strong>Muon</strong> 与部分参数 AdamW；EP 通信计算重叠；FP4 QAT</td>
+<td>改进权重更新、专家并行执行和低精度部署</td>
+</tr>
+<tr>
+<td><strong>Kimi K3</strong></td>
+<td><strong>Per-Head Muon、Quantile Balancing、SiTU-GLU、MXFP4/MXFP8 QAT</strong></td>
+<td>分别涉及权重更新、路由均衡、激活稳定、量化适配</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-27B / 2.4T-A95B</strong></td>
+<td>本页未核定独有 optimizer 配方</td>
+<td>不从 Flash-Next 的报告推断整个 Qwen3.8 系列使用同一配方</td>
+</tr>
+<tr>
+<td><strong>Qwen3.8-Flash-Next</strong></td>
+<td><strong>Muon + AdamW</strong> 按参数类型使用；与 GR 配合的稳定性设计</td>
+<td>调整参数更新方式，并控制训练中的数值尺度</td>
+</tr>
+</tbody>
+</table></div>
+<p>V3 的“辅助损失自由”主要指专家负载用选择偏置调节，它仍保留小权重的序列均衡辅助项。SiTU-GLU 本身是网络里的激活结构，训练后仍参与前向；这里按其稳定训练的作用列出。</p>
+<p><strong>Muon 是 optimizer，DualPipe 是流水线调度，FP8/FP4 是数值格式或训练部署方案。</strong> 它们不是 MLA、KDA、QSA 那样的序列计算机制。模型使用 FP8 或 FP4，也不表示所有权重、缓存和算子都使用同一种精度。</p>
+<h2 id="5-不熟悉的名词-按它负责的事情找">5. 不熟悉的名词，按它负责的事情找</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>想弄清楚的事情</th>
+<th>对应名词</th>
+<th>详细页面</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>多个 query heads 怎样共享历史表示</td>
+<td>GQA、MQA、MLA</td>
+<td><a href="model-architectures.md">模型结构与注意力变体</a></td>
+</tr>
+<tr>
+<td>当前 token 选哪些历史读取</td>
+<td>DSA、QSA</td>
+<td><a href="model-architectures.md">模型结构与注意力变体</a></td>
+</tr>
+<tr>
+<td>历史怎样合并成更少的条目</td>
+<td>CSA、HCA</td>
+<td><a href="../DeepSeek/evolution.md">DeepSeek 演进</a></td>
+</tr>
+<tr>
+<td>历史怎样累积成递推状态</td>
+<td>GDN、KDA</td>
+<td><a href="flash-linear-attention.md">线性注意力</a></td>
+</tr>
+<tr>
+<td>哪些 FFN 专家执行，专家在多宽空间工作</td>
+<td>MoE、shared/routed experts、LatentMoE</td>
+<td><a href="residual-experts-memory.md">专家与条件记忆详解</a></td>
+</tr>
+<tr>
+<td>前面层的结果怎样交给后面层</td>
+<td>普通 residual、mHC、Block AttnRes、GR</td>
+<td><a href="../DeepSeek/evolution.md#8-mhc-同一个-token-的多条残差流">mHC</a>、<a href="residual-experts-memory.md">GR 与 Block AttnRes</a></td>
+</tr>
+<tr>
+<td>局部 token 组合怎样查训练得到的记忆</td>
+<td>n-gram embedding、Engram</td>
+<td><a href="residual-experts-memory.md">条件记忆详解</a></td>
+</tr>
+<tr>
+<td>怎样训练额外预测、提出多个候选 token</td>
+<td>MTP、speculative decoding</td>
+<td><a href="model-architectures.md#12-多模态-mtp-与训练方法属于哪些层次">多模态与生成路径</a></td>
+</tr>
+<tr>
+<td>权重怎样更新、训练怎样跑得动</td>
+<td>AdamW、Muon、FP8、DualPipe</td>
+<td><a href="../DeepSeek/evolution.md#9-muon-训练时变换更新矩阵">Muon</a>、<a href="../GPU/precision-and-quantization.md">精度与量化</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>这里的各列可以组合：<strong>一个模型可以同时用 MLA、MoE 和普通 residual，也可以同时用 KDA/MLA、LatentMoE 和 Block AttnRes。</strong> 学新名词时先确定它改变哪部分，再回到对应模型行查看组合。</p>
+<h2 id="6-来源与详细阅读入口">6. 来源与详细阅读入口</h2>
+<p>前六节初次核对：<strong>2026-10-29</strong>；本轮扩充核对：<strong>2026-11-02</strong>。表格描述指定模型的公开结构与训练设计，不等同于某个 serving 框架已经启用的 kernel 或生成配置。未运行模型或性能测试。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模型/主题</th>
+<th>官方来源</th>
+<th>本站进一步阅读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek-V2</td>
+<td><a href="https://arxiv.org/html/2405.04434v5">报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/config.json">固定配置</a></td>
+<td><a href="../DeepSeek/evolution.md">V2–V4 演进</a></td>
+</tr>
+<tr>
+<td>DeepSeek-V3</td>
+<td><a href="https://arxiv.org/html/2412.19437v2">报告</a></td>
+<td><a href="../DeepSeek/evolution.md#4-v3-mla-不变-把训练与-moe-扩展到更大规模">V3 的 MLA、MoE 与训练</a></td>
+</tr>
+<tr>
+<td>DeepSeek-V3.2</td>
+<td><a href="https://arxiv.org/html/2512.02556v1">报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/config.json">固定配置</a></td>
+<td><a href="../DeepSeek/evolution.md#5-v3-2-dsa-indexer-选择位置-主-mla-计算结果">DSA</a></td>
+</tr>
+<tr>
+<td>DeepSeek-V4</td>
+<td><a href="https://arxiv.org/html/2606.19348v1">报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/config.json">Flash 配置</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json">Pro 配置</a></td>
+<td><a href="../DeepSeek/evolution.md">CSA/HCA 与 mHC</a></td>
+</tr>
+<tr>
+<td>Kimi K3</td>
+<td><a href="https://arxiv.org/html/2607.24653v1">报告</a>、<a href="https://huggingface.co/moonshotai/Kimi-K3">模型卡</a>、<a href="https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/config.json">固定配置</a></td>
+<td><a href="residual-experts-memory.md">Block AttnRes 与 LatentMoE</a></td>
+</tr>
+<tr>
+<td>Qwen3.8-27B</td>
+<td><a href="https://huggingface.co/Qwen/Qwen3.8-27B">模型卡</a>、<a href="https://huggingface.co/Qwen/Qwen3.8-27B/blob/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/config.json">固定配置</a></td>
+<td><a href="model-architectures.md#7-qwen-dense-moe-与-attention-路线是独立选择">Qwen 各分支</a></td>
+</tr>
+<tr>
+<td>Qwen3.8-2.4T-A95B</td>
+<td><a href="https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B">模型卡</a>、<a href="https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B/blob/207bd685a7e3696cfaff12ded7c6a7ea0f88c996/config.json">固定配置</a></td>
+<td><a href="model-architectures.md#7-qwen-dense-moe-与-attention-路线是独立选择">Qwen 各分支</a></td>
+</tr>
+<tr>
+<td>常规 Qwen3.8 的 residual</td>
+<td><a href="https://github.com/huggingface/transformers/blob/v5.15.0/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L674">dense 实现</a>、<a href="https://github.com/huggingface/transformers/blob/v5.15.0/src/transformers/models/qwen3_5_moe/modeling_qwen3_5_moe.py#L747">MoE 实现</a>，与上述 checkpoint 模型类对应</td>
+<td><a href="residual-experts-memory.md">与 GR 区分</a></td>
+</tr>
+<tr>
+<td>Qwen3.8-Flash-Next</td>
+<td><a href="https://arxiv.org/html/2608.30320v1">报告</a>、<a href="https://huggingface.co/Qwen/Qwen3.8-Flash-Next">模型卡</a></td>
+<td><a href="residual-experts-memory.md">GR 与 n-gram embedding</a></td>
+</tr>
+<tr>
+<td>Engram / V4.1 边界</td>
+<td><a href="https://arxiv.org/html/2601.07372v1">Engram 原论文</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash">V4.1 模型卡</a></td>
+<td><a href="residual-experts-memory.md">Engram 机制</a></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="7-deepseek-主系列-谱系与尺寸">7. DeepSeek 主系列：谱系与尺寸</h2>
+<h3 id="先看哪些版本共享主干">先看哪些版本共享主干</h3>
+<div class="codehilite text-diagram"><pre><span></span>早期 DeepSeek LLM：dense Transformer（7B MHA、67B GQA）
+DeepSeekMoE 16B：细粒度专家 + shared experts，尚未采用 MLA
+    ↓
+V2 / V2-Lite：MLA + DeepSeekMoE
+    └→ V2.5：延续 V2 尺寸，融合通用与代码能力
+    ↓
+V3：更大 MLA/MoE 主干 + MTP + FP8 训练 + DualPipe
+    ├→ V3-0324
+    ├→ R1 / R1-0528：相同主要尺寸，改变后训练
+    └→ V3.1 / Terminus：主要尺寸延续，混合推理与后训练更新
+         ↓
+V3.2-Exp / V3.2 / Speciale：MLA + DSA indexer
+    ↓ 架构路线转变，不是仅换 checkpoint
+V4-Flash / Pro：shared K=V MQA + CSA/HCA + SWA + mHC
+    ↓
+V4.1-Flash / 1017：CED + CSA2 + Engram + Single-Pass mHC + DSpark
+</pre></div>
+
+
+<p>这是结构路线图，不表示图中每条线都是一次直接权重初始化关系。“尺寸相同”也不表示权重、训练数据或能力相同。R1-Distill 使用学生模型自身架构，不能填进原版 R1 的 MLA 行。</p>
+<h3 id="主要尺寸与-attention-heads">主要尺寸与 attention heads</h3>
+<p>L 是语言主干层数，D 是 hidden 宽度。<code>内容K+位置分支 / V</code> 是 MLA 的逻辑 head 宽度；共同 latent 则是历史存储的另一个维度。MLA 配置里的 <code>num_key_value_heads=128</code> 不能读成普通 GQA 的 128 份独立 KV cache。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模型 / 主干组</th>
+<th>L / D</th>
+<th>Q heads</th>
+<th>主 attention 表示</th>
+<th>Routed 池 / 每 token 选 / Shared</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek LLM 7B</td>
+<td>30 / 4096</td>
+<td>32</td>
+<td>MHA；每头 128</td>
+<td>dense FFN</td>
+</tr>
+<tr>
+<td>DeepSeek LLM 67B</td>
+<td>95 / 8192</td>
+<td>64</td>
+<td>GQA；8 KV heads，每头 128</td>
+<td>dense FFN</td>
+</tr>
+<tr>
+<td>DeepSeekMoE 16B</td>
+<td>28 / 2048</td>
+<td>16</td>
+<td>MHA；16 KV heads，每头 128</td>
+<td>64 / 6 / 2</td>
+</tr>
+<tr>
+<td>V2-Lite</td>
+<td>27 / 2048</td>
+<td>16</td>
+<td>MLA；内容K 128+位置64 / V128；latent512</td>
+<td>64 / 6 / 2</td>
+</tr>
+<tr>
+<td>V2 / V2.5</td>
+<td>60 / 5120</td>
+<td>128</td>
+<td>MLA；内容K 128+位置64 / V128；latent512</td>
+<td>160 / 6 / 2</td>
+</tr>
+<tr>
+<td>V3 / 0324 / R1 / 0528 / V3.1 / Terminus</td>
+<td>61 / 7168</td>
+<td>128</td>
+<td>MLA；内容K 128+位置64 / V128；latent512</td>
+<td>256 / 8 / 1</td>
+</tr>
+<tr>
+<td>V3.2-Exp / V3.2 / Speciale</td>
+<td>61 / 7168</td>
+<td>128</td>
+<td>MLA + DSA；主 head/latent 尺寸延续 V3</td>
+<td>256 / 8 / 1</td>
+</tr>
+<tr>
+<td>V4-Flash</td>
+<td>43 / 4096</td>
+<td>64</td>
+<td>shared K=V MQA；1 KV head，宽512</td>
+<td>256 / 6 / 1</td>
+</tr>
+<tr>
+<td>V4-Pro</td>
+<td>61 / 7168</td>
+<td>128</td>
+<td>shared K=V MQA；1 KV head，宽512</td>
+<td>384 / 6 / 1</td>
+</tr>
+<tr>
+<td>V4.1-Flash / 1017</td>
+<td>40 / 5120</td>
+<td>64</td>
+<td>shared K=V MQA；1 KV head，宽512</td>
+<td>384 / 6 / 1</td>
+</tr>
+</tbody>
+</table></div>
+<p>V2-Lite 的 Q 投影不采用大 V2 的同一套低秩 Q 路径。V2/V2.5、V3 家族、V3.2 家族的尺寸分组来自分别读取各 checkpoint 配置，而非根据版本号猜测。</p>
+<h3 id="参数量口径">参数量口径</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>主干组</th>
+<th>官方常用总量 / 激活量口径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek LLM</td>
+<td>7B / 67B为dense模型规模</td>
+</tr>
+<tr>
+<td>V2-Lite</td>
+<td>约16B / 2.4B</td>
+</tr>
+<tr>
+<td>V2 / V2.5</td>
+<td>约236B / 21B</td>
+</tr>
+<tr>
+<td>V3、R1、V3.1主干组</td>
+<td>约671B / 37B</td>
+</tr>
+<tr>
+<td>V3.2家族</td>
+<td>延续约671B规模并增加indexer，不能据此声称与V3参数逐项相同</td>
+</tr>
+<tr>
+<td>V4-Flash / Pro</td>
+<td>284B / 13B；约1.6T / 49B</td>
+</tr>
+<tr>
+<td>V4.1-Flash</td>
+<td>552B主干 + 196B Engram；prefill8B / decode16B；视觉和draft还应单独看发布口径</td>
+</tr>
+</tbody>
+</table></div>
+<p>总量决定需要保存的权重规模，激活量描述每token所用路径；两者都不是可直接代入的运行显存或延迟。上表保留报告近似口径，不把量化包显示的tensor数量直接等同主干参数。</p>
+<h3 id="ffn-索引器与残差路径">FFN、索引器与残差路径</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>主干组</th>
+<th>FFN intermediate / dense 例外</th>
+<th>Indexer 与局部历史</th>
+<th>Residual / 代表性训练技术</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek LLM 7B / 67B</td>
+<td>dense：11008 / 22016</td>
+<td>无本页所述稀疏 indexer</td>
+<td>单流 residual</td>
+</tr>
+<tr>
+<td>DeepSeekMoE 16B</td>
+<td>专家1408；首层 dense10944</td>
+<td>无 MLA/DSA</td>
+<td>单流；细粒度专家、共享专家</td>
+</tr>
+<tr>
+<td>V2-Lite</td>
+<td>专家1408；首层 dense10944</td>
+<td>无 DSA</td>
+<td>单流 residual</td>
+</tr>
+<tr>
+<td>V2 / V2.5</td>
+<td>专家1536；首层 dense12288</td>
+<td>MLA 读取全历史</td>
+<td>单流；MoE 负载均衡</td>
+</tr>
+<tr>
+<td>V3 / R1 / V3.1 主干组</td>
+<td>专家2048；前三层 dense18432</td>
+<td>非 DSA 的 MLA</td>
+<td>单流；V3 引入 MTP、辅助损失自由均衡、FP8 训练和 DualPipe；后训练版不等于重新预训练</td>
+</tr>
+<tr>
+<td>V3.2 家族</td>
+<td>专家2048；前三层 dense18432</td>
+<td><strong>64 indexer Q heads，宽128，top-2048 token</strong></td>
+<td>单流；indexer warm-up 和稀疏训练</td>
+</tr>
+<tr>
+<td>V4-Flash</td>
+<td>专家2048；各层为 MoE，前三层 hash routing</td>
+<td><strong>64×128 indexer，top-512 压缩条目</strong>；CSA步长4、HCA128；SWA128</td>
+<td><strong>mHC 4流</strong>；Muon、低精度专家路径</td>
+</tr>
+<tr>
+<td>V4-Pro</td>
+<td>专家3072；各层为 MoE，前三层 hash routing</td>
+<td><strong>64×128 indexer，top-1024 压缩条目</strong>；CSA步长4、HCA128；SWA128</td>
+<td><strong>mHC 4流</strong>；专家池与层布局不同于 Flash</td>
+</tr>
+<tr>
+<td>V4.1-Flash / 1017</td>
+<td>专家2304；384选6+1 shared</td>
+<td><strong>32×128 indexer，top-512</strong>；CSA2跨层复用、分级候选池；SWA128</td>
+<td><strong>Single-Pass mHC 4流</strong>；Engram、DSpark、原生视觉</td>
+</tr>
+</tbody>
+</table></div>
+<p>V4-Flash 开头两层为纯 SWA；V4-Pro 开头两层为 HCA，后续交错 CSA/HCA。CSA 的压缩条目有来源重叠，步长4不等于每条只含4个 token。HCA 读全部可见粗摘要，不执行同样的 top-k。</p>
+<h3 id="全系列-还包括哪些支线">“全系列”还包括哪些支线</h3>
+<p>这里详列通用语言主干的主要公开版本，专用模型另外定位：</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>支线</th>
+<th>与本表的关系</th>
+<th>官方入口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek-Coder / Coder-V2</td>
+<td>代码训练分支；Coder-V2 有16B/236B、MLA+MoE路线，不能按所有 Coder 都是同一种架构</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Instruct">Coder-V2</a></td>
+</tr>
+<tr>
+<td>DeepSeekMath / Math-V2</td>
+<td>数学推理与验证训练分支；Math-V2 采用 V3.2 模型类</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-Math-V2">Math-V2</a></td>
+</tr>
+<tr>
+<td>DeepSeek-Prover</td>
+<td>Lean 形式化证明；Prover-V2 有671B分支，但“V2”不能解读成通用 DeepSeek-V2 的236B主干</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-Prover-V2-671B">Prover-V2-671B</a></td>
+</tr>
+<tr>
+<td>R1-Distill-Qwen / Llama</td>
+<td>蒸馏后的学生模型；沿用各自 Qwen/Llama 主干</td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-R1">R1 官方模型卡</a></td>
+</tr>
+<tr>
+<td>VL / VL2、Janus、OCR</td>
+<td>视觉理解、生成或文档视觉等独立路线；需看各自视觉编码器和语言主干</td>
+<td><a href="https://huggingface.co/deepseek-ai/models">DeepSeek 官方模型目录</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>专用支线在这里提供家族入口，不声称已逐一收录所有大小、量化、Base/Instruct 和日期版 checkpoint。</p>
+<h2 id="8-deepseek-v4-1-flash-这次改变的是执行路径与跨层复用">8. DeepSeek-V4.1-Flash：这次改变的是执行路径与跨层复用</h2>
+<h3 id="40-层为何分成-20-20">40 层为何分成 20 + 20</h3>
+<p>V4.1 主干 <strong>40层，D=5120，64个Q heads，1个共享KV head，head_dim=512</strong>；Q低秩宽度1280，输出按8组投影，每组中间宽度1024。模型卡口径为 <strong>552B主干，另有196B Engram</strong>，prefill激活8B、decode激活16B。这些口径不能合成“每 token 固定16B”。</p>
+<p>前20层是 causal encoder，后20层是 decoder。decoder 的 global KV 可以从 encoder 最后输出投影得到，减少 prompt 在 decoder 内的完整计算。生成的新 token 仍经过 encoder/decoder 路径。encoder 保持因果性；decoder 的局部 SWA 还需从其自身计算中恢复，不能推断 prompt 完全不用经过任何 decoder 工作。</p>
+<h3 id="csa2-的三种层角色">CSA2 的三种层角色</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>是否生成新的主 KV / indexer K</th>
+<th>本层是否重新选择位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Full</strong></td>
+<td>按指定来源生成</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>Reindex</strong></td>
+<td>复用来源层的缓存</td>
+<td>是，当前 query 仍可选不同内容</td>
+</tr>
+<tr>
+<td><strong>Reuse</strong></td>
+<td>复用缓存</td>
+<td>复用指定来源的 top-k 选择</td>
+</tr>
+</tbody>
+</table></div>
+<p>“共享缓存”和“共享选择结果”是两件事。后层可对同一缓存重新选择，也可连选择一起复用。decoder 的 hierarchical indexer 先构建候选池，后续层只在池内筛选，减少逐层扫描全部历史的重复工作。</p>
+<p>公开配置给出的 KV 来源层为 <code>[2,8,14,20]</code>，索引来源层为 <code>[2,8,14,20,24,28,32,36]</code>，这些是<strong>零基编号</strong>。前两个主干槽位纯局部；encoder 后续的压缩步长为2，decoder 的 global来源组织与它不同，不要把 <code>compress_ratios=1</code> 当成独立逐层重建普通全历史 KV。数组尾部还有 draft 项，应按40层主干截开阅读。</p>
+<h3 id="另外四个模块各在做什么">另外四个模块各在做什么</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>具体作用与配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Single-Pass mHC</strong></td>
+<td>4条 residual streams，改变残差混合与融合执行组织；不是额外增加 attention heads</td>
+</tr>
+<tr>
+<td><strong>Engram</strong></td>
+<td>指定层的局部组合查表；<code>engram_layer_ids=[1,14]</code>，最大n-gram阶数4，8个hash heads，每head宽256；这些head不属于attention</td>
+</tr>
+<tr>
+<td><strong>DSpark</strong></td>
+<td>独立训练的半自回归 draft 路径；block_size=5，辅助层字段为3，target层为 <code>[37,38,39]</code>；不能照字段名把它直接等同 V3 的预训练 MTP</td>
+</tr>
+<tr>
+<td><strong>FP4 main KV + Bounded Replay</strong></td>
+<td>前者减少主KV每元素的存储字节；后者在prefix复用时恢复局部SWA状态，减少持久化存储。Bounded Replay不是ReplaySSM的同名实现</td>
+</tr>
+</tbody>
+</table></div>
+<p>视觉路径是 <strong>DeepSeek-ViT → 两层MLP projector → 文本主干</strong>。vision config为32层、宽1024、16heads、patch14，使用3×3 pixel-unshuffle下采样。原生视觉属于V4.1公开模型，不应反推原版V4同样带此路径。</p>
+<p>训练上使用Muon更新主干线性矩阵，对Q/K使用head-wise更新；Engram、token embedding与prediction head采用动量加Sinkhorn balancing，norm与非矩阵参数使用AdamW。这里的Sinkhorn是更新矩阵的行列尺度平衡，与mHC中约束残差混合矩阵的Sinkhorn用途不同。</p>
+<p>原版 Flash 与 <code>Flash-1017</code> 在本轮核对的主要结构字段一致，仍各自保留 revision。它们是两个发布条目，不能由结构相同推断权重相同。<a href="https://arxiv.org/html/2609.19969v1">V4.1报告</a>、<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash">官方模型卡</a></p>
+<h2 id="9-qwen3-8-同一品牌下的三种组合">9. Qwen3.8：同一品牌下的三种组合</h2>
+<h3 id="主干与两类-attention-的尺寸分别读">主干与两类 attention 的尺寸分别读</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>配置</th>
+<th>主干 L / D</th>
+<th>序列层组成</th>
+<th>主 softmax Q / KV heads；head_dim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>3.8-27B</strong></td>
+<td>64 / 5120</td>
+<td>48 GDN + 16 gated full attention</td>
+<td>24 / 4；256</td>
+</tr>
+<tr>
+<td><strong>3.8-2.4T-A95B</strong></td>
+<td>92 / 8192</td>
+<td>69 GDN + 23 gated full attention</td>
+<td>64 / 4；256</td>
+</tr>
+<tr>
+<td><strong>3.8-Flash-Next</strong></td>
+<td>48 / 2560</td>
+<td>36 GDN + 12 QSA</td>
+<td>24 / 2；256</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>配置</th>
+<th>GDN 的 QK / V heads</th>
+<th>GDN key / value 宽度</th>
+<th>FFN / 专家</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.8-27B</td>
+<td>16 / 48</td>
+<td>128 / 128</td>
+<td>dense SwiGLU，intermediate17408</td>
+</tr>
+<tr>
+<td>3.8-2.4T-A95B</td>
+<td>16 / 128</td>
+<td>128 / 128</td>
+<td>512 routed选10+1 shared，单专家intermediate2048</td>
+</tr>
+<tr>
+<td>3.8-Flash-Next</td>
+<td>16 / 48</td>
+<td>128 / 128</td>
+<td>512 routed选10+1 shared，单专家intermediate640</td>
+</tr>
+</tbody>
+</table></div>
+<p>第一张表的 heads 用于 softmax 层，第二张用于 GDN，不能互相代入。GDN 每个 value/state head 对应固定形状的矩阵状态；QK heads 更少时按模型定义分组共享。D也不必等于Q heads×head_dim，例如2.4T版本的主Q投影宽度为16384，主干hidden仍为8192。</p>
+<h3 id="2-4t-a95b-与-flash-next-的差别">2.4T-A95B 与 Flash-Next 的差别</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>部件</th>
+<th>2.4T-A95B</th>
+<th>Flash-Next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>长程读取</td>
+<td>gated full GQA</td>
+<td><strong>QSA</strong>，indexer挑micro-block，主GQA读取选中块的原始KV</td>
+</tr>
+<tr>
+<td>Indexer</td>
+<td>未采用QSA这套indexer</td>
+<td>4个Q heads、1个共享K head、宽128；块大小4，预算2048 token，即最多512完整块，另处理未满块尾部</td>
+</tr>
+<tr>
+<td>Residual</td>
+<td>普通pre-norm residual add；attention output gate不等于GR</td>
+<td><strong>GR 4分支</strong>：逐特征读门、每分支标量写门</td>
+</tr>
+<tr>
+<td>N-gram参数表</td>
+<td>未列该模块</td>
+<td><strong>51B额外参数</strong>；bigram/trigram，第2层注入；hash heads=8，不是attention heads</td>
+</tr>
+<tr>
+<td>主干参数口径</td>
+<td>约2.4T总量、95B激活</td>
+<td>125B主干、6B激活，另有51B表和4B MTP</td>
+</tr>
+<tr>
+<td>MTP</td>
+<td>1层，多步训练</td>
+<td>1层，多步训练</td>
+</tr>
+<tr>
+<td>视觉</td>
+<td>公开权重为纯文本；带视觉托管Max是另一发布对象</td>
+<td>公开权重带视觉编码器</td>
+</tr>
+</tbody>
+</table></div>
+<p>两种配置都把多数序列层换为GDN，但Flash-Next又改变少数全局层、残差以及参数记忆。它不是2.4T简单缩小后的同构模型。51B表主要扩大可访问的参数容量，640则是专家中间宽度；二者不是同一轴。</p>
+<p>27B与Flash-Next的公开vision config均为27层、宽1152、16heads、patch16，输出分别映射到5120/2560。三者text config的默认最大位置为262144；模型卡另给YaRN扩展到约1M的方法。这是默认配置与扩展方案的区别，不应不加条件地统一写成默认1M。</p>
+<p>普通27B/2.4T的主要结构来自其各自配置；Flash-Next报告中的Muon、GR与稳定性实验不能推广成常规3.8所有分支的完整训练配方。<a href="https://huggingface.co/Qwen/models">Qwen官方模型目录</a>、<a href="https://arxiv.org/html/2608.30320v1">Flash-Next报告</a></p>
+<h2 id="10-kimi-k3-与-k3-1-哪些已经有配置-哪些仍以公告为准">10. Kimi K3 与 K3.1：哪些已经有配置，哪些仍以公告为准</h2>
+<h3 id="k3-的可核验尺寸">K3 的可核验尺寸</h3>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>对象</th>
+<th>公开配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主干</td>
+<td>93层，D=7168；约2.8T总参数 / 104B激活</td>
+</tr>
+<tr>
+<td>序列层</td>
+<td>69 KDA + 24 gated MLA；MLA位于1基编号4、8…92、93层</td>
+</tr>
+<tr>
+<td>KDA</td>
+<td>96heads，每head宽128；短卷积kernel4，full-rank gate，衰减下界设计</td>
+</tr>
+<tr>
+<td>MLA</td>
+<td>96个Q heads；Q低秩1536、共同KV latent512；内容K128、额外key分支64、V128；<code>mla_use_nope=true</code>、output gate开启</td>
+</tr>
+<tr>
+<td>FFN</td>
+<td>首层dense，intermediate33792；后续Stable LatentMoE</td>
+</tr>
+<tr>
+<td>Routed experts</td>
+<td>896选16；工作宽度3584，单专家intermediate3072</td>
+</tr>
+<tr>
+<td>Shared experts</td>
+<td>2个，直接在主干全宽路径工作</td>
+</tr>
+<tr>
+<td>Residual</td>
+<td>Block AttnRes，深度块大小12；层分组而非序列窗口</td>
+</tr>
+<tr>
+<td>Activation / training</td>
+<td>SiTU-GLU、聚合后RMSNorm、Quantile Balancing、Per-Head Muon、QAT</td>
+</tr>
+<tr>
+<td>Vision / context</td>
+<td>MoonViT-V2，原生视觉；配置max_position_embeddings=1048576</td>
+</tr>
+<tr>
+<td>MTP / draft</td>
+<td>报告描述预训练MTP后微调draft；此发布主干 <code>num_nextn_predict_layers=0</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>MLA的NoPE表示此分支不执行相应位置旋转，不表示它与KDA都失去顺序信息，也不能仅因字段名 <code>qk_rope_head_dim=64</code> 就断言一定运行RoPE。KDA的heads也不是96个独立的历史KV缓存。</p>
+<h3 id="latent-expert-的两层宽度变化">Latent expert 的两层宽度变化</h3>
+<div class="codehilite text-diagram"><pre><span></span>主干 token [7168]
+   ├────────────────────────→ 2个全宽shared experts ───────┐
+   ↓ 共享下投影                                             │
+latent [3584]                                              │
+   ↓ 16个选中routed experts，各自3584 → 3072 → 3584           │
+按路由权重合并 → RMSNorm → 上投影 → [7168] ──────────────────┴→ FFN输出
+</pre></div>
+
+
+<p>3072是专家内部的intermediate，不是主干hidden；它也不一定比3584更宽。因此FFN不能一概描述为“先扩维再降维”，这里应读实际投影尺寸。SiTU-GLU还有gate/up两路，图只概括宽度路径。</p>
+<h3 id="k3-1-pro-的确认边界">K3.1 Pro 的确认边界</h3>
+<p>截至 <strong>2026-11-02</strong>，<a href="https://www.kimi.com/en/blog/kimi-k3-1-pro">官方公告</a>确认：</p>
+<ul>
+<li>K3.1系列首个模型为 <strong>K3.1 Pro</strong>，另有 <strong>Pro Highspeed</strong>。</li>
+<li>它是 <strong>K3的后训练版本</strong>，增加后训练计算，支持3T级、原生视觉和1M上下文。</li>
+<li>官方承诺完整权重在 <strong>2026-11-04之前/当天</strong>发布；本轮未核验到可独立固定revision的K3.1配置。</li>
+</ul>
+<p>因此，K3的93层、96heads、896专家可以作为理解其基础主干的参照，但本页不把它们标成已经从K3.1配置逐项验证的数字。Highspeed的服务加速声明，也不能据此推断它删层、减heads、改用MQA或更换模型权重。</p>
+<h2 id="11-特殊技术放在什么位置-避免同名误认">11. 特殊技术放在什么位置：避免同名误认</h2>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>技术</th>
+<th>作用位置</th>
+<th>当前这些模型里的归属</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MLA</td>
+<td>历史KV的表示宽度</td>
+<td>DeepSeek V2–V3.2、K3的gated MLA层</td>
+</tr>
+<tr>
+<td>DSA / QSA</td>
+<td>主attention之前的选择器</td>
+<td>V3.2按token；Flash-Next按micro-block</td>
+</tr>
+<tr>
+<td>CSA / HCA</td>
+<td>序列压缩与历史读取</td>
+<td>原版V4，搭配局部SWA；HCA没有同样的top-k</td>
+</tr>
+<tr>
+<td>CSA2</td>
+<td>跨层缓存、索引与候选组织</td>
+<td>V4.1，不能仅理解为CSA换压缩率</td>
+</tr>
+<tr>
+<td>GDN / KDA</td>
+<td>固定形状状态递推</td>
+<td>Qwen3.8各分支 / K3；混合模型仍有增长的KV缓存</td>
+</tr>
+<tr>
+<td>mHC / Single-Pass mHC</td>
+<td>扩展的残差流与混合</td>
+<td>V4 / V4.1</td>
+</tr>
+<tr>
+<td>GR</td>
+<td>扩展残差的门控读写</td>
+<td>Qwen Flash-Next</td>
+</tr>
+<tr>
+<td>Block AttnRes</td>
+<td>同一token沿深度的候选加权</td>
+<td>K3；K3.1为后训练继承关系，独立配置待核验</td>
+</tr>
+<tr>
+<td>LatentMoE</td>
+<td>routed专家输入输出的工作宽度</td>
+<td>K3</td>
+</tr>
+<tr>
+<td>Engram / n-gram embedding</td>
+<td>根据局部token组合查参数向量</td>
+<td>V4.1 / Qwen Flash-Next</td>
+</tr>
+<tr>
+<td>Hash routing</td>
+<td>决定执行哪些专家</td>
+<td>原版V4前3层；与n-gram表的结果对象不同</td>
+</tr>
+<tr>
+<td>MTP / DSpark</td>
+<td>预测、draft和验证路径</td>
+<td>多个家族有MTP；V4.1专门使用DSpark</td>
+</tr>
+<tr>
+<td>ReplaySSM / SWA Bounded Replay</td>
+<td>递推状态或局部缓存的执行/恢复方案</td>
+<td>前者针对SSM状态管理；后者是V4.1局部KV恢复；都不是新的attention head布局</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="12-本轮固定配置来源">12. 本轮固定配置来源</h2>
+<p>下面保存 <strong>2026-11-02</strong> 重新获取的checkpoint revision。原有的2026-10-28快照保留，新增<a href="../assets/model-catalog-configs.json">完整配置快照</a>供查字段。未下载模型权重、未跑CUDA或测量性能。</p>
+<div class="table-scroll" role="region" aria-label="表格（可横向滚动）" tabindex="0"><table>
+<thead>
+<tr>
+<th>官方 checkpoint</th>
+<th>固定revision</th>
+<th>配置 / 模型卡</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>deepseek-ai/deepseek-llm-7b-base</td>
+<td><code>7683fea62d</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/deepseek-llm-7b-base/blob/7683fea62db869066ddaff6a41d032262c490d4f/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/deepseek-llm-7b-base/blob/7683fea62db869066ddaff6a41d032262c490d4f/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/deepseek-llm-67b-base</td>
+<td><code>c3f813a112</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/deepseek-llm-67b-base/blob/c3f813a1121c95488a20132d3a4da89f4a46452f/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/deepseek-llm-67b-base/blob/c3f813a1121c95488a20132d3a4da89f4a46452f/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/deepseek-moe-16b-base</td>
+<td><code>521d2bc4fb</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/deepseek-moe-16b-base/blob/521d2bc4fb69a3f3ae565310fcc3b65f97af2580/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/deepseek-moe-16b-base/blob/521d2bc4fb69a3f3ae565310fcc3b65f97af2580/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V2-Lite</td>
+<td><code>604d5664dd</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V2-Lite/blob/604d5664dddd88a0433dbae533b7fe9472482de0/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V2-Lite/blob/604d5664dddd88a0433dbae533b7fe9472482de0/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V2</td>
+<td><code>4461458f18</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V2/blob/4461458f186c35188585855f28f77af5661ad489/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V2.5</td>
+<td><code>c85b5ede86</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V2.5/blob/c85b5ede86f2a598af339624cac5723861e557ed/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V2.5/blob/c85b5ede86f2a598af339624cac5723861e557ed/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3</td>
+<td><code>e815299b0b</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/e815299b0bcbac849fa540c768ef21845365c9eb/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/e815299b0bcbac849fa540c768ef21845365c9eb/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3-0324</td>
+<td><code>e9b33add76</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3-0324/blob/e9b33add76883f293d6bf61f6bd89b497e80e335/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3-0324/blob/e9b33add76883f293d6bf61f6bd89b497e80e335/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-R1</td>
+<td><code>56d4cbbb4d</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-R1/blob/56d4cbbb4d29f4355bab4b9a39ccb717a14ad5ad/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-R1/blob/56d4cbbb4d29f4355bab4b9a39ccb717a14ad5ad/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-R1-0528</td>
+<td><code>4236a6af53</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-R1-0528/blob/4236a6af538feda4548eca9ab308586007567f52/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-R1-0528/blob/4236a6af538feda4548eca9ab308586007567f52/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3.1</td>
+<td><code>c0781d039f</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.1/blob/c0781d039fb7a1ba2abc4add0bdc293e92d2b8db/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.1/blob/c0781d039fb7a1ba2abc4add0bdc293e92d2b8db/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3.1-Terminus</td>
+<td><code>19510d6dc6</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.1-Terminus/blob/19510d6dc61f79dbd925bd51ee8a9081c509a4b6/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.1-Terminus/blob/19510d6dc61f79dbd925bd51ee8a9081c509a4b6/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3.2-Exp</td>
+<td><code>194c67e12b</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2-Exp/blob/194c67e12b1b0d6df0ef373ddcf215bc84027409/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2-Exp/blob/194c67e12b1b0d6df0ef373ddcf215bc84027409/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3.2</td>
+<td><code>a7e62ac04e</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V3.2-Speciale</td>
+<td><code>c562883eda</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2-Speciale/blob/c562883eda916fd699a44bbf1f4987a53b96008b/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2-Speciale/blob/c562883eda916fd699a44bbf1f4987a53b96008b/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V4-Flash</td>
+<td><code>60d8d70770</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V4-Pro</td>
+<td><code>b5968e9190</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/b5968e9190ef611bbf34a7229255be88a0e937c1/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V4.1-Flash</td>
+<td><code>314113f8a7</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/314113f8a7dadb388215396ba5fbee2c610a04d6/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/314113f8a7dadb388215396ba5fbee2c610a04d6/README.md">card</a></td>
+</tr>
+<tr>
+<td>deepseek-ai/DeepSeek-V4.1-Flash-1017</td>
+<td><code>1bae0e1088</code></td>
+<td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/blob/1bae0e1088993b9b82de08f59de5be5a34e42170/config.json">config</a> / <a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/blob/1bae0e1088993b9b82de08f59de5be5a34e42170/README.md">card</a></td>
+</tr>
+<tr>
+<td>moonshotai/Kimi-K3</td>
+<td><code>f831ab6681</code></td>
+<td><a href="https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/config.json">config</a> / <a href="https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/README.md">card</a></td>
+</tr>
+<tr>
+<td>Qwen/Qwen3.8-27B</td>
+<td><code>1d4bf0f2ff</code></td>
+<td><a href="https://huggingface.co/Qwen/Qwen3.8-27B/blob/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/config.json">config</a> / <a href="https://huggingface.co/Qwen/Qwen3.8-27B/blob/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/README.md">card</a></td>
+</tr>
+<tr>
+<td>Qwen/Qwen3.8-2.4T-A95B</td>
+<td><code>207bd685a7</code></td>
+<td><a href="https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B/blob/207bd685a7e3696cfaff12ded7c6a7ea0f88c996/config.json">config</a> / <a href="https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B/blob/207bd685a7e3696cfaff12ded7c6a7ea0f88c996/README.md">card</a></td>
+</tr>
+<tr>
+<td>Qwen/Qwen3.8-Flash-Next</td>
+<td><code>de4b8e4d43</code></td>
+<td><a href="https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/de4b8e4d43b917e7706784d8bb445c9af86a3540/config.json">config</a> / <a href="https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/de4b8e4d43b917e7706784d8bb445c9af86a3540/README.md">card</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>K3.1以<a href="https://www.kimi.com/en/blog/kimi-k3-1-pro">官方发布公告</a>为来源，不虚构checkpoint revision。机制推导继续看<a href="model-architectures.md">模型结构详解</a>、<a href="residual-experts-memory.md">GR/AttnRes/Engram详解</a>与<a href="../DeepSeek/evolution.md">DeepSeek逐代演进</a>。</p></article><footer>Transformer 运行流程与 attention 教学，附论文、官方文档和源码；形状与代码用于说明机制，未执行模型或 CUDA 验证。</footer></main></div>
+</div>
+<dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
+<input id="search-input" type="search" placeholder="例如：146、滑动窗口、defaultdict" autocomplete="off"><p id="search-status" role="status">输入题号、题目或容器 / API 名称</p><div id="search-results"></div></dialog>
+</body></html>

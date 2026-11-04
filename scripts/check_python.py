@@ -120,8 +120,9 @@ def main():
         raise SystemExit('Behavior checks require Python 3.10+ for Counter comparisons.')
     syntax = behavior = reference_examples = contextual_examples = 0
     errors = []
-    for path in sorted(ROOT.glob('*/*.md')):
-        if path.parent.name == 'STL': continue
+    for path in sorted((ROOT / 'content').glob('**/*.md')):
+        # 跳过 STL 和 C++ 相关文档
+        if 'cpp-stl' in str(path): continue
         for index, match in enumerate(re.finditer(r'^```python\n(.*?)^```',path.read_text(),re.M|re.S)):
             code = match[1]
             try:
