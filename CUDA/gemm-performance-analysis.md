@@ -188,18 +188,73 @@ Tensor Core 也以矩阵片段执行乘加，但 fragment 的分布和指令依�
 
 ### 3.3 Batch、总 latency 与每 token 成本
 
-若权重字节占主导，理想算术强度为：
+假设输入和权重各读取一次、输出写入一次，且各元素均占 s 字节，理想算术强度为：
 
 $$
 I_{\mathrm{ideal}}=\frac{2MKN}{s(MK+KN+MN)}
 \approx\frac{2M}{s}
 $$
 
-BF16 下近似为 M FLOP/byte。增大 batch 的意义是提高每次权重读取服务的有效计算量，降低每 token 分摊的数据传输，并增加可供执行的输出工作。
+权重字节占主导时，BF16 下近似为 M FLOP/byte。这个近似依赖权重只读取一次的假设，不能直接当成实际 HBM 算术强度。增大 batch 提供更多复用机会与输出工作，能实现多少收益还取决于 CTA 分块、缓存和并行度。
 
 这不保证一个大 batch 的总 latency 小于一个 token 的 latency，也不保证请求的排队时间下降。比较时要固定指标：单轮时间、每 token 平均成本、系统吞吐与用户端延迟并不相同。
 
 来源：[NVIDIA Matrix Multiplication Background](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html)、[CUDA：Shared Memory in Matrix Multiplication](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-ab)。
+
+### 3.4 超过一个 CTA 的 token 数后，增大 M 还有收益吗
+
+**普通 tiled GEMM 的 shared memory 权重复用通常限于一个 CTA；超过它负责的 token 数后，吞吐仍可能提高，但收益不再来自同一个 CTA 内复用次数的增加。** 以下固定每个 CTA 计算 $B_M=64,B_N=128$ 的输出 tile，沿 K 分块累加；不讨论 cluster 协作等特殊实现。
+
+把 M 从 64 增加到 128，固定输出通道 0～127，看两个 CTA 的分工：
+
+```text
+CTA A：token  0～63  × 输出通道 0～127
+CTA B：token 64～127 × 输出通道 0～127
+
+每个 K 分块中：
+                       ┌→ CTA A 的 shared memory → 64 个 token
+HBM → L2 中的权重 tile ─┤
+                       └→ CTA B 的 shared memory → 另外 64 个 token
+```
+
+两个 CTA 各自加载相同的权重 tile，各自的那份仍只服务 64 个 token。CTA B 不会自动使用 CTA A 的 shared memory。但是，若 CTA B 请求时数据仍在 L2，它就不必重新从 HBM 读取。**两次向 shared memory 加载，不等于两次从 HBM 读取。** 上图表示可能的 L2 命中路径，不保证所有权重都能如此复用。
+
+| 观察层级 | M 从 64 增加到 128，tile 配置固定 |
+| --- | --- |
+| 单个 CTA 内的权重复用 | 每份权重仍服务 64 个 token |
+| 所有 CTA 的权重加载请求量 | 随 M 方向的 CTA 数增加 |
+| HBM 实际权重读取量 | 取决于 L2 命中，不一定同比增加 |
+
+L2 复用取决于工作集大小、缓存竞争和 CTA 调度顺序。相同权重的请求在时间上接近时，可能在被逐出前命中；不要求整个权重矩阵同时驻留 L2。CUTLASS 的 threadblock rasterization 就会考虑不同 CTA 的数据局部性。[CUTLASS 分层 GEMM 与调度](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/efficient_gemm.html#threadblock-rasterization)
+
+即使没有额外的缓存收益，增大 M 也可能增加同时工作的 SM 数。普通输出分块、不使用 split-K 时：
+
+$$
+\#\mathrm{CTA}=\left\lceil\frac{M}{B_M}\right\rceil
+\left\lceil\frac{N}{B_N}\right\rceil
+$$
+
+以 $N=8192$、$B_M=64$、$B_N=128$ 为例，假设 GPU 有 80 个 SM，且这个 kernel 每个 SM 同时驻留一个 CTA：
+
+| M | CTA 数 | 按每轮最多 80 个 CTA 的简化分组 |
+| ---: | ---: | --- |
+| 64 | 64 | 64 |
+| 128 | 128 | 80 + 48 |
+| 256 | 256 | 80 + 80 + 80 + 16 |
+| 320 | 320 | 80 + 80 + 80 + 80 |
+
+这里的 wave 是分析并行容量的分组，不表示硬件在每轮之间执行全局同步。M=64 时任务数不足以覆盖 80 个 SM；增加 M 可以提供更多并行工作，但最后一轮是否填满仍影响平均利用率。这就是 wave quantization，因而吞吐不保证随 M 单调上升。表格是教学模型，不是实测时间。[NVIDIA Tile / Wave Quantization](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html)
+
+还可以推导一个明确的边界。假设 M 是 $B_M$ 的整数倍，tile 配置固定，无跨 CTA 权重缓存命中，每个权重元素占 s 字节，且只统计权重流量。每组 $B_M$ 个 token 都需要从 HBM 重新取得完整 W，因此：
+
+$$
+Q_W=\frac{M}{B_M}KNs,\qquad
+\frac{F}{Q_W}=\frac{2MKN}{(M/B_M)KNs}=\frac{2B_M}{s}
+$$
+
+**M 被约掉了。** BF16、$B_M=64$ 时，这个只计权重的比值是 64 FLOP/byte；继续增加 M 不会提高它。完整算术强度还需计入输入、输出等流量，不能把这个比值当成完整 HBM 算术强度。
+
+因此，增加 M 的收益需要分别判断：tile 尚未填满时，有效行数增加可以减少空算；超过 tile 后，L2 复用、更多 SM 并行以及 launch 等固定开销的摊薄仍可能提高吞吐。实际库还可能选择更大的 tile 或不同 kernel，此时上述固定配置的假设也发生变化。当复用和硬件利用率都已饱和，继续增加 M 通常主要增加总工作量，吞吐趋于平台；整次 GEMM 的延迟并不会因此持续下降。
 
 ## 4. Arithmetic intensity 必须对应具体存储层级
 
