@@ -1,68 +1,35 @@
-# 求知录 · Learning Notes
+# Learning Notes
 
-记录学习中的问题、推导与实践。当前内容涵盖算法、编程语言、机器学习与计算系统。
+算法、编程语言与 ML 系统的学习笔记，包含概念解释、推导、代码示例和参考来源。
 
-**阅读网站：[sisyphus111.github.io/learning-notes](https://sisyphus111.github.io/learning-notes/)**
+**在线阅读：[sisyphus111.github.io/learning-notes](https://sisyphus111.github.io/learning-notes/)**
 
-- 10 个题型，133 个题目条目；保留「焚诀」、思路推导、复杂度和原有参考链接。
-- 同一解法提供 C++ / Python 标签页，恢复 7 个记忆化搜索小节；运行时间伪造片段仍不收录。
-- Python 语法参考从基础数据结构开始，包含内置容器、deque、Counter、defaultdict、heapq 及复制/可哈希等易错点；另有生成器表达式与 `all`、`any`、`sum` 等常用函数的用法。
-- [类与对象](content/languages/python/classes-and-objects.md) 用简短表格和独立的 `assert` 示例讲解 `class`、`self`、`__init__`、实例与类属性、方法、继承 / `super()`、property、特殊方法和 dataclass。
-- Python 项目入门包含模块与包、`import`、`python -m`、入口保护、pip / venv、`pyproject.toml`、editable 安装和 `__pycache__`；语言互操作页提供可构建的 pybind11 示例，并解释数据转换、所有权、GIL、ABI 与进程通信。
-- 5 个 STL 页面：速查、对象语义、序列容器、关联容器、适配器与算法。
-- PyTorch 教学分为三页：[Tensor 与 GPU 内存](content/ml-systems/pytorch/tensors.md) 讲 shape、计算、stride、共享存储与异步执行；[神经网络基础](content/ml-systems/pytorch/neural-networks.md) 讲 torch.nn、functional、模型与参数、自动求导及训练/推理流程；[常见计算与组件](content/ml-systems/pytorch/operations-and-components.md) 展开 Linear、softmax、LayerNorm、RMSNorm、SwiGLU 和 attention 的 Torch 实现。
-- CUDA 教学独立成板块：[执行层级与硬件映射](content/ml-systems/cuda/execution-hierarchy.md) 讲线程分组、SM / GPC 放置、资源驻留与同步范围；[PTX、SASS 与编译流程](content/ml-systems/cuda/compilation-and-instructions.md) 讲三类 kernel 的编译路径、ptxas / PTX Compiler 库和 AOT / JIT。
-- GPU 软件栈独立成板块：[驱动、运行时与框架](content/ml-systems/gpu/driver-runtime-framework.md) 从 H100 设备讲到内核驱动、libcuda / libcudart、PyTorch、容器和版本；[GPU 软件栈与工具](content/ml-systems/gpu/software-stack.md) 区分计算库、CUTLASS / CuTe、编译工具与推理框架；[计算图、编译与 CUDA Graph](content/ml-systems/gpu/graphs-and-compilation.md) 解释编译优化与执行重放，并展开 CUDA / PyTorch API、固定虚拟地址、图内分配、private pool 与跨图共享。
-- [浮点格式、混合精度与量化](content/ml-systems/gpu/precision-and-quantization.md) 讲符号/指数/小数部分、FP16 与 BF16、TF32、FP8、E8M0、MXFP8 / NVFP4，以及存储、乘法、累加和 scale 的区别。
-- [GEMM 计算与优化](content/ml-systems/cuda/gemm.md) 从点积和 K 分段讲起，连接 CTA/register tiling、内存布局、Tensor Core、异步流水线、Split-K、persistent/grouped GEMM、融合与 scale 转置。
-- [GEMM 性能分析方法](content/ml-systems/cuda/gemm-performance-analysis.md) 把宏观计算/流量约束与 CTA、warp、指令和存储层级对应起来，用具体 shape 解释并行度、GEMV/GEMM 复用、流水线和 TP 加速边界。
-- [Qwen3-32B / H100 TP 案例](content/ml-systems/attention/qwen3-h100-tp-case.md) 用实际模型尺寸推导 GEMV/GEMM、roofline、通信、CTA/warp/shared memory/register 预算，区分单请求延迟、系统吞吐和多副本比较，并附数值复算脚本。
-- [MoE FFN：EP 与 TP](content/ml-systems/attention/moe-ep-tp.md) 固定全局 token 数与 GPU 数，比较专家 GEMM 形状、A2A/AllReduce 发送量、输入输出布局、负载不均衡、显存和混合并行。
-- Attention 独立成板块：[Transformer 运行全过程](content/ml-systems/attention/transformer-runtime.md) 从文本、Q/K/V、每层计算走到 prefill、KV cache、decode 与训练；[FlashAttention 1–4](content/ml-systems/cuda/flash-attention.md) 从 online softmax 推导讲到四代前后向、Ampere/Hopper/Blackwell、TMA/TMEM、条件缩放与 2-CTA，并附教学实现和源码入口。
-- [Flash Linear Attention](content/ml-systems/attention/flash-linear-attention.md) 讲清线性注意力的矩阵状态、causal 递推、chunkwise 公式、GLA 遗忘门、DeltaNet/Gated DeltaNet、GPU 执行与 FLA 库接口，并提供 Torch 参考实现。
-- [模型技术总表](content/ml-systems/attention/model-technology-map.md) 按具体模型与计算部件对照 DeepSeek V2/V3/V3.2/V4、Kimi K3、Qwen3.8 与 Flash-Next，区分 attention、FFN、残差、条件记忆、MTP 和训练技术。
-- [DeepSeek、Kimi 与 Qwen 架构](content/ml-systems/attention/model-architectures.md) 对照代表版本的主干配置，讲解 MLA/GQA、DSA/CSA/CSA2/QSA、KDA/GDN、MoE/LatentMoE、mHC/AttnRes/GR、多模态、MTP 与缓存，并保存官方配置的版本化摘录。
-- DeepSeek 独立成板块：[V2–V4 架构演进](content/ml-systems/deepseek/evolution.md) 讲 MLA、DSA、CSA/HCA、MoE、mHC 与 Muon；[一次前向与张量形状](content/ml-systems/deepseek/forward-shapes.md) 对照 V3、V3.2、V4-Pro 的权重、cache、decode/prefill 和输出，并附固定版本的官方配置。
-- 按题号、题目或 API 搜索（快捷键 `/`），章节目录、代码复制、冰蓝浅色与中性深灰主题及手机阅读。深色模式提高正文与代码的可读性；首次访问跟随系统主题，手动选择后记住偏好。
+## 主题索引
 
-- [残差、LatentMoE 与条件记忆](content/ml-systems/attention/residual-experts-memory.md) 用形状、公式和手算说明 Qwen 的 GR、Kimi 的 Block AttnRes/Stable LatentMoE，以及 Engram 与 n-gram embedding 的查表、训练和推理状态。
+| 主题 | 内容与入口 |
+| --- | --- |
+| 算法与题目 | [数组](content/algorithms/arrays.md)、[链表](content/algorithms/linked-lists.md)、[二叉树](content/algorithms/trees.md)、[图](content/algorithms/graphs.md)、[动态规划](content/algorithms/dynamic-programming.md)、[回溯](content/algorithms/backtracking.md)、[贪心](content/algorithms/greedy.md)、[位运算](content/algorithms/bitwise.md)、[数据结构](content/algorithms/data-structures.md)、[设计](content/algorithms/design.md)；提供 C++17 / Python 题解 |
+| C++ STL | [速查](content/languages/cpp-stl/quickref.md)、[对象语义](content/languages/cpp-stl/value-semantics.md)、[容器](content/languages/cpp-stl/sequence-containers.md)、[迭代器与算法](content/languages/cpp-stl/adapters-iterators.md) |
+| Python | [数据结构](content/languages/python/data-structures.md)、[常用语法](content/languages/python/iterables-and-functions.md)、[类与对象](content/languages/python/classes-and-objects.md)、[模块与包](content/languages/python/modules-and-packages.md)、[语言互操作](content/languages/python/native-interop.md) |
+| PyTorch | [Tensor 与 GPU 内存](content/ml-systems/pytorch/tensors.md)、[神经网络基础](content/ml-systems/pytorch/neural-networks.md)、[常见计算与组件](content/ml-systems/pytorch/operations-and-components.md) |
+| CUDA | [执行层级](content/ml-systems/cuda/execution-hierarchy.md)、[编译与指令](content/ml-systems/cuda/compilation-and-instructions.md)、[GEMM](content/ml-systems/cuda/gemm.md)、[性能分析](content/ml-systems/cuda/gemm-performance-analysis.md)、[FlashAttention](content/ml-systems/cuda/flash-attention.md) |
+| GPU 软件栈 | [驱动与运行时](content/ml-systems/gpu/driver-runtime-framework.md)、[工具与计算库](content/ml-systems/gpu/software-stack.md)、[CUDA Graph](content/ml-systems/gpu/graphs-and-compilation.md)、[精度与量化](content/ml-systems/gpu/precision-and-quantization.md)、[通信与 AllReduce](content/ml-systems/gpu/communication-and-allreduce.md) |
+| Attention 与模型架构 | [Transformer 运行流程](content/ml-systems/attention/transformer-runtime.md)、[线性注意力](content/ml-systems/attention/flash-linear-attention.md)、[模型技术总表](content/ml-systems/attention/model-technology-map.md)、[架构对照](content/ml-systems/attention/model-architectures.md)、[残差与条件记忆](content/ml-systems/attention/residual-experts-memory.md)、[TP 性能案例](content/ml-systems/attention/qwen3-h100-tp-case.md)、[EP 与 TP](content/ml-systems/attention/moe-ep-tp.md) |
+| DeepSeek | [架构演进](content/ml-systems/deepseek/evolution.md)、[前向计算与张量形状](content/ml-systems/deepseek/forward-shapes.md) |
+
+网站支持按题号、概念和 API 搜索（快捷键 `/`），以及章节目录、代码复制、C++ / Python 标签切换和深浅色主题。
 
 ## 内容来源
 
-刷题主体基于 Cong Li 的 **Fuck-Leetcode** 笔记，本仓库引入的原始快照为
-[`db6f82c`](https://github.com/sisyphus111/learning-notes/commit/db6f82c)。这是他人笔记的双语言改编版：保留原作者的讲解风格与既有出处，不代表原作者提供或验证了补充实现。原文中的 TODO 仍表示未完成的内容。
+算法题解部分改编自 [Cong Li 的 Fuck-Leetcode](https://github.com/CodeLoser404/fuck-leetcode)，保留原有思路、题目出处与参考链接，并补充 C++ / Python 实现。正文中的 TODO 表示尚未完成的内容。
 
-STL 内容选自本仓库的旧手册。旧 `main` 的完整提交历史保存在独立分支
-[`codex/backup-main-2026-10-01`](https://github.com/sisyphus111/learning-notes/tree/codex/backup-main-2026-10-01)，快照提交为 `7f888bd`。
+C++ STL 内容整理自本仓库原有手册。Python、PyTorch、CUDA、GPU 软件栈和模型架构笔记的参考文档、论文、源码及适用版本见各页。
 
-## 目录结构
+## 本地构建
 
-```
-learning-notes/
-├── content/                    # 所有 Markdown 源文件
-│   ├── algorithms/             # 算法题（数组、链表、树等）
-│   ├── languages/              # 编程语言参考
-│   │   ├── cpp-stl/            # C++ STL 参考
-│   │   └── python/             # Python 参考
-│   └── ml-systems/             # ML 系统
-│       ├── pytorch/            # PyTorch 教学
-│       ├── cuda/               # CUDA 教学
-│       ├── gpu/                # GPU 软件栈
-│       ├── attention/          # Attention 与 Transformer
-│       └── deepseek/           # DeepSeek
-├── scripts/                    # 构建和验证脚本
-├── assets/                     # 网站资源（样式、字体等）
-├── *.html                      # 生成的网站文件
-└── README.md
-```
+Markdown 源文件位于 `content/`，构建和验证脚本位于 `scripts/`。根目录的 HTML、`assets/search-index.json` 与 `assets/code.css` 为构建产物；网页样式和交互代码位于 `assets/`。
 
-每个 Markdown 文件包含 YAML front matter 元数据（标题、分类、标签、描述等）。
-
-## 维护方式
-
-编辑 `content/` 目录下的 Markdown 文件，然后运行构建脚本生成网站。根目录的 HTML 文件、`assets/search-index.json` 与 `assets/code.css` 是构建产物；`assets/style.css` 与 `assets/site.js` 是网页样式和交互源文件。构建会重新渲染全部页面，仅写入内容变化的产物，确保模板、导航、资源版本和站内锚点同步更新。
-
-构建脚本使用 Python，仅用于维护网站；笔记中的算法实现同时提供 C++ 和 Python。在仓库根目录创建独立环境：
+在仓库根目录创建 Python 环境并构建：
 
 ```sh
 python3 -m venv .venv
@@ -71,28 +38,19 @@ python3 -m venv .venv
 .venv/bin/python -m http.server 8765 --bind 127.0.0.1
 ```
 
-访问 [本地预览](http://127.0.0.1:8765/)。使用 HTTP 预览，搜索功能需要读取本地索引。代码高亮在构建时生成；公式通过 MathJax CDN 渲染，需要网络。
+访问 [本地预览](http://127.0.0.1:8765/)。通过 HTTP 预览可使用搜索功能；MathJax 公式渲染需要网络。编辑 Markdown 或页面模板后，重新运行构建脚本，同步更新生成的页面和搜索索引。
 
-GitHub Pages 从 `main` 分支根目录发布。生成网页并提交、推送到 `main` 后，GitHub 会重新部署。
+## 验证
 
-## 示例与验证
-
-C++ 题解省略标准库头文件和 `using namespace std;`，LeetCode 的 `ListNode`、`TreeNode` 等类型由题目提供。STL 页中的 API 片段、反例以及构造函数替换片段需要放在其所在小节的上下文中使用，不能当作独立程序编译。
+页面链接、代码语法与示例行为的检查入口：
 
 ```sh
+.venv/bin/python scripts/check_site.py
 .venv/bin/python scripts/check_cpp.py
 .venv/bin/python scripts/test_examples.py
-.venv/bin/python scripts/check_site.py
-python3.10 scripts/check_python.py  # 使用任意 Python 3.10+ 解释器
+.venv/bin/python scripts/check_python.py  # 需要 Python 3.10+
 node --check assets/site.js
 git diff --check
 ```
 
-- `check_cpp.py`：分别编译 197 个完整 C++17 示例，提供标准库与题目节点类型的测试前置定义；明确排除非独立片段和 STL 参考片段。
-- `test_examples.py`：直接提取文档代码，运行 155 个实现版本的代表性与边界检查，启用 AddressSanitizer 和 UBSan。其中包含对子数组计数的穷举对照。
-- `check_python.py`：检查全部 Python 代码块的语法，运行 164 个题解实现版本的代表性用例，并运行 Python 参考页的独立示例、核对打印结果。以 `# 文件：` 标注的多文件片段仅做语法检查，需要按正文组装项目后运行；该检查不构建 C++ 扩展。需要 Python 3.10+，以支持 `Counter` 的比较语义。
-- 验证覆盖编译和上述行为检查，不等于全部题目都经过 LeetCode 在线判题。
-
-模块/包与 pybind11 多文件示例另在 macOS ARM64、CPython 3.12.14、Apple Clang 21.0.0 下按文档组装验证：包与模块的 `-m` 入口、安装生成的命令、入口保护、相对导入失败、普通与 editable 安装的源码修改行为、`.pyc` 生成及 `-B`、扩展的 wheel 构建与安装、空输入/负数/错误类型调用均通过。Windows / Linux 尚未实测，也未进行扩展性能比较。
-
-旧的 `count.py`、`check.py` 已由网页的条目统计和搜索替代。
+C++ 题解采用 C++17，LeetCode 提供题目所需的节点类型；API 片段、反例和多文件示例需结合所在小节使用。验证脚本覆盖页面链接、可独立执行的代码和代表性用例，不代表所有题解都经过在线判题。模型形状、容量与性能推导不等于实机测量，各页标明具体的验证范围。

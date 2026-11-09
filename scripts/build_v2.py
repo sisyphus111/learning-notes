@@ -282,7 +282,7 @@ def links(html, source_path):
 
 def generate_sidebar(current_page):
     """生成侧边栏导航"""
-    result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a>'
+    result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>Learning Notes<small>技术笔记</small></span></a>'
 
     for category, config in PAGES_CONFIG.items():
         result += f'<p class="nav-label">{config["label"]}</p><nav aria-label="{config["label"]}">'
@@ -319,6 +319,7 @@ def generate_html(title, current, content, toc='', subtitle='', category=''):
 
     # 来源说明
     source_notes = {
+        '算法与题目': '算法题解改编自 Cong Li 的 Fuck-Leetcode，保留思路与原有题目来源；提供 C++17 与 Python 版本。',
         'Python 参考': 'Python 语法、项目运行与语言互操作，附官方文档链接；多文件示例按正文说明使用。',
         'PyTorch 教学': '以 CUDA Tensor 为主的教学笔记，附官方文档链接；示例结果为推导预期，实机验证范围见正文。',
         'CUDA 教学': 'CUDA 执行、GEMM、attention 与 kernel 编译笔记，附论文、官方文档和源码；示例用于说明语义，未做 CUDA 编译或实机验证。',
@@ -327,11 +328,11 @@ def generate_html(title, current, content, toc='', subtitle='', category=''):
         'GPU 软件栈': 'GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。',
         'STL 参考': 'STL 内容选自旧手册，现以 Markdown 维护。',
     }
-    source_note = source_notes.get(category, '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。')
+    source_note = source_notes.get(category, '算法题解部分改编自 Cong Li 的 Fuck-Leetcode；编程语言与 ML 系统笔记的参考资料见各页。')
 
     html = f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(title if title == '求知录' else title + ' · 求知录')}</title><meta name="description" content="{escape(subtitle or title)}">
+<title>{escape(title if title == 'Learning Notes' else title + ' · Learning Notes')}</title><meta name="description" content="{escape(subtitle or title)}">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v={STYLE_VERSION}"><link rel="stylesheet" href="assets/code.css">
@@ -343,8 +344,8 @@ def generate_html(title, current, content, toc='', subtitle='', category=''):
 <a class="skip-link" href="#main">跳到正文</a>
 <aside class="sidebar" id="sidebar">{generate_sidebar(current)}</aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
-<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">{escape(category or '求知录')}</p><h1>{escape(title)}</h1><p class="subtitle">{escape(subtitle)}</p></div>
+<a href="index.html" class="crumb">Learning Notes</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">{escape(category or 'Learning Notes')}</p><h1>{escape(title)}</h1><p class="subtitle">{escape(subtitle)}</p></div>
 <article>{content}</article><footer>{source_note}</footer></main>{toc}</div>
 </div>
 <dialog id="search-dialog"><form method="dialog" class="search-heading"><label for="search-input">搜索笔记与语法参考</label><button aria-label="关闭搜索">关闭</button></form>
@@ -451,11 +452,11 @@ def build_all():
                     problem_count += 1
         home_sections.append(f'<section class="home-section"><h2>{escape(config["label"])}</h2><p class="section-desc">{section_descriptions[category]}</p><div class="cards">{"".join(cards)}</div></section>')
 
-    home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>{len(PAGES_CONFIG['algorithms']['files'])} 个题型</span><span>C++17 / Python 3.10+</span></div></div>
+    home = f'''<div class="home-lead"><p>按主题阅读，或用搜索查找概念、API 和题目。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>{len(PAGES_CONFIG['algorithms']['files'])} 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 {chr(10).join(home_sections)}
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按主题阅读，用搜索定位概念、写法或题目。先理解问题和原理，再对照推导与实现；需要时回到参考文档核实细节。算法部分保留原作者的思路与 TODO 标记。</p></section>'''
     outputs = {
-        OUTPUT_DIR / 'index.html': generate_html('求知录', 'index.html', home, subtitle='记录学习中的问题、推导与实践。'),
+        OUTPUT_DIR / 'index.html': generate_html('Learning Notes', 'index.html', home, subtitle='算法、编程语言与 ML 系统的学习笔记，包含概念解释、推导、代码示例和参考来源。'),
         ASSETS_DIR / 'search-index.json': json.dumps(index, ensure_ascii=False, separators=(',', ':')),
         ASSETS_DIR / 'code.css': HtmlFormatter(style='friendly').get_style_defs('.codehilite'),
     }

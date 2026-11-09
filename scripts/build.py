@@ -255,7 +255,7 @@ def links(html, source):
 
 
 def sidebar(current):
-    result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>求知录<small>LEARNING NOTES</small></span></a>'
+    result = '<a class="brand" href="index.html"><img src="assets/favicon.svg" width="36" height="36" alt=""><span>Learning Notes<small>技术笔记</small></span></a>'
     for label, pages in [('算法与题目', CHAPTERS), ('STL 参考', REFERENCES), ('Python 参考', PYTHON_REFERENCES), ('PyTorch 教学', PYTORCH_REFERENCES), ('CUDA 教学', CUDA_REFERENCES), ('Attention 与 Transformer', ATTENTION_REFERENCES), ('DeepSeek', DEEPSEEK_REFERENCES), ('GPU 软件栈', GPU_REFERENCES)]:
         result += f'<p class="nav-label">{label}</p><nav aria-label="{label}">'
         for _, output, title, _ in pages:
@@ -267,7 +267,7 @@ def sidebar(current):
 
 
 def shell(title, current, content, toc='', subtitle='', reference_kind=''):
-    kind = reference_kind or '求知录'
+    kind = reference_kind or 'Learning Notes'
     page_assets = ''
     if current == 'cuda-gemm.html':
         for name in ('gemm.css', 'gemm.js'):
@@ -295,11 +295,13 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
         source_note = 'GPU 软件工具与图编译教学，附官方文档；示例与图示用于解释机制，未执行 CUDA 或性能验证。'
     elif reference_kind == 'STL 参考':
         source_note = 'STL 内容选自旧手册，现以 Markdown 维护。'
+    elif current == 'index.html':
+        source_note = '算法题解部分改编自 Cong Li 的 Fuck-Leetcode；编程语言与 ML 系统笔记的参考资料见各页。'
     else:
-        source_note = '基于 Cong Li 的 Fuck-Leetcode 笔记改编，保留思路与原有题目来源；提供 C++17 与 Python 版本。'
+        source_note = '算法题解改编自 Cong Li 的 Fuck-Leetcode，保留思路与原有题目来源；提供 C++17 与 Python 版本。'
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(title if title == '求知录' else title + ' · 求知录')}</title><meta name="description" content="{escape(subtitle)}">
+<title>{escape(title if title == 'Learning Notes' else title + ' · Learning Notes')}</title><meta name="description" content="{escape(subtitle)}">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" sizes="any">
 <link rel="stylesheet" href="assets/style.css?v={STYLE_VERSION}"><link rel="stylesheet" href="assets/code.css">
@@ -311,7 +313,7 @@ def shell(title, current, content, toc='', subtitle='', reference_kind=''):
 <a class="skip-link" href="#main">跳到正文</a>
 <aside class="sidebar" id="sidebar">{sidebar(current)}</aside>
 <div class="page"><header class="topbar"><button class="menu-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a href="index.html" class="crumb">求知录</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
+<a href="index.html" class="crumb">Learning Notes</a><div class="toolbar"><button class="search-toggle">搜索题号 / 关键词 <kbd>/</kbd></button><button class="theme-toggle" type="button" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式"><svg class="moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /></svg><svg class="sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg></button></div></header>
 <div class="reading-layout"><main id="main"><div class="page-intro"><p class="eyebrow">{kind}</p><h1>{escape(title)}</h1><p class="subtitle">{escape(subtitle)}</p></div>
 <article>{content}</article><footer>{source_note}</footer></main>{toc}</div>
 </div>
@@ -359,7 +361,7 @@ for source, output, title, subtitle in PAGES:
             problem_count += 1
 
 cards = lambda pages: '<div class="cards">' + ''.join(f'<a class="card" href="{output}"><h3>{title}<span>↗</span></h3><p>{desc}</p></a>' for _, output, title, desc in pages) + '</div>'
-home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
+home = f'''<div class="home-lead"><p>按主题阅读，或用搜索查找概念、API 和题目。</p><div class="home-meta"><span>{problem_count} 个题目条目</span><span>10 个题型</span><span>C++17 / Python 3.10+</span></div></div>
 <section class="home-section"><h2>算法与题目</h2><p class="section-desc">先看「焚诀」抓住联想线索，再读题目、思路和实现。</p>{cards(CHAPTERS)}</section>
 <section class="home-section"><h2>STL 参考</h2><p class="section-desc">写题时查 API；遇到复制、引用或迭代器问题，进入对应专题。</p>{cards(REFERENCES)}</section>
 <section class="home-section"><h2>Python 参考</h2><p class="section-desc">从容器、常用语法与类和对象，走到模块、包、运行环境和 C++ 等语言的互操作。</p>{cards(PYTHON_REFERENCES)}</section>
@@ -369,7 +371,7 @@ home = f'''<div class="home-lead"><p>把问题想清楚，把理解记下来。<
 <section class="home-section"><h2>DeepSeek</h2><p class="section-desc">从 MLA、DSA 到 CSA/HCA，理解残差与训练算法的变化，再按真实模型尺寸追踪一次完整前向。</p>{cards(DEEPSEEK_REFERENCES)}</section>
 <section class="home-section"><h2>GPU 软件栈</h2><p class="section-desc">从 H100 的驱动与运行时开始，区分计算库、kernel 开发工具和编译器，再连接算子图优化与 CUDA Graph 重放。</p>{cards(GPU_REFERENCES)}</section>
 <section class="reading-note"><h2>怎么用这份笔记</h2><p>按主题阅读，用搜索定位概念、写法或题目。先理解问题和原理，再对照推导与实现；需要时回到参考文档核实细节。算法部分保留原作者的思路与 TODO 标记。</p></section>'''
-(ROOT / 'index.html').write_text(shell('求知录', 'index.html', home, subtitle='记录学习中的问题、推导与实践。'))
+(ROOT / 'index.html').write_text(shell('Learning Notes', 'index.html', home, subtitle='算法、编程语言与 ML 系统的学习笔记，包含概念解释、推导、代码示例和参考来源。'))
 (ROOT / 'assets/search-index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')))
 (ROOT / 'assets/code.css').write_text(HtmlFormatter(style='friendly').get_style_defs('.codehilite'))
 print(f'Built {len(PAGES)+1} pages; {problem_count} problem entries; {len(index)} searchable sections.')
